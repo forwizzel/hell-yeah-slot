@@ -15,8 +15,11 @@ export const GAME_CONFIG = {
     CIGARETTE: { 1: 0.005, 2: 0.01 },
   },
   recentEventLimit: 30,
-  normalSpinDurationMs: 720,
+  normalSpinDurationMs: 3_500,
   quickSpinDurationMs: 180,
+  normalReelStepDurationMs: 115,
+  quickReelStepDurationMs: 78,
+  reelSettleDurationMs: 320,
   normalEvaluationDelayMs: 420,
   quickEvaluationDelayMs: 90,
 } as const;

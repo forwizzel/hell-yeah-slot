@@ -1,11 +1,19 @@
 import { GAME_CONFIG } from "../config/gameConfig";
-import type { BonusSummary, FreeSpinMode, FreeSpinState, GameViewModel, Grid } from "../core/types";
+import type { BonusSummary, FreeSpinMode, FreeSpinState, GameViewModel, Grid, Position } from "../core/types";
 import { ControlPanel, type ControlActions } from "./ControlPanel";
 import { EventLogView } from "./EventLogView";
+import { GameAudio, type GameSoundEffect } from "./GameAudio";
 import { ReelGridView } from "./ReelGridView";
+
+const SYMBOL_REVEAL_EFFECTS = [
+  "symbol-first",
+  "symbol-second",
+  "symbol-third",
+] as const satisfies readonly GameSoundEffect[];
 
 export class GameView {
   private readonly controls = new ControlPanel();
+  private readonly audio = new GameAudio();
   private readonly log = new EventLogView(requiredElement<HTMLOListElement>("event-log"), GAME_CONFIG.recentEventLimit);
   private readonly bonusStatus = requiredElement<HTMLElement>("bonus-status");
   private readonly featureOverlay = requiredElement<HTMLElement>("feature-overlay");
@@ -36,8 +44,31 @@ export class GameView {
     this.renderFeatureOverlay(model);
   }
 
-  animateBaseSpin(result: Grid, durationMs: number): Promise<void> {
-    return this.reels.animateBaseSpin(result, durationMs);
+  animateBaseSpin(
+    result: Grid,
+    durationMs: number,
+    bonusSoundGroups: ReadonlyArray<ReadonlyArray<Position>> = [],
+  ): Promise<void> {
+    const revealedCounts = bonusSoundGroups.map(() => 0);
+    return this.reels.animateBaseSpin(result, durationMs, (column) => {
+      this.audio.play("click");
+      bonusSoundGroups.forEach((positions, groupIndex) => {
+        const positionsInColumn = positions
+          .filter((position) => position.column === column)
+          .sort((left, right) => left.row - right.row);
+        for (const _position of positionsInColumn) {
+          const revealedCount = revealedCounts[groupIndex];
+          if (revealedCount === undefined) {
+            throw new Error("Bonus sound group was not initialized");
+          }
+          const effect = SYMBOL_REVEAL_EFFECTS[revealedCount];
+          if (effect !== undefined) {
+            this.audio.play(effect);
+          }
+          revealedCounts[groupIndex] = revealedCount + 1;
+        }
+      });
+    });
   }
 
   wait(durationMs: number): Promise<void> {
@@ -46,6 +77,14 @@ export class GameView {
 
   isQuickSpinEnabled(): boolean {
     return this.controls.isQuickSpinEnabled();
+  }
+
+  toggleSound(): void {
+    this.controls.setSoundEnabled(this.audio.toggle());
+  }
+
+  playSound(effect: GameSoundEffect): void {
+    this.audio.play(effect);
   }
 
   addLog(message: string): void {

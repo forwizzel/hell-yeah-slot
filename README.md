@@ -14,7 +14,7 @@ The project uses integer play credits only. It has no accounts, payments, backen
 - Browser Web Crypto for unseeded play
 - `SeededRandomSource` for tests, simulation, and reproducible browser sessions
 
-No external images, fonts, sounds, APIs, or CDN resources are required.
+No external images, fonts, sounds, APIs, or CDN resources are required. All artwork and audio are bundled locally.
 
 ## Installation
 
@@ -52,11 +52,14 @@ npm run simulate -- --spins=1000000 --seed=12345
 - **Spin** deducts the selected integer bet and starts one paid base round.
 - **- / +** changes the bet from 1 through 100 in steps of 1.
 - **Quick spin** shortens animation delays without changing the precomputed outcome.
+- **Sound Off / Sound On** enables or disables all audio. Enabling sound starts the looping background soundtrack.
 - **Reset Game** restores 1,000 credits and the default bet of 10. With a seed active, it also restarts that seed's random sequence.
 - **Apply Seed** trims and applies a non-empty deterministic seed.
 - **Clear Seed** returns normal play to browser Web Crypto randomness.
 
 Controls that could mutate a running game are disabled outside the `idle` phase. A paid round can award its ordinary base win plus the complete free-spin payout. SWORD itself currently awards no credits.
+
+The spin and bet controls have dedicated effects, and each animated reel lock plays a click. Natural feature and retrigger results play first, second, and third symbol cues as matching special symbols are revealed, followed by one winner cue when the feature effect is applied. Below-threshold chance activations do not play the natural symbol sequence. Sound starts disabled so browsers can begin playback from the explicit sound-toggle interaction.
 
 ### Development Bonus Controls
 
@@ -203,7 +206,7 @@ Artwork can be introduced inside the presentation layer without changing math mo
 
 - The current reel strips, paytable, and trigger probabilities are illustrative and have not been balanced or certified.
 - SWORD has no playable game or credit award yet.
-- There is no autoplay, persistence, backend, account system, sound, or production asset pipeline.
+- There is no autoplay, persistence, backend, account system, or production asset pipeline.
 - Refreshing the page resets credits and seed state because there is no storage layer.
 - Browser automation, visual-regression tests, confidence intervals, and formal statistical analysis are not included.
 

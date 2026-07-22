@@ -54,6 +54,7 @@ interface ReelSpinState {
   finalQueue: Cell[];
   finalSequenceStarted: boolean;
   finalSequenceComplete: boolean;
+  locked: boolean;
 }
 
 type CellStyle = "card" | "wild" | "beer" | "cigarette" | "sword";
@@ -142,7 +143,7 @@ export class ReelGridView {
     this.application.canvas.setAttribute("aria-label", gridAriaLabel(grid));
   }
 
-  animateBaseSpin(result: Grid, durationMs: number): Promise<void> {
+  animateBaseSpin(result: Grid, durationMs: number, onColumnLocked?: (column: number) => void): Promise<void> {
     validateGrid(result);
     if (durationMs <= 0 || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
       this.renderGrid(result);
@@ -167,6 +168,7 @@ export class ReelGridView {
       ],
       finalSequenceStarted: false,
       finalSequenceComplete: false,
+      locked: false,
     }));
 
     return new Promise((resolve) => {
@@ -246,10 +248,12 @@ export class ReelGridView {
             }
             const settleProgress = clamp((elapsed - settleStart) / settleDuration, 0, 1);
             reel.track.y = settleTrackPosition(state.settleStartY, state.settleStartVelocity, settleDuration, settleProgress);
-            if (elapsed >= stopTime) {
+            if (elapsed >= stopTime && !state.locked) {
               for (let row = 0; row < GAME_CONFIG.rows; row += 1) {
                 this.drawCell(row, column, result[row]![column]!, false, false);
               }
+              state.locked = true;
+              onColumnLocked?.(column);
             }
             continue;
           }

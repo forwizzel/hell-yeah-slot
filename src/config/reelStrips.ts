@@ -1,11 +1,29 @@
-import type { RegularSymbolId } from "../core/types";
+import type { BonusSymbolId, CardSymbolId } from "../core/types";
 
-export type ReelSymbol = RegularSymbolId | "BONUS";
+export type ReelSymbol = CardSymbolId | "WILD" | BonusSymbolId;
 
+const REEL_LENGTH = 64;
+const CARD_DISTRIBUTION: readonly CardSymbolId[] = [
+  "10", "J", "Q", "K", "A", "10", "J", "Q", "K", "10", "J", "Q", "10", "J", "10",
+];
+
+function createReel(offset: number, specials: ReadonlyArray<readonly [number, ReelSymbol]>): ReadonlyArray<ReelSymbol> {
+  const reel: ReelSymbol[] = Array.from(
+    { length: REEL_LENGTH },
+    (_, index) => CARD_DISTRIBUTION[(index + offset) % CARD_DISTRIBUTION.length]!,
+  );
+  for (const [index, symbol] of specials) {
+    reel[index] = symbol;
+  }
+  return reel;
+}
+
+// Sword reels isolate SWORD by two stops in either direction. Since only three
+// reels contain SWORD, a Sword trigger leaves at most two reels for other bonuses.
 export const REEL_STRIPS: ReadonlyArray<ReadonlyArray<ReelSymbol>> = [
-  ["A", "B", "C", "A", "D", "B", "A", "C", "BONUS", "B", "D", "A", "C", "B", "A", "D", "C", "B", "A", "BONUS", "D", "C", "A", "B"],
-  ["B", "A", "D", "C", "B", "A", "C", "B", "D", "BONUS", "A", "C", "B", "D", "A", "B", "C", "A", "D", "B", "BONUS", "C", "A", "B"],
-  ["C", "B", "A", "D", "C", "B", "BONUS", "A", "D", "C", "B", "A", "C", "D", "B", "A", "C", "B", "D", "A", "C", "BONUS", "B", "A"],
-  ["D", "C", "B", "A", "D", "BONUS", "C", "B", "A", "D", "C", "B", "A", "C", "D", "B", "A", "BONUS", "C", "D", "B", "A", "C", "B"],
-  ["A", "D", "C", "B", "A", "D", "C", "BONUS", "B", "A", "D", "C", "B", "A", "C", "D", "B", "A", "C", "D", "BONUS", "B", "A", "C"],
-] as const;
+  createReel(0, [[0, "SWORD"], [10, "BEER"], [11, "CIGARETTE"], [22, "WILD"], [31, "BEER"], [50, "BEER"]]),
+  createReel(3, [[8, "BEER"], [9, "CIGARETTE"], [29, "BEER"], [47, "BEER"], [60, "WILD"]]),
+  createReel(6, [[3, "BEER"], [4, "CIGARETTE"], [16, "SWORD"], [23, "WILD"], [31, "BEER"], [50, "BEER"]]),
+  createReel(9, [[12, "BEER"], [13, "CIGARETTE"], [26, "WILD"], [35, "BEER"], [53, "BEER"]]),
+  createReel(12, [[7, "BEER"], [8, "CIGARETTE"], [20, "WILD"], [32, "SWORD"], [44, "BEER"], [57, "BEER"]]),
+];

@@ -1,14 +1,10 @@
 import type { ReelSymbol } from "../config/reelStrips";
 import type { Cell, Grid } from "../core/types";
 import type { RandomSource } from "./RandomSource";
-import { WeightedPicker, type WeightedValue } from "./WeightedPicker";
 
 export class ReelEngine {
-  private readonly bonusValuePicker: WeightedPicker<number>;
-
   constructor(
     private readonly reelStrips: ReadonlyArray<ReadonlyArray<ReelSymbol>>,
-    bonusValueWeights: ReadonlyArray<WeightedValue<number>>,
     private readonly random: RandomSource,
     private readonly rows = 3,
   ) {
@@ -18,7 +14,6 @@ export class ReelEngine {
     if (!Number.isInteger(rows) || rows <= 0) {
       throw new RangeError("Row count must be a positive integer");
     }
-    this.bonusValuePicker = new WeightedPicker(bonusValueWeights);
   }
 
   spin(): Grid {
@@ -35,17 +30,20 @@ export class ReelEngine {
         if (targetRow === undefined) {
           throw new Error("Grid row lookup failed");
         }
-        targetRow.push(this.createCell(symbol));
+        targetRow.push(createCell(symbol));
       }
     }
 
     return grid;
   }
+}
 
-  private createCell(symbol: ReelSymbol): Cell {
-    if (symbol === "BONUS") {
-      return { kind: "bonus", value: this.bonusValuePicker.pick(this.random) };
-    }
-    return { kind: "regular", symbol };
+function createCell(symbol: ReelSymbol): Cell {
+  if (symbol === "WILD") {
+    return { kind: "wild" };
   }
+  if (symbol === "BEER" || symbol === "CIGARETTE" || symbol === "SWORD") {
+    return { kind: "bonus", symbol };
+  }
+  return { kind: "card", symbol };
 }

@@ -1,129 +1,203 @@
-import type { BonusCell, BonusRespinResult, BonusState, BonusSummary, Grid, Position } from "../core/types";
+import type {
+  BonusActivation,
+  BonusSymbolId,
+  BonusTrigger,
+  FreeSpinMode,
+  FreeSpinResult,
+  FreeSpinState,
+  FreeSpinSummary,
+  Grid,
+  Position,
+} from "../core/types";
 import type { RandomSource } from "./RandomSource";
-import { WeightedPicker, type WeightedValue } from "./WeightedPicker";
+import { safeAdd, safeMultiply } from "./safeInteger";
+
+export interface TriggerChances {
+  readonly BEER: Readonly<Record<1 | 2, number>>;
+  readonly CIGARETTE: Readonly<Record<1 | 2, number>>;
+}
 
 export class BonusEngine {
-  private readonly valuePicker: WeightedPicker<number>;
-
   constructor(
     private readonly random: RandomSource,
-    bonusValueWeights: ReadonlyArray<WeightedValue<number>>,
-    private readonly landingProbability: number,
-    private readonly rows = 3,
-    private readonly columns = 5,
-    private readonly startingRespins = 3,
+    private readonly triggerChances: TriggerChances,
+    private readonly beerFreeSpins: number,
+    private readonly cigaretteFreeSpins: number,
+    private readonly multiplierMinimum: number,
+    private readonly multiplierMaximum: number,
   ) {
-    if (landingProbability < 0 || landingProbability > 1 || !Number.isFinite(landingProbability)) {
-      throw new RangeError("Landing probability must be between 0 and 1");
-    }
-    if (!Number.isInteger(rows) || rows <= 0 || !Number.isInteger(columns) || columns <= 0) {
-      throw new RangeError("Bonus dimensions must be positive integers");
-    }
-    if (!Number.isInteger(startingRespins) || startingRespins <= 0) {
-      throw new RangeError("Starting respins must be a positive integer");
-    }
-    this.valuePicker = new WeightedPicker(bonusValueWeights);
-  }
-
-  findTriggerPositions(grid: Grid): Position[] {
-    const positions: Position[] = [];
-    for (let row = 0; row < grid.length; row += 1) {
-      for (let column = 0; column < (grid[row]?.length ?? 0); column += 1) {
-        if (grid[row]?.[column]?.kind === "bonus") {
-          positions.push({ row, column });
-        }
+    const configuredChances = [
+      triggerChances.BEER[1],
+      triggerChances.BEER[2],
+      triggerChances.CIGARETTE[1],
+      triggerChances.CIGARETTE[2],
+    ];
+    for (const chance of configuredChances) {
+      if (!Number.isFinite(chance) || chance < 0 || chance > 1) {
+        throw new RangeError("Trigger chances must be between 0 and 1");
       }
     }
-    return positions;
+    if (!Number.isSafeInteger(beerFreeSpins) || beerFreeSpins <= 0
+      || !Number.isSafeInteger(cigaretteFreeSpins) || cigaretteFreeSpins <= 0) {
+      throw new RangeError("Free-spin awards must be positive integers");
+    }
+    if (!Number.isSafeInteger(multiplierMinimum) || !Number.isSafeInteger(multiplierMaximum)
+      || multiplierMinimum < 1 || multiplierMaximum < multiplierMinimum) {
+      throw new RangeError("Multiplier range is invalid");
+    }
   }
 
-  start(grid: Grid, triggeringBet: number): BonusState {
+  resolveBaseTrigger(grid: Grid): BonusTrigger {
+    const swordPositions = findPositions(grid, "SWORD");
+    if (swordPositions.length >= 3) {
+      return { kind: "sword", positions: swordPositions };
+    }
+
+    const beer = this.resolveActivation(grid, "BEER");
+    const cigarette = this.resolveActivation(grid, "CIGARETTE");
+    if (beer === null && cigarette === null) {
+      return { kind: "none" };
+    }
+
+    const mode = featureMode(beer !== null, cigarette !== null);
+    return {
+      kind: "free-spins",
+      mode,
+      startingSpins: beer === null ? this.cigaretteFreeSpins : this.beerFreeSpins,
+      multiplier: cigarette === null ? 1 : this.pickMultiplier(),
+      beer,
+      cigarette,
+    };
+  }
+
+  startFreeSpins(trigger: Extract<BonusTrigger, { kind: "free-spins" }>, triggeringBet: number): FreeSpinState {
     if (!Number.isSafeInteger(triggeringBet) || triggeringBet <= 0) {
       throw new RangeError("Triggering bet must be a positive integer");
     }
-    if (grid.length !== this.rows || grid.some((row) => row.length !== this.columns)) {
-      throw new Error(`Trigger grid must be ${this.rows} x ${this.columns}`);
-    }
-
-    const cells: Array<BonusCell | null> = Array.from({ length: this.rows * this.columns }, () => null);
-    for (let row = 0; row < this.rows; row += 1) {
-      for (let column = 0; column < this.columns; column += 1) {
-        const cell = grid[row]?.[column];
-        if (cell?.kind === "bonus") {
-          cells[this.toIndex(row, column)] = { kind: "bonus", value: cell.value };
-        }
-      }
-    }
-
-    return { cells, remainingRespins: this.startingRespins, totalRespinsPlayed: 0, triggeringBet };
+    return {
+      mode: trigger.mode,
+      remainingSpins: trigger.startingSpins,
+      totalSpinsPlayed: 0,
+      multiplier: trigger.multiplier,
+      triggeringBet,
+      accumulatedWin: 0,
+    };
   }
 
-  respin(state: BonusState): BonusRespinResult {
-    this.validateState(state);
-    const cells = state.cells.map((cell) => (cell === null ? null : { ...cell }));
-    const newPositions: Position[] = [];
-
-    for (let index = 0; index < cells.length; index += 1) {
-      if (cells[index] === null && this.random.nextFloat() < this.landingProbability) {
-        cells[index] = { kind: "bonus", value: this.valuePicker.pick(this.random) };
-        newPositions.push(this.toPosition(index));
-      }
+  applyFreeSpin(state: FreeSpinState, grid: Grid, baseWin: number): FreeSpinResult {
+    validateFreeSpinState(state);
+    if (state.remainingSpins <= 0) {
+      throw new Error("Cannot play a completed free-spin feature");
+    }
+    if (!Number.isSafeInteger(baseWin) || baseWin < 0) {
+      throw new RangeError("Base win must be a non-negative integer");
     }
 
-    const filled = cells.every((cell) => cell !== null);
-    const remainingRespins = newPositions.length > 0
-      ? this.startingRespins
-      : Math.max(0, state.remainingRespins - 1);
-    const nextState: BonusState = {
-      cells,
-      remainingRespins,
-      totalRespinsPlayed: state.totalRespinsPlayed + 1,
+    const spinWin = safeMultiply(baseWin, state.multiplier, "Free-spin payout exceeds the safe integer range");
+    const accumulatedWin = safeAdd(state.accumulatedWin, spinWin, "Accumulated free-spin win exceeds the safe integer range");
+    const swordTriggered = findPositions(grid, "SWORD").length >= 3;
+    const beerRetriggered = !swordTriggered && findPositions(grid, "BEER").length >= 3;
+    const cigaretteRetriggered = !swordTriggered && findPositions(grid, "CIGARETTE").length >= 3;
+    const addedSpins = beerRetriggered ? this.beerFreeSpins : 0;
+    const awardedMultiplier = cigaretteRetriggered ? this.pickMultiplier() : null;
+    const multiplier = awardedMultiplier === null
+      ? state.multiplier
+      : safeMultiply(state.multiplier, awardedMultiplier, "Free-spin multiplier exceeds the safe integer range");
+    const remainingSpins = safeAdd(
+      state.remainingSpins - 1,
+      addedSpins,
+      "Remaining free spins exceed the safe integer range",
+    );
+    const mode = nextMode(state.mode, beerRetriggered, cigaretteRetriggered);
+    const nextState: FreeSpinState = {
+      mode,
+      remainingSpins,
+      totalSpinsPlayed: safeAdd(state.totalSpinsPlayed, 1, "Free-spin count exceeds the safe integer range"),
+      multiplier,
       triggeringBet: state.triggeringBet,
+      accumulatedWin,
     };
 
     return {
       state: nextState,
-      newPositions,
-      complete: filled || remainingRespins === 0,
-      filled,
+      spinWin,
+      beerRetriggered,
+      cigaretteRetriggered,
+      swordTriggered,
+      addedSpins,
+      awardedMultiplier,
+      complete: remainingSpins === 0,
     };
   }
 
-  isComplete(state: BonusState): boolean {
-    this.validateState(state);
-    return state.remainingRespins === 0 || state.cells.every((cell) => cell !== null);
-  }
-
-  summarize(state: BonusState): BonusSummary {
-    this.validateState(state);
-    const lockedCells = state.cells.filter((cell): cell is BonusCell => cell !== null);
-    const valueTotal = lockedCells.reduce((total, cell) => total + cell.value, 0);
+  summarize(state: FreeSpinState): FreeSpinSummary {
+    validateFreeSpinState(state);
+    if (state.remainingSpins !== 0) {
+      throw new Error("Cannot summarize an active free-spin feature");
+    }
     return {
-      symbolCount: lockedCells.length,
-      valueTotal,
-      payout: valueTotal * state.triggeringBet,
-      respinsPlayed: state.totalRespinsPlayed,
-      filled: lockedCells.length === state.cells.length,
+      kind: "free-spins",
+      mode: state.mode,
+      spinsPlayed: state.totalSpinsPlayed,
+      payout: state.accumulatedWin,
+      finalMultiplier: state.multiplier,
     };
   }
 
-  private validateState(state: BonusState): void {
-    if (state.cells.length !== this.rows * this.columns) {
-      throw new Error("Bonus state has an invalid cell count");
+  private resolveActivation(grid: Grid, symbol: "BEER" | "CIGARETTE"): BonusActivation | null {
+    const positions = findPositions(grid, symbol);
+    if (positions.length >= 3) {
+      return { symbol, source: "natural", symbolCount: positions.length, positions };
     }
-    if (!Number.isInteger(state.remainingRespins) || state.remainingRespins < 0) {
-      throw new Error("Bonus state has invalid remaining respins");
+    if (positions.length === 0) {
+      return null;
     }
-    if (!Number.isSafeInteger(state.triggeringBet) || state.triggeringBet <= 0) {
-      throw new Error("Bonus state has an invalid triggering bet");
-    }
+    const count = positions.length as 1 | 2;
+    return this.random.nextFloat() < this.triggerChances[symbol][count]
+      ? { symbol, source: "chance", symbolCount: count, positions }
+      : null;
   }
 
-  private toIndex(row: number, column: number): number {
-    return row * this.columns + column;
+  private pickMultiplier(): number {
+    return this.random.nextInt(this.multiplierMaximum - this.multiplierMinimum + 1) + this.multiplierMinimum;
   }
+}
 
-  private toPosition(index: number): Position {
-    return { row: Math.floor(index / this.columns), column: index % this.columns };
+function findPositions(grid: Grid, symbol: BonusSymbolId): Position[] {
+  const positions: Position[] = [];
+  for (let row = 0; row < grid.length; row += 1) {
+    for (let column = 0; column < (grid[row]?.length ?? 0); column += 1) {
+      const cell = grid[row]?.[column];
+      if (cell?.kind === "bonus" && cell.symbol === symbol) {
+        positions.push({ row, column });
+      }
+    }
+  }
+  return positions;
+}
+
+function featureMode(beer: boolean, cigarette: boolean): FreeSpinMode {
+  if (beer && cigarette) {
+    return "combined";
+  }
+  return beer ? "beer" : "cigarette";
+}
+
+function nextMode(mode: FreeSpinMode, beer: boolean, cigarette: boolean): FreeSpinMode {
+  if (mode === "combined" || (mode === "beer" && cigarette) || (mode === "cigarette" && beer)) {
+    return "combined";
+  }
+  return mode;
+}
+
+function validateFreeSpinState(state: FreeSpinState): void {
+  const values = [state.remainingSpins, state.totalSpinsPlayed, state.multiplier, state.triggeringBet, state.accumulatedWin];
+  if (values.some((value) => !Number.isSafeInteger(value))
+    || state.remainingSpins < 0
+    || state.totalSpinsPlayed < 0
+    || state.multiplier < 1
+    || state.triggeringBet <= 0
+    || state.accumulatedWin < 0) {
+    throw new Error("Free-spin state is invalid");
   }
 }

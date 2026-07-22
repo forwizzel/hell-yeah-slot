@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { PAYTABLE } from "../config/paytable";
-import type { BonusCell, Cell, Grid, RegularSymbolId } from "../core/types";
+import type { BonusSymbolId, CardSymbolId, Cell, Grid } from "../core/types";
 import { evaluateWays } from "../math/PayEvaluator";
 
-const bonus = (value = 1): BonusCell => ({ kind: "bonus", value });
-const regular = (symbol: RegularSymbolId): Cell => ({ kind: "regular", symbol });
+const bonus = (symbol: BonusSymbolId = "BEER"): Cell => ({ kind: "bonus", symbol });
+const card = (symbol: CardSymbolId): Cell => ({ kind: "card", symbol });
+const wild = (): Cell => ({ kind: "wild" });
 
 function fromColumns(columns: Cell[][]): Grid {
   return Array.from({ length: 3 }, (_, row) => columns.map((column) => column[row] ?? bonus()));
@@ -13,10 +14,10 @@ function fromColumns(columns: Cell[][]): Grid {
 describe("evaluateWays", () => {
   it("does not win when a match does not start in the leftmost column", () => {
     const grid = fromColumns([
-      [regular("A"), regular("A"), regular("A")],
-      [regular("D"), bonus(), bonus()],
-      [regular("D"), bonus(), bonus()],
-      [regular("D"), bonus(), bonus()],
+      [card("10"), card("10"), card("10")],
+      [card("A"), bonus(), bonus()],
+      [card("A"), bonus(), bonus()],
+      [card("A"), bonus(), bonus()],
       [bonus(), bonus(), bonus()],
     ]);
 
@@ -27,9 +28,9 @@ describe("evaluateWays", () => {
     { columns: 3, multiplier: 5 },
     { columns: 4, multiplier: 10 },
     { columns: 5, multiplier: 20 },
-  ] as const)("pays the configured amount for $columns D columns", ({ columns, multiplier }) => {
+  ] as const)("pays the configured amount for $columns A columns", ({ columns, multiplier }) => {
     const reelColumns = Array.from({ length: 5 }, (_, column) => [
-      column < columns ? regular("D") : bonus(),
+      column < columns ? card("A") : bonus(),
       bonus(),
       bonus(),
     ]);
@@ -39,9 +40,9 @@ describe("evaluateWays", () => {
 
   it("multiplies matching symbol counts into the number of ways", () => {
     const grid = fromColumns([
-      [regular("A"), regular("A"), bonus()],
-      [regular("A"), regular("A"), regular("A")],
-      [regular("A"), regular("A"), bonus()],
+      [card("10"), card("10"), bonus()],
+      [card("10"), card("10"), card("10")],
+      [card("10"), card("10"), bonus()],
       [bonus(), bonus(), bonus()],
       [bonus(), bonus(), bonus()],
     ]);
@@ -51,18 +52,52 @@ describe("evaluateWays", () => {
     expect(evaluation.totalWin).toBe(24);
   });
 
-  it("awards multiple different symbols in one result", () => {
-    const mixedColumn = [regular("A"), regular("B"), bonus()];
+  it("allows WILD cells to support every win containing a natural target symbol", () => {
+    const mixedColumn = [card("A"), card("K"), wild()];
     const grid = fromColumns([mixedColumn, mixedColumn, mixedColumn, [bonus(), bonus(), bonus()], [bonus(), bonus(), bonus()]]);
-    const evaluation = evaluateWays(grid, PAYTABLE, 10);
+    const evaluation = evaluateWays(grid, PAYTABLE, 1);
 
-    expect(evaluation.wins.map((win) => win.symbol)).toEqual(["A", "B"]);
-    expect(evaluation.totalWin).toBe(30);
+    expect(evaluation.wins.map((win) => win.symbol)).toEqual(["K", "A"]);
+    expect(evaluation.wins.map((win) => win.ways)).toEqual([8, 8]);
+    expect(evaluation.totalWin).toBe(72);
   });
 
-  it("ignores BONUS symbols in regular wins", () => {
-    const grid = fromColumns(Array.from({ length: 5 }, () => [bonus(), bonus(), bonus()]));
+  it("awards a pure-WILD result once as the highest-paying A symbol", () => {
+    const grid = fromColumns([
+      [wild(), bonus(), bonus()],
+      [wild(), bonus(), bonus()],
+      [wild(), bonus(), bonus()],
+      [bonus(), bonus(), bonus()],
+      [bonus(), bonus(), bonus()],
+    ]);
+    const evaluation = evaluateWays(grid, PAYTABLE, 2);
+
+    expect(evaluation.wins).toHaveLength(1);
+    expect(evaluation.wins[0]).toMatchObject({ symbol: "A", columns: 3, ways: 1, amount: 10 });
+  });
+
+  it("ignores all bonus symbols in card wins", () => {
+    const symbols: BonusSymbolId[] = ["BEER", "CIGARETTE", "SWORD"];
+    const grid = fromColumns(Array.from({ length: 5 }, (_, column) => [
+      bonus(symbols[column % symbols.length]),
+      bonus(),
+      bonus(),
+    ]));
 
     expect(evaluateWays(grid, PAYTABLE, 10)).toMatchObject({ totalWin: 0, wins: [] });
+  });
+
+  it("rejects payouts outside the safe integer range", () => {
+    const grid = fromColumns([
+      [card("A")],
+      [card("A")],
+      [card("A")],
+      [bonus()],
+      [bonus()],
+    ]);
+
+    expect(() => evaluateWays(grid, PAYTABLE, Number.MAX_SAFE_INTEGER)).toThrow(
+      "Ways payout exceeds the safe integer range",
+    );
   });
 });

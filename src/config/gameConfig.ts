@@ -6,19 +6,17 @@ export const GAME_CONFIG = {
   betIncrement: 1,
   rows: 3,
   columns: 5,
-  bonusStartingRespins: 3,
-  bonusLandingProbability: 0.12,
+  beerFreeSpins: 10,
+  cigaretteFreeSpins: 3,
+  cigaretteMultiplierMinimum: 2,
+  cigaretteMultiplierMaximum: 10,
+  belowThresholdTriggerChances: {
+    BEER: { 1: 0.002, 2: 0.008 },
+    CIGARETTE: { 1: 0.005, 2: 0.01 },
+  },
   recentEventLimit: 30,
   normalSpinDurationMs: 720,
   quickSpinDurationMs: 180,
   normalEvaluationDelayMs: 420,
   quickEvaluationDelayMs: 90,
 } as const;
-
-export const BONUS_VALUE_WEIGHTS = [
-  { value: 1, weight: 40 },
-  { value: 2, weight: 30 },
-  { value: 5, weight: 20 },
-  { value: 10, weight: 8 },
-  { value: 25, weight: 2 },
-] as const;

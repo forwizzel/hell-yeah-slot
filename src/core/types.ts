@@ -3,23 +3,29 @@ export type GamePhase =
   | "base-spinning"
   | "base-evaluation"
   | "bonus-intro"
-  | "bonus-respin"
-  | "bonus-evaluation"
+  | "free-spin-spinning"
+  | "free-spin-evaluation"
+  | "sword-bonus"
   | "bonus-complete";
 
-export type RegularSymbolId = "A" | "B" | "C" | "D";
+export type CardSymbolId = "10" | "J" | "Q" | "K" | "A";
+export type BonusSymbolId = "BEER" | "CIGARETTE" | "SWORD";
 
-export interface RegularCell {
-  readonly kind: "regular";
-  readonly symbol: RegularSymbolId;
+export interface CardCell {
+  readonly kind: "card";
+  readonly symbol: CardSymbolId;
+}
+
+export interface WildCell {
+  readonly kind: "wild";
 }
 
 export interface BonusCell {
   readonly kind: "bonus";
-  readonly value: number;
+  readonly symbol: BonusSymbolId;
 }
 
-export type Cell = RegularCell | BonusCell;
+export type Cell = CardCell | WildCell | BonusCell;
 export type Grid = Cell[][];
 
 export interface Position {
@@ -28,7 +34,7 @@ export interface Position {
 }
 
 export interface SymbolWin {
-  readonly symbol: RegularSymbolId;
+  readonly symbol: CardSymbolId;
   readonly columns: number;
   readonly ways: number;
   readonly multiplier: number;
@@ -42,35 +48,71 @@ export interface PayEvaluation {
   readonly winningPositions: Position[];
 }
 
+export type BonusTriggerSource = "natural" | "chance";
+export type FreeSpinMode = "beer" | "cigarette" | "combined";
+
+export interface BonusActivation {
+  readonly symbol: "BEER" | "CIGARETTE";
+  readonly source: BonusTriggerSource;
+  readonly symbolCount: number;
+  readonly positions: Position[];
+}
+
+export type BonusTrigger =
+  | { readonly kind: "none" }
+  | {
+      readonly kind: "sword";
+      readonly positions: Position[];
+    }
+  | {
+      readonly kind: "free-spins";
+      readonly mode: FreeSpinMode;
+      readonly startingSpins: number;
+      readonly multiplier: number;
+      readonly beer: BonusActivation | null;
+      readonly cigarette: BonusActivation | null;
+    };
+
 export interface SpinResult {
   readonly grid: Grid;
   readonly regularWin: number;
-  readonly bonusTriggered: boolean;
-  readonly triggerPositions: Position[];
+  readonly bonusTrigger: BonusTrigger;
   readonly winningPositions: Position[];
 }
 
-export interface BonusState {
-  readonly cells: Array<BonusCell | null>;
-  readonly remainingRespins: number;
-  readonly totalRespinsPlayed: number;
+export interface FreeSpinState {
+  readonly mode: FreeSpinMode;
+  readonly remainingSpins: number;
+  readonly totalSpinsPlayed: number;
+  readonly multiplier: number;
   readonly triggeringBet: number;
+  readonly accumulatedWin: number;
 }
 
-export interface BonusRespinResult {
-  readonly state: BonusState;
-  readonly newPositions: Position[];
+export interface FreeSpinResult {
+  readonly state: FreeSpinState;
+  readonly spinWin: number;
+  readonly beerRetriggered: boolean;
+  readonly cigaretteRetriggered: boolean;
+  readonly swordTriggered: boolean;
+  readonly addedSpins: number;
+  readonly awardedMultiplier: number | null;
   readonly complete: boolean;
-  readonly filled: boolean;
 }
 
-export interface BonusSummary {
-  readonly symbolCount: number;
-  readonly valueTotal: number;
+export interface FreeSpinSummary {
+  readonly kind: "free-spins";
+  readonly mode: FreeSpinMode;
+  readonly spinsPlayed: number;
   readonly payout: number;
-  readonly respinsPlayed: number;
-  readonly filled: boolean;
+  readonly finalMultiplier: number;
 }
+
+export interface SwordSummary {
+  readonly kind: "sword";
+}
+
+export type BonusSummary = FreeSpinSummary | SwordSummary;
 
 export interface GameViewModel {
   readonly credits: number;
@@ -79,6 +121,6 @@ export interface GameViewModel {
   readonly phase: GamePhase;
   readonly grid: Grid;
   readonly winningPositions: Position[];
-  readonly bonus: BonusState | null;
+  readonly freeSpins: FreeSpinState | null;
   readonly bonusSummary: BonusSummary | null;
 }

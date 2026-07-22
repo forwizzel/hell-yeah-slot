@@ -3,26 +3,44 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Local Hold-and-Win game prototype" />
-    <title>Hold and Win Prototype</title>
+    <meta name="description" content="Local bonus slot game prototype" />
+    <title>Bonus Slot Prototype</title>
   </head>
   <body>
     <main id="app">
       <header class="page-header">
         <p class="eyebrow">Local technical prototype</p>
-        <h1>Hold and Win Prototype</h1>
+        <h1>Bonus Slot Prototype</h1>
       </header>
 
       <section class="status-panel" aria-label="Game status">
         <div><span>Credits</span><strong id="credits">1000</strong></div>
         <div><span>Bet</span><strong id="bet">10</strong></div>
         <div><span>Last win</span><strong id="last-win">0</strong></div>
-        <div><span>Phase</span><strong id="phase">idle</strong></div>
+        <div><span>Phase</span><strong id="phase">Idle</strong></div>
       </section>
 
       <section class="game-panel" aria-label="Reel grid">
-        <div id="reel-grid"></div>
-        <p id="bonus-status" class="bonus-status" aria-live="polite">Bonus inactive</p>
+        <div class="reel-stage">
+          <div id="reel-grid"></div>
+          <div
+            id="feature-overlay"
+            class="feature-overlay"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            aria-labelledby="feature-title"
+            aria-describedby="feature-message"
+            hidden
+          >
+            <div class="feature-overlay__card">
+              <p id="feature-kicker" class="feature-overlay__kicker">Feature</p>
+              <strong id="feature-title" class="feature-overlay__title">BONUS</strong>
+              <p id="feature-message" class="feature-overlay__message">Feature message</p>
+            </div>
+          </div>
+        </div>
+        <p id="bonus-status" class="bonus-status" aria-live="polite" aria-atomic="true">No active bonus</p>
       </section>
 
       <section class="controls" aria-label="Game controls">
@@ -33,6 +51,20 @@
         </div>
         <label class="check-control"><input id="quick-spin" type="checkbox" /> Quick spin</label>
         <button id="reset" type="button">Reset Game</button>
+      </section>
+
+      <section id="development-panel" class="development-panel" aria-labelledby="development-title" hidden>
+        <div>
+          <p class="development-panel__eyebrow">Development only</p>
+          <h2 id="development-title">Force bonus game</h2>
+          <p>Starts a feature at the current bet without placing a wager.</p>
+        </div>
+        <div class="development-controls">
+          <button id="dev-beer-bonus" type="button">Beer</button>
+          <button id="dev-cigarette-bonus" type="button">Cigarette</button>
+          <button id="dev-combined-bonus" type="button">Beer + Cigarette</button>
+          <button id="dev-sword-bonus" type="button">Sword</button>
+        </div>
       </section>
 
       <section class="seed-panel" aria-labelledby="seed-title">

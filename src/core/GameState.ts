@@ -1,5 +1,5 @@
 import { GAME_CONFIG } from "../config/gameConfig";
-import type { BonusState, BonusSummary, GamePhase, GameViewModel, Grid, Position } from "./types";
+import type { BonusSummary, FreeSpinState, GamePhase, GameViewModel, Grid, Position } from "./types";
 
 export class GameState {
   credits: number = GAME_CONFIG.startingCredits;
@@ -8,7 +8,7 @@ export class GameState {
   phase: GamePhase = "idle";
   grid: Grid = createInitialGrid();
   winningPositions: Position[] = [];
-  bonus: BonusState | null = null;
+  freeSpins: FreeSpinState | null = null;
   bonusSummary: BonusSummary | null = null;
 
   reset(): void {
@@ -18,7 +18,7 @@ export class GameState {
     this.phase = "idle";
     this.grid = createInitialGrid();
     this.winningPositions = [];
-    this.bonus = null;
+    this.freeSpins = null;
     this.bonusSummary = null;
   }
 
@@ -30,19 +30,17 @@ export class GameState {
       phase: this.phase,
       grid: this.grid.map((row) => row.map((cell) => ({ ...cell }))),
       winningPositions: this.winningPositions.map((position) => ({ ...position })),
-      bonus: this.bonus === null
-        ? null
-        : { ...this.bonus, cells: this.bonus.cells.map((cell) => cell === null ? null : { ...cell }) },
+      freeSpins: this.freeSpins === null ? null : { ...this.freeSpins },
       bonusSummary: this.bonusSummary === null ? null : { ...this.bonusSummary },
     };
   }
 }
 
 function createInitialGrid(): Grid {
-  const symbols = ["A", "B", "C", "D"] as const;
+  const symbols = ["10", "J", "Q", "K", "A"] as const;
   return Array.from({ length: GAME_CONFIG.rows }, (_, row) =>
     Array.from({ length: GAME_CONFIG.columns }, (_, column) => ({
-      kind: "regular" as const,
+      kind: "card" as const,
       symbol: symbols[(row + column) % symbols.length]!,
     })),
   );

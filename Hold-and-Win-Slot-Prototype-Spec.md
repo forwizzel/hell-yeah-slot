@@ -1,5 +1,7 @@
 # Hold-and-Win Slot Machine Prototype Specification
 
+> **Superseded:** This is the historical specification for the removed Hold-and-Win design. It is retained for project history only and must not be treated as the current game contract. See `README.md` for the current Beer, Cigarette, and Sword design and `Edge-Cases.md` for its clarified behavior.
+
 You are a senior TypeScript game developer. Build a complete, runnable browser-based slot machine prototype in the current VS Code workspace.
 Create the project files directly, install dependencies, run the tests, and fix any errors you encounter. Do not only describe the solution.
 

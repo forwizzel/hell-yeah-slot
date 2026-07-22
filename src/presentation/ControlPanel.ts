@@ -1,6 +1,8 @@
 import { GAME_CONFIG } from "../config/gameConfig";
 import type { GameViewModel } from "../core/types";
 
+export type DevelopmentBonusId = "beer" | "cigarette" | "combined" | "sword";
+
 export interface ControlActions {
   readonly spin: () => void;
   readonly decreaseBet: () => void;
@@ -8,6 +10,7 @@ export interface ControlActions {
   readonly reset: () => void;
   readonly applySeed: (seed: string) => void;
   readonly clearSeed: () => void;
+  readonly triggerDevelopmentBonus: (bonus: DevelopmentBonusId) => void;
 }
 
 export class ControlPanel {
@@ -24,6 +27,13 @@ export class ControlPanel {
   private readonly lastWinValue = requiredElement<HTMLElement>("last-win");
   private readonly phaseValue = requiredElement<HTMLElement>("phase");
   private readonly seedStatus = requiredElement<HTMLElement>("seed-status");
+  private readonly developmentPanel = requiredElement<HTMLElement>("development-panel");
+  private readonly developmentButtons: ReadonlyArray<readonly [HTMLButtonElement, DevelopmentBonusId]> = [
+    [requiredElement<HTMLButtonElement>("dev-beer-bonus"), "beer"],
+    [requiredElement<HTMLButtonElement>("dev-cigarette-bonus"), "cigarette"],
+    [requiredElement<HTMLButtonElement>("dev-combined-bonus"), "combined"],
+    [requiredElement<HTMLButtonElement>("dev-sword-bonus"), "sword"],
+  ];
 
   bind(actions: ControlActions): void {
     this.spinButton.addEventListener("click", actions.spin);
@@ -37,6 +47,14 @@ export class ControlPanel {
         actions.applySeed(this.seedInput.value);
       }
     });
+    if (import.meta.env.DEV) {
+      this.developmentPanel.hidden = false;
+      for (const [button, bonus] of this.developmentButtons) {
+        button.addEventListener("click", () => actions.triggerDevelopmentBonus(bonus));
+      }
+    } else {
+      this.developmentPanel.remove();
+    }
   }
 
   update(model: GameViewModel, activeSeed: string | null): void {
@@ -44,15 +62,19 @@ export class ControlPanel {
     this.creditsValue.textContent = String(model.credits);
     this.betValue.textContent = String(model.bet);
     this.lastWinValue.textContent = String(model.lastWin);
-    this.phaseValue.textContent = model.phase;
+    this.phaseValue.textContent = formatPhase(model.phase);
 
     this.spinButton.disabled = !interactive || model.credits < model.bet;
     this.decreaseButton.disabled = !interactive || model.bet <= GAME_CONFIG.minimumBet;
     this.increaseButton.disabled = !interactive || model.bet >= GAME_CONFIG.maximumBet;
     this.resetButton.disabled = !interactive;
+    this.quickSpinInput.disabled = !interactive;
     this.seedInput.disabled = !interactive;
     this.applySeedButton.disabled = !interactive;
     this.clearSeedButton.disabled = !interactive || activeSeed === null;
+    for (const [button] of this.developmentButtons) {
+      button.disabled = !interactive;
+    }
     this.seedStatus.textContent = activeSeed === null
       ? "Using browser crypto randomness."
       : `Using deterministic seed: ${activeSeed}`;
@@ -61,6 +83,13 @@ export class ControlPanel {
   isQuickSpinEnabled(): boolean {
     return this.quickSpinInput.checked;
   }
+}
+
+function formatPhase(phase: GameViewModel["phase"]): string {
+  return phase
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function requiredElement<T extends HTMLElement>(id: string): T {

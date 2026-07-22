@@ -1,7 +1,7 @@
 {
-  "name": "hold-and-win-prototype",
+  "name": "bonus-slot-prototype",
   "version": "1.0.0",
-  "description": "Theme-free Hold-and-Win slot mathematics and browser prototype",
+  "description": "Beer, Cigarette, and Sword bonus slot mathematics and browser prototype",
   "type": "module",
   "private": true,
   "scripts": {

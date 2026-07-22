@@ -3,11 +3,21 @@ import { GameController } from "./core/GameController";
 import { GameView } from "./presentation/GameView";
 
 const backgroundVideoUrl = new URL("../graphics/BackgroundVideo.webm", import.meta.url).href;
+const hellYeahLogoUrl = new URL("../graphics/HellYeahLogo.png", import.meta.url).href;
 
 async function start(): Promise<void> {
   initializeBackgroundVideo();
+  initializeLogo();
   const view = await GameView.create();
   new GameController(view).initialize();
+}
+
+function initializeLogo(): void {
+  const logo = document.getElementById("hell-yeah-logo");
+  if (!(logo instanceof HTMLImageElement)) {
+    throw new Error("Required Hell Yeah logo was not found");
+  }
+  logo.src = hellYeahLogoUrl;
 }
 
 function initializeBackgroundVideo(): void {

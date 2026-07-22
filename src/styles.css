@@ -48,6 +48,18 @@ body {
   pointer-events: none;
 }
 
+.hell-yeah-logo {
+  position: fixed;
+  z-index: 1;
+  right: clamp(0.75rem, 2vw, 2rem);
+  bottom: clamp(0.75rem, 2vw, 2rem);
+  width: clamp(150px, 22vw, 380px);
+  height: auto;
+  image-rendering: pixelated;
+  pointer-events: none;
+  user-select: none;
+}
+
 button,
 input {
   border: 3px solid var(--ink);
@@ -109,7 +121,7 @@ input::placeholder {
 
 #app {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   width: min(100% - 2rem, 900px);
   margin: 0 auto;
   padding: 1.75rem 0 3rem;

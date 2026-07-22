@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Local Hold-and-Win game prototype" />
+    <title>Hold and Win Prototype</title>
+  </head>
+  <body>
+    <main id="app">
+      <header class="page-header">
+        <p class="eyebrow">Local technical prototype</p>
+        <h1>Hold and Win Prototype</h1>
+      </header>
+
+      <section class="status-panel" aria-label="Game status">
+        <div><span>Credits</span><strong id="credits">1000</strong></div>
+        <div><span>Bet</span><strong id="bet">10</strong></div>
+        <div><span>Last win</span><strong id="last-win">0</strong></div>
+        <div><span>Phase</span><strong id="phase">idle</strong></div>
+      </section>
+
+      <section class="game-panel" aria-label="Reel grid">
+        <div id="reel-grid"></div>
+        <p id="bonus-status" class="bonus-status" aria-live="polite">Bonus inactive</p>
+      </section>
+
+      <section class="controls" aria-label="Game controls">
+        <div class="bet-controls">
+          <button id="bet-down" type="button" aria-label="Decrease bet">-</button>
+          <button id="spin" class="spin-button" type="button">Spin</button>
+          <button id="bet-up" type="button" aria-label="Increase bet">+</button>
+        </div>
+        <label class="check-control"><input id="quick-spin" type="checkbox" /> Quick spin</label>
+        <button id="reset" type="button">Reset Game</button>
+      </section>
+
+      <section class="seed-panel" aria-labelledby="seed-title">
+        <div>
+          <h2 id="seed-title">Deterministic seed</h2>
+          <p id="seed-status">Using browser crypto randomness.</p>
+        </div>
+        <div class="seed-controls">
+          <input id="seed-input" type="text" maxlength="80" placeholder="String or number" aria-label="Seed" />
+          <button id="apply-seed" type="button">Apply Seed</button>
+          <button id="clear-seed" type="button">Clear Seed</button>
+        </div>
+      </section>
+
+      <section class="log-panel" aria-labelledby="log-title">
+        <h2 id="log-title">Event log</h2>
+        <ol id="event-log" aria-live="polite"></ol>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "name": "hold-and-win-prototype",
+  "version": "1.0.0",
+  "description": "Theme-free Hold-and-Win slot mathematics and browser prototype",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "simulate": "tsx src/simulation/runSimulation.ts"
+  },
+  "keywords": ["pixijs", "typescript", "slot-prototype"],
+  "license": "UNLICENSED",
+  "dependencies": {
+    "pixi.js": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10"
+  }
+}

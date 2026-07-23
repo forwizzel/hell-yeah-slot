@@ -244,7 +244,10 @@ export class SwordBoardView {
     visual.box
       .clear()
       .roundRect(0, 0, this.cellWidth, this.cellHeight, 2)
-      .fill(winning ? 0xffd889 : appearance.fill);
+      .fill(appearance.fill);
+    if (winning) {
+      visual.box.stroke({ color: 0xd14b37, width: 3 });
+    }
     const asset = cellAsset(cell);
     if (asset === null) {
       visual.sprite.texture = Texture.EMPTY;
@@ -255,7 +258,7 @@ export class SwordBoardView {
       throw new Error(`Sword board texture ${asset} was not loaded`);
     }
     visual.sprite.texture = texture;
-    visual.sprite.scale.set(Math.min((this.cellWidth * 0.82) / texture.width, (this.cellHeight * 0.82) / texture.height));
+    visual.sprite.scale.set(Math.min((this.cellWidth * 0.92) / texture.width, (this.cellHeight * 0.92) / texture.height));
   }
 
   private recycleCell(column: ColumnVisual, state: SpinState, draw: (cell: CellVisual, symbol: WaysCell) => void): void {
@@ -279,8 +282,8 @@ export class SwordBoardView {
 
 const appearances: Record<SwordCellStyle, { readonly fill: number }> = {
   card: { fill: 0xfffbec },
-  wild: { fill: 0x202b31 },
-  sword: { fill: 0xc9d9dc },
+  wild: { fill: 0xfffbec },
+  sword: { fill: 0xfffbec },
 };
 
 function cellStyle(cell: WaysCell): SwordCellStyle {

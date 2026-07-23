@@ -61,16 +61,16 @@ const CELL_APPEARANCES: Record<CellStyle, CellAppearance> = {
     fill: 0xfffbec,
   },
   wild: {
-    fill: 0x202b31,
+    fill: 0xfffbec,
   },
   beer: {
-    fill: 0xf2bd52,
+    fill: 0xfffbec,
   },
   cigarette: {
-    fill: 0xf4e8dc,
+    fill: 0xfffbec,
   },
   sword: {
-    fill: 0xc9d9dc,
+    fill: 0xfffbec,
   },
 };
 
@@ -296,14 +296,17 @@ export class ReelGridView {
     visual.box
       .clear()
       .roundRect(0, 0, CELL_WIDTH, CELL_HEIGHT, 2)
-      .fill(winning ? 0xffd889 : appearance.fill);
+      .fill(appearance.fill);
+    if (winning) {
+      visual.box.stroke({ color: 0xd14b37, width: 3 });
+    }
     visual.container.alpha = spinning ? 0.88 : 1;
     const texture = this.textures.get(cellAsset(cell));
     if (texture === undefined) {
       throw new Error(`No texture was loaded for ${cellAsset(cell)}`);
     }
     visual.sprite.texture = texture;
-    visual.sprite.scale.set(Math.min((CELL_WIDTH * 0.82) / texture.width, (CELL_HEIGHT * 0.82) / texture.height));
+    visual.sprite.scale.set(Math.min((CELL_WIDTH * 0.92) / texture.width, (CELL_HEIGHT * 0.92) / texture.height));
   }
 }
 

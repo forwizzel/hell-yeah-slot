@@ -46,10 +46,10 @@ describe("calibrated payout configuration", () => {
       "10": { 3: 1, 4: 1, 5: 1 },
       J: { 3: 1, 4: 1, 5: 2 },
       Q: { 3: 2, 4: 2, 5: 4 },
-      K: { 3: 2, 4: 4, 5: 8 },
-      A: { 3: 5, 4: 8, 5: 52 },
+      K: { 3: 2, 4: 4, 5: 5 },
+      A: { 3: 0, 4: 7, 5: 52 },
     });
-    expect(GAME_CONFIG.freeSpinBaseMultiplier).toBe(6);
+    expect(GAME_CONFIG.freeSpinBaseMultiplier).toBe(5);
     expect(GAME_CONFIG.normalMultiplierRevealDurationMs).toBe(2_400);
     expect(GAME_CONFIG.quickMultiplierRevealDurationMs).toBe(180);
   });

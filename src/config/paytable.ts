@@ -11,6 +11,14 @@ export const PAYTABLE: Paytable = {
   "10": { 3: 1, 4: 1, 5: 1 },
   J: { 3: 1, 4: 1, 5: 2 },
   Q: { 3: 2, 4: 2, 5: 4 },
-  K: { 3: 2, 4: 4, 5: 8 },
-  A: { 3: 5, 4: 8, 5: 52 },
+  K: { 3: 2, 4: 4, 5: 5 },
+  A: { 3: 0, 4: 7, 5: 52 },
 };
+
+export const SWORD_PAYTABLE: Paytable = Object.freeze({
+  "10": Object.freeze({ 3: 1, 4: 1, 5: 1 }),
+  J: Object.freeze({ 3: 1, 4: 1, 5: 2 }),
+  Q: Object.freeze({ 3: 2, 4: 2, 5: 4 }),
+  K: Object.freeze({ 3: 2, 4: 4, 5: 8 }),
+  A: Object.freeze({ 3: 5, 4: 8, 5: 52 }),
+});

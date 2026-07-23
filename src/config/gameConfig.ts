@@ -41,7 +41,7 @@ export const GAME_CONFIG = {
   columns: 5,
   beerFreeSpins: 10,
   cigaretteFreeSpins: 3,
-  freeSpinBaseMultiplier: 6,
+  freeSpinBaseMultiplier: 5,
   cigaretteMultiplierMinimum: 2,
   cigaretteMultiplierMaximum: 10,
   belowThresholdTriggerChances: {

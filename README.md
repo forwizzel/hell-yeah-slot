@@ -69,19 +69,21 @@ Card symbols `10`, `J`, `Q`, `K`, and `A` pay left to right from the first reel.
 | `10` | x0.1 | x0.1 | x0.1 |
 | `J` | x0.1 | x0.1 | x0.2 |
 | `Q` | x0.2 | x0.2 | x0.4 |
-| `K` | x0.2 | x0.4 | x0.8 |
-| `A` | x0.5 | x0.8 | x5.2 |
+| `K` | x0.2 | x0.4 | x0.5 |
+| `A` | No award | x0.6 | x5.2 |
 
 | Feature | Initial award |
 | --- | --- |
-| BEER | 10 free spins at x6 |
-| CIGARETTE | 3 free spins at x12 through x60: the x6 baseline times a uniform x2 through x10 selection |
-| BEER + CIGARETTE | 10 free spins at x12 through x60: the x6 baseline times a uniform x2 through x10 selection |
-| SWORD | A placeholder `JACKPOT` interstitial with no monetary award |
+| BEER | 10 free spins at x5 |
+| CIGARETTE | 3 free spins at x10 through x50: the x5 baseline times a uniform x2 through x10 selection |
+| BEER + CIGARETTE | 10 free spins at x10 through x50: the x5 baseline times a uniform x2 through x10 selection |
+| SWORD | Sword Cleave: expanding 5-column respins, stage multipliers, and a possible Final Strike |
 
-BEER and CIGARETTE can activate naturally or through configured below-threshold chances on paid spins. Free-spin retriggers are natural-only: BEER adds spins, while CIGARETTE compounds the active multiplier by another uniform x2 through x10 selection. The x6 baseline is applied once at feature initialization and is included in the displayed multiplier. SWORD takes priority when outcomes overlap.
+BEER and CIGARETTE can activate naturally or through configured below-threshold chances on paid spins. Free-spin retriggers are natural-only: BEER adds spins, while CIGARETTE compounds the active multiplier by another uniform x2 through x10 selection. The x5 baseline is applied once at feature initialization and is included in the displayed multiplier. SWORD takes priority when outcomes overlap.
 
-The configured math targets approximately 98% theoretical RTP: about 28.76 percentage points from paid-spin ways and 69.24 from free spins. Free spins therefore account for about 70.65% of expected return. This design target is not a statistical or regulatory certification.
+Sword Cleave begins at 5x3 with three spins and has no blank cells. Before 5x3, 5x4, and 5x5 spins, a Sword expansion has a 40%, 25%, and 10% chance respectively; it replaces a card or WILD, then reveals a populated bottom row after the Sword lands. The board caps at 5x6. Each expansion resets the counter to three and replaces the active multiplier with the destination band: 5x4 x5-x10, 5x5 x14-x18, or 5x6 x25-x30. Reaching 5x6 awards three final spins and applies one weighted x5-x100 Final Strike to the accumulated Sword payout.
+
+The configured math targets approximately 98% RTP, allocating roughly 83 points to paid/free-spin ways and roughly 15 points to Sword Cleave. The rare Final Strike paths create substantial short-run variance, so this design target is not a statistical or regulatory certification.
 
 See [Game Rules and Edge Cases](Edge-Cases.md) for the authoritative paytable, trigger probabilities, retrigger order, WILD treatment, SWORD priority, and round-accounting rules.
 
@@ -115,7 +117,7 @@ Artwork is stored in `graphics/`; audio is stored in `sfx/sfx/`. All runtime ass
 ## Current Limitations
 
 - The game targets approximately 98% theoretical RTP but has not been independently balanced or certified.
-- SWORD has no playable game or monetary award.
+- Sword Cleave's rare Final Strike paths make short simulations highly volatile.
 - There is no autoplay, persistence, backend, account system, or production asset pipeline.
 - Refreshing the page resets the balance and seed state.
 - Browser automation, visual-regression testing, and formal statistical analysis are not included.

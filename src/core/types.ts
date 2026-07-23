@@ -5,7 +5,11 @@ export type GamePhase =
   | "bonus-intro"
   | "free-spin-spinning"
   | "free-spin-evaluation"
-  | "sword-bonus"
+  | "sword-intro"
+  | "sword-spinning"
+  | "sword-evaluation"
+  | "sword-final-strike"
+  | "sword-complete"
   | "bonus-complete";
 
 export type CardSymbolId = "10" | "J" | "Q" | "K" | "A";
@@ -27,6 +31,13 @@ export interface BonusCell {
 
 export type Cell = CardCell | WildCell | BonusCell;
 export type Grid = Cell[][];
+
+export interface BlankCell {
+  readonly kind: "blank";
+}
+
+export type WaysCell = Cell | BlankCell;
+export type WaysGrid = WaysCell[][];
 
 export interface Position {
   readonly row: number;
@@ -108,11 +119,45 @@ export interface FreeSpinSummary {
   readonly finalMultiplier: number;
 }
 
-export interface SwordSummary {
-  readonly kind: "sword";
+export interface SwordFeatureState {
+  readonly triggeringBetCents: number;
+  readonly rows: number;
+  readonly remainingSpins: number;
+  readonly totalSpinsPlayed: number;
+  readonly activeMultiplier: number;
+  readonly accumulatedWinCents: number;
+  readonly board: WaysGrid;
+  readonly finalStrikeMultiplier: number | null;
+  readonly finalPayoutCents: number | null;
 }
 
-export type BonusSummary = FreeSpinSummary | SwordSummary;
+export interface SwordExpansion {
+  readonly position: Position;
+  readonly destinationRows: number;
+  readonly destinationMultiplier: number;
+}
+
+export interface SwordSpinResult {
+  readonly state: SwordFeatureState;
+  readonly spinBoard: WaysGrid;
+  readonly winningPositions: Position[];
+  readonly baseWinCents: number;
+  readonly spinWinCents: number;
+  readonly expansion: SwordExpansion | null;
+  readonly complete: boolean;
+  readonly finalStrikeMultiplier: number | null;
+  readonly finalPayoutCents: number | null;
+}
+
+export interface SwordFeatureSummary {
+  readonly kind: "sword";
+  readonly spinsPlayed: number;
+  readonly payoutCents: number;
+  readonly reachedFinalStage: boolean;
+  readonly finalStrikeMultiplier: number | null;
+}
+
+export type BonusSummary = FreeSpinSummary | SwordFeatureSummary;
 
 export interface GameViewModel {
   readonly balanceCents: number;
@@ -122,5 +167,6 @@ export interface GameViewModel {
   readonly grid: Grid;
   readonly winningPositions: Position[];
   readonly freeSpins: FreeSpinState | null;
+  readonly sword: SwordFeatureState | null;
   readonly bonusSummary: BonusSummary | null;
 }

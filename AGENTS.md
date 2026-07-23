@@ -4,7 +4,7 @@
 
 - Treat `Hold-and-Win-Slot-Prototype-Spec.md` as historical only; its mechanic was removed. Current behavior comes from the code, with intended game outcomes documented authoritatively in `Edge-Cases.md`.
 - `README.md` is the public overview; `Edge-Cases.md` is the detailed public game contract; this file contains engineering instructions. Keep agent-only implementation constraints out of the public docs.
-- Math configuration lives in `src/config/{gameConfig,paytable,reelStrips}.ts`. Keep rule changes coordinated with `src/math/`, tests, and the simulator; update `README.md` and `Edge-Cases.md` when public behavior changes.
+- Math configuration lives in `src/config/{gameConfig,paytable,reelStrips,swordConfig}.ts`. Keep rule changes coordinated with `src/math/`, tests, and the simulator; update `README.md` and `Edge-Cases.md` when public behavior changes.
 
 ## Commands
 

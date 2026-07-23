@@ -1,5 +1,13 @@
 import { GAME_CONFIG } from "../config/gameConfig";
-import type { BonusSummary, FreeSpinState, GamePhase, GameViewModel, Grid, Position } from "./types";
+import type {
+  BonusSummary,
+  FreeSpinState,
+  GamePhase,
+  GameViewModel,
+  Grid,
+  Position,
+  SwordFeatureState,
+} from "./types";
 
 export class GameState {
   balanceCents: number = GAME_CONFIG.startingBalanceCents;
@@ -9,6 +17,7 @@ export class GameState {
   grid: Grid = createInitialGrid();
   winningPositions: Position[] = [];
   freeSpins: FreeSpinState | null = null;
+  sword: SwordFeatureState | null = null;
   bonusSummary: BonusSummary | null = null;
 
   reset(): void {
@@ -19,6 +28,7 @@ export class GameState {
     this.grid = createInitialGrid();
     this.winningPositions = [];
     this.freeSpins = null;
+    this.sword = null;
     this.bonusSummary = null;
   }
 
@@ -31,6 +41,10 @@ export class GameState {
       grid: this.grid.map((row) => row.map((cell) => ({ ...cell }))),
       winningPositions: this.winningPositions.map((position) => ({ ...position })),
       freeSpins: this.freeSpins === null ? null : { ...this.freeSpins },
+      sword: this.sword === null ? null : {
+        ...this.sword,
+        board: this.sword.board.map((row) => row.map((cell) => ({ ...cell }))),
+      },
       bonusSummary: this.bonusSummary === null ? null : { ...this.bonusSummary },
     };
   }

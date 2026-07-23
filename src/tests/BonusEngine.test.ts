@@ -20,7 +20,7 @@ function gridWith(symbols: ReadonlyArray<BonusSymbolId>): Grid {
 }
 
 function engine(random = new ControlledRandomSource()): BonusEngine {
-  return new BonusEngine(random, CHANCES, 10, 3, 6, 2, 10);
+  return new BonusEngine(random, CHANCES, 10, 3, 5, 2, 10);
 }
 
 function activeState(overrides: Partial<FreeSpinState> = {}): FreeSpinState {
@@ -99,18 +99,18 @@ describe("BonusEngine", () => {
 
     expect(bonusEngine.startFreeSpins(trigger, 700)).toEqual(activeState({
       triggeringBetCents: 700,
-      multiplier: 6,
+      multiplier: 5,
     }));
   });
 
-  it("combines the x6 free-spin baseline with the initial Cigarette multiplier", () => {
+  it("combines the x5 free-spin baseline with the initial Cigarette multiplier", () => {
     const bonusEngine = engine(new ControlledRandomSource([], [8]));
     const trigger = bonusEngine.resolveBaseTrigger(gridWith(["CIGARETTE", "CIGARETTE", "CIGARETTE"]));
     if (trigger.kind !== "free-spins") {
       throw new Error("Expected free spins");
     }
 
-    expect(bonusEngine.startFreeSpins(trigger, 500).multiplier).toBe(60);
+    expect(bonusEngine.startFreeSpins(trigger, 500).multiplier).toBe(50);
   });
 
   it("pays with the multiplier active before retrigger changes", () => {
@@ -152,7 +152,7 @@ describe("BonusEngine", () => {
     expect(result.state).toMatchObject({ mode: "combined", remainingSpins: 11, multiplier: 3 });
   });
 
-  it("treats Sword as an interstitial and suppresses malformed same-grid retriggers", () => {
+  it("suppresses malformed same-grid retriggers when Sword launches", () => {
     const result = engine().applyFreeSpin(
       activeState({ remainingSpins: 2 }),
       gridWith(["SWORD", "SWORD", "SWORD", "BEER", "BEER", "BEER"]),

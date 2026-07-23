@@ -7,6 +7,7 @@ import { evaluateWays } from "../math/PayEvaluator";
 import { ReelEngine } from "../math/ReelEngine";
 import { safeAdd, safeMultiply } from "../math/safeInteger";
 import { SeededRandomSource } from "../math/SeededRandomSource";
+import { SwordEngine } from "../math/SwordEngine";
 
 const DEFAULT_SPINS = 100_000;
 const DEFAULT_SEED = "12345";
@@ -21,6 +22,7 @@ interface SimulationStats {
   totalWageredCents: number;
   baseGameWonCents: number;
   freeSpinsWonCents: number;
+  swordWonCents: number;
   winningPaidRounds: number;
   beerFeatures: number;
   cigaretteFeatures: number;
@@ -35,6 +37,10 @@ interface SimulationStats {
   beerRetriggers: number;
   cigaretteRetriggers: number;
   freeSpinSwordInterstitials: number;
+  swordSpinsPlayed: number;
+  swordExpansions: number;
+  swordReachedFinalStage: number;
+  swordFinalStrikePayoutCents: number;
   maximumMultiplier: number;
   maximumTotalPaidRoundWinCents: number;
 }
@@ -80,6 +86,7 @@ function simulate(options: SimulationOptions): SimulationStats {
     GAME_CONFIG.cigaretteMultiplierMinimum,
     GAME_CONFIG.cigaretteMultiplierMaximum,
   );
+  const swordEngine = new SwordEngine(random);
   const betCents = GAME_CONFIG.defaultBetCents;
   const stats: SimulationStats = {
     paidBaseSpins: options.spins,
@@ -90,6 +97,7 @@ function simulate(options: SimulationOptions): SimulationStats {
     ),
     baseGameWonCents: 0,
     freeSpinsWonCents: 0,
+    swordWonCents: 0,
     winningPaidRounds: 0,
     beerFeatures: 0,
     cigaretteFeatures: 0,
@@ -104,6 +112,10 @@ function simulate(options: SimulationOptions): SimulationStats {
     beerRetriggers: 0,
     cigaretteRetriggers: 0,
     freeSpinSwordInterstitials: 0,
+    swordSpinsPlayed: 0,
+    swordExpansions: 0,
+    swordReachedFinalStage: 0,
+    swordFinalStrikePayoutCents: 0,
     maximumMultiplier: 1,
     maximumTotalPaidRoundWinCents: 0,
   };
@@ -113,9 +125,11 @@ function simulate(options: SimulationOptions): SimulationStats {
     const baseWinCents = evaluateWays(grid, PAYTABLE, betCents).totalWinCents;
     const trigger = bonusEngine.resolveBaseTrigger(grid);
     let freeSpinWinCents = 0;
+    let swordWinCents = 0;
 
     if (trigger.kind === "sword") {
       stats.swordFeatures += 1;
+      swordWinCents = playSwordFeature(swordEngine, betCents, stats);
     } else if (trigger.kind === "free-spins") {
       stats.freeSpinFeatures += 1;
       if (trigger.mode === "beer") {
@@ -158,6 +172,11 @@ function simulate(options: SimulationOptions): SimulationStats {
         }
         if (freeSpinResult.swordTriggered) {
           stats.freeSpinSwordInterstitials += 1;
+          swordWinCents = safeAdd(
+            swordWinCents,
+            playSwordFeature(swordEngine, freeSpinState.triggeringBetCents, stats),
+            "Simulation Sword-win total exceeds the safe integer range",
+          );
         }
       }
 
@@ -166,8 +185,8 @@ function simulate(options: SimulationOptions): SimulationStats {
     }
 
     const totalPaidRoundWinCents = safeAdd(
-      baseWinCents,
-      freeSpinWinCents,
+      safeAdd(baseWinCents, freeSpinWinCents, "Paid-round win exceeds the safe integer range"),
+      swordWinCents,
       "Paid-round win exceeds the safe integer range",
     );
     stats.baseGameWonCents = safeAdd(
@@ -179,6 +198,11 @@ function simulate(options: SimulationOptions): SimulationStats {
       stats.freeSpinsWonCents,
       freeSpinWinCents,
       "Simulation free-spin total exceeds the safe integer range",
+    );
+    stats.swordWonCents = safeAdd(
+      stats.swordWonCents,
+      swordWinCents,
+      "Simulation Sword-win total exceeds the safe integer range",
     );
     if (totalPaidRoundWinCents > 0) {
       stats.winningPaidRounds += 1;
@@ -201,9 +225,14 @@ function average(total: number, count: number): string {
 }
 
 function printResults(options: SimulationOptions, stats: SimulationStats): void {
-  const totalWonCents = safeAdd(
-    stats.baseGameWonCents,
+  const bonusWonCents = safeAdd(
     stats.freeSpinsWonCents,
+    stats.swordWonCents,
+    "Simulation bonus-win total exceeds the safe integer range",
+  );
+  const totalWonCents = safeAdd(
+    safeAdd(stats.baseGameWonCents, stats.freeSpinsWonCents, "Simulation win total exceeds the safe integer range"),
+    stats.swordWonCents,
     "Simulation win total exceeds the safe integer range",
   );
   console.log("Bonus Slot Simulation");
@@ -215,7 +244,8 @@ function printResults(options: SimulationOptions, stats: SimulationStats): void 
   console.log(`Total RTP: ${percentage(totalWonCents, stats.totalWageredCents)}`);
   console.log(`Base-game RTP: ${percentage(stats.baseGameWonCents, stats.totalWageredCents)}`);
   console.log(`Free-spin RTP: ${percentage(stats.freeSpinsWonCents, stats.totalWageredCents)}`);
-  console.log(`Bonus share of return: ${percentage(stats.freeSpinsWonCents, totalWonCents)}`);
+  console.log(`Sword RTP: ${percentage(stats.swordWonCents, stats.totalWageredCents)}`);
+  console.log(`Bonus share of return: ${percentage(bonusWonCents, totalWonCents)}`);
   console.log(`Paid-round hit frequency: ${percentage(stats.winningPaidRounds, stats.paidBaseSpins)}`);
   console.log(`Free-spin feature rate: ${percentage(stats.freeSpinFeatures, stats.paidBaseSpins)}`);
   console.log(`Beer-only feature rate: ${percentage(stats.beerFeatures, stats.paidBaseSpins)}`);
@@ -230,9 +260,38 @@ function printResults(options: SimulationOptions, stats: SimulationStats): void 
   console.log(`Average free spins per feature: ${average(stats.freeSpinsPlayed, stats.freeSpinFeatures)}`);
   console.log(`Beer retriggers: ${stats.beerRetriggers} (${percentage(stats.beerRetriggers, stats.freeSpinsPlayed)} of free spins)`);
   console.log(`Cigarette retriggers: ${stats.cigaretteRetriggers} (${percentage(stats.cigaretteRetriggers, stats.freeSpinsPlayed)} of free spins)`);
-  console.log(`Sword interstitials during free spins: ${stats.freeSpinSwordInterstitials} (${percentage(stats.freeSpinSwordInterstitials, stats.freeSpinsPlayed)} of free spins)`);
+  console.log(`Sword features during free spins: ${stats.freeSpinSwordInterstitials} (${percentage(stats.freeSpinSwordInterstitials, stats.freeSpinsPlayed)} of free spins)`);
+  console.log(`Sword spins played: ${stats.swordSpinsPlayed}`);
+  console.log(`Sword expansions: ${stats.swordExpansions}`);
+  console.log(`Sword features reaching 5x6: ${stats.swordReachedFinalStage}`);
+  console.log(`Sword payouts from Final Strike features: ${formatUsd(stats.swordFinalStrikePayoutCents)}`);
   console.log(`Maximum observed multiplier: x${stats.maximumMultiplier}`);
   console.log(`Maximum observed total paid-round win: ${formatUsd(stats.maximumTotalPaidRoundWinCents)}`);
+}
+
+function playSwordFeature(swordEngine: SwordEngine, betCents: number, stats: SimulationStats): number {
+  let state = swordEngine.start(betCents);
+  while (state.remainingSpins > 0) {
+    const result = swordEngine.playSpin(state);
+    state = result.state;
+    stats.swordSpinsPlayed += 1;
+    if (result.expansion !== null) {
+      stats.swordExpansions += 1;
+    }
+  }
+
+  const summary = swordEngine.summarize(state);
+  if (summary.reachedFinalStage) {
+    stats.swordReachedFinalStage += 1;
+  }
+  if (summary.finalStrikeMultiplier !== null) {
+    stats.swordFinalStrikePayoutCents = safeAdd(
+      stats.swordFinalStrikePayoutCents,
+      summary.payoutCents,
+      "Simulation Sword final-strike total exceeds the safe integer range",
+    );
+  }
+  return summary.payoutCents;
 }
 
 const options = parseOptions(process.argv.slice(2));

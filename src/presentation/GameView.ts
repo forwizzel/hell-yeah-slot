@@ -1,11 +1,13 @@
 import { GAME_CONFIG } from "../config/gameConfig";
+import { SWORD_CONFIG, type SwordStageRows } from "../config/swordConfig";
 import { formatUsd } from "../core/formatUsd";
-import type { BonusSummary, FreeSpinMode, FreeSpinState, GameViewModel, Grid, Position } from "../core/types";
+import type { BonusSummary, FreeSpinMode, FreeSpinState, GameViewModel, Grid, Position, SwordExpansion, WaysGrid } from "../core/types";
 import { ControlPanel, type ControlActions } from "./ControlPanel";
-import { createMultiplierRollValues } from "./BonusMultiplierReveal";
+import { createBandMultiplierRollValues, createMultiplierRollValues } from "./BonusMultiplierReveal";
 import { EventLogView } from "./EventLogView";
 import { GameAudio, type GameSoundEffect } from "./GameAudio";
 import { ReelGridView } from "./ReelGridView";
+import { SwordBoardView } from "./SwordBoardView";
 
 const SYMBOL_REVEAL_EFFECTS = [
   "symbol-first",
@@ -27,12 +29,18 @@ export class GameView {
   private constructor(
     private readonly reels: ReelGridView,
     private readonly reelHost: HTMLElement,
+    private readonly swordBoard: SwordBoardView,
+    private readonly swordHost: HTMLElement,
   ) {}
 
   static async create(): Promise<GameView> {
     const reelHost = requiredElement<HTMLElement>("reel-grid");
-    const reels = await ReelGridView.create(reelHost);
-    return new GameView(reels, reelHost);
+    const swordHost = requiredElement<HTMLElement>("sword-board");
+    const [reels, swordBoard] = await Promise.all([
+      ReelGridView.create(reelHost),
+      SwordBoardView.create(swordHost),
+    ]);
+    return new GameView(reels, reelHost, swordBoard, swordHost);
   }
 
   bindControls(actions: ControlActions): void {
@@ -41,8 +49,18 @@ export class GameView {
 
   render(model: GameViewModel, activeSeed: string | null): void {
     this.controls.update(model, activeSeed);
-    this.reels.renderGrid(model.grid, model.winningPositions);
-    this.reelHost.setAttribute("aria-busy", String(model.phase === "base-spinning" || model.phase === "free-spin-spinning"));
+    const swordActive = model.sword !== null && model.sword.board.length > 0;
+    this.reelHost.hidden = swordActive;
+    this.swordHost.hidden = !swordActive;
+    if (model.sword === null) {
+      this.reels.renderGrid(model.grid, model.winningPositions);
+    } else if (model.sword.board.length > 0) {
+      this.swordBoard.render(model.sword.board, model.winningPositions);
+    }
+    this.reelHost.setAttribute(
+      "aria-busy",
+      String(model.phase === "base-spinning" || model.phase === "free-spin-spinning" || model.phase === "sword-spinning"),
+    );
     this.bonusStatus.textContent = statusText(model);
     this.renderFeatureOverlay(model);
   }
@@ -98,6 +116,51 @@ export class GameView {
     this.log.clear();
   }
 
+  animateSwordSpin(result: WaysGrid, durationMs: number): Promise<void> {
+    this.reelHost.hidden = true;
+    this.swordHost.hidden = false;
+    return this.swordBoard.animateSpin(result, durationMs);
+  }
+
+  async playSwordExpansionReveal(expansion: SwordExpansion, durationMs: number): Promise<void> {
+    const band = SWORD_CONFIG.multiplierBands[expansion.destinationRows as SwordStageRows];
+    if (band === undefined) {
+      throw new Error("Sword expansion multiplier band is missing");
+    }
+    const skipRoll = durationMs <= GAME_CONFIG.quickMultiplierRevealDurationMs
+      || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    this.showFeatureOverlay(
+      "Sword Cleave",
+      `BOARD EXPANDS TO 5X${expansion.destinationRows}`,
+      "Three Cleave Spins reset. The selected multiplier applies on the next spin.",
+      "intro",
+      "feature-overlay--sword",
+    );
+    this.featureMultiplier.hidden = false;
+    this.featureMultiplier.className = "feature-overlay__multiplier feature-overlay__multiplier--rolling";
+
+    if (skipRoll) {
+      this.featureMultiplier.textContent = `X${expansion.destinationMultiplier}`;
+      this.featureMultiplier.className = "feature-overlay__multiplier feature-overlay__multiplier--locked";
+      await this.wait(durationMs);
+      return;
+    }
+
+    const rollValues = createBandMultiplierRollValues(
+      expansion.destinationMultiplier,
+      band.minimum,
+      band.maximum,
+    );
+    const rollStepDuration = Math.max(45, Math.floor((durationMs * 0.78) / rollValues.length));
+    for (const multiplier of rollValues) {
+      this.featureMultiplier.textContent = `X${multiplier}`;
+      await this.wait(rollStepDuration);
+    }
+    this.featureMultiplier.className = "feature-overlay__multiplier feature-overlay__multiplier--locked";
+    const remainingDuration = Math.max(durationMs - rollStepDuration * rollValues.length, 0);
+    await this.wait(remainingDuration);
+  }
+
   async playBonusIntroReveal(state: FreeSpinState, durationMs: number): Promise<void> {
     const isBeer = state.mode === "beer";
     const skipRoll = durationMs <= GAME_CONFIG.quickMultiplierRevealDurationMs
@@ -142,8 +205,25 @@ export class GameView {
   }
 
   private renderFeatureOverlay(model: GameViewModel): void {
-    if (model.phase === "sword-bonus") {
-      this.showFeatureOverlay("Sword feature", "JACKPOT!", "Jackpot interstitial", "jackpot");
+    if (model.phase === "sword-intro") {
+      this.showFeatureOverlay("Sword feature", "CLEAVE SPINS", "Three spins. Each Sword adds a row and resets the counter.", "intro", "feature-overlay--sword");
+      return;
+    }
+
+    const sword = model.sword;
+    if (model.phase === "sword-final-strike" && sword !== null && sword.finalStrikeMultiplier !== null) {
+      this.showFeatureOverlay("Sword feature", `FINAL STRIKE X${sword.finalStrikeMultiplier}`, "The Final Strike applies to every accumulated Sword win.", "jackpot");
+      return;
+    }
+
+    if (model.phase === "sword-complete") {
+      const summary = model.bonusSummary?.kind === "sword" ? model.bonusSummary : null;
+      this.showFeatureOverlay(
+        "Sword feature",
+        "CLEAVE COMPLETE",
+        summary === null ? "Sword feature complete" : swordSummaryText(summary),
+        "complete",
+      );
       return;
     }
 
@@ -188,8 +268,8 @@ function statusText(model: GameViewModel): string {
     return `Last feature: ${summaryText(model.bonusSummary)}`;
   }
 
-  if (model.phase === "sword-bonus") {
-    return "Sword bonus active | Jackpot interstitial";
+  if (model.sword !== null) {
+    return `Sword Cleave | 5x${model.sword.rows} | ${model.sword.remainingSpins} spins remaining | x${model.sword.activeMultiplier} active | ${formatUsd(model.sword.accumulatedWinCents)} accumulated`;
   }
 
   if (model.phase === "bonus-intro") {
@@ -217,10 +297,17 @@ function completionText(summary: BonusSummary | null): string {
 
 function summaryText(summary: BonusSummary): string {
   if (summary.kind === "sword") {
-    return "Sword JACKPOT displayed | No award";
+    return swordSummaryText(summary);
   }
 
   return `${modeLabel(summary.mode)} | ${summary.spinsPlayed} spins | ${formatUsd(summary.payoutCents)} won | final ${summary.finalMultiplier}x`;
+}
+
+function swordSummaryText(summary: Extract<BonusSummary, { kind: "sword" }>): string {
+  const finalStrike = summary.finalStrikeMultiplier === null
+    ? "no Final Strike"
+    : `Final Strike x${summary.finalStrikeMultiplier}`;
+  return `Sword Cleave | ${summary.spinsPlayed} spins | ${formatUsd(summary.payoutCents)} won | ${finalStrike}`;
 }
 
 function modeLabel(mode: FreeSpinMode): string {

@@ -483,6 +483,27 @@ input::placeholder {
   background: rgba(45, 82, 74, 0.97);
 }
 
+.feature-overlay--big-win {
+  cursor: pointer;
+  pointer-events: auto;
+  color: #fff7d6;
+  background:
+    radial-gradient(circle at center, rgba(247, 160, 52, 0.38), transparent 48%),
+    rgba(107, 24, 20, 0.97);
+}
+
+.feature-overlay--big-win .feature-overlay__card {
+  width: min(94%, 42rem);
+  border-width: 4px;
+  box-shadow: 0 0 0 4px rgba(255, 189, 75, 0.2), 0 0 38px rgba(245, 121, 50, 0.54);
+}
+
+.feature-overlay__multiplier--big-win {
+  color: #ffe08a;
+  font-size: clamp(3.8rem, 18vw, 11rem);
+  text-shadow: 6px 6px 0 #241009, 0 0 22px rgba(255, 183, 59, 0.68);
+}
+
 .bonus-status {
   position: relative;
   min-height: 2.65rem;

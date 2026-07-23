@@ -12,6 +12,7 @@ import { SwordEngine } from "../math/SwordEngine";
 import { bonusLandingSoundGroups } from "../presentation/BonusLandingSoundGroups";
 import type { GameView } from "../presentation/GameView";
 import type { DevelopmentBonusId } from "../presentation/ControlPanel";
+import { getLargeWinTier } from "../presentation/LargeWin";
 import { formatUsd } from "./formatUsd";
 import { GameState } from "./GameState";
 import type {
@@ -64,6 +65,7 @@ export class GameController {
       this.state.freeSpins = null;
       this.state.sword = null;
       this.state.bonusSummary = null;
+      this.state.largeWin = null;
       this.state.phase = "base-spinning";
       this.view.addLog(`Bet ${formatUsd(triggeringBetCents)} placed.`);
       this.view.addLog("Base spin started.");
@@ -82,6 +84,8 @@ export class GameController {
       this.view.addLog(result.regularWinCents > 0 ? `Base win: ${formatUsd(result.regularWinCents)}.` : "No base win.");
       this.render();
       await this.view.wait(evaluationDelay);
+
+      await this.playLargeWin(result.regularWinCents, triggeringBetCents, "base-evaluation", quickSpin);
 
       if (result.bonusTrigger.kind === "sword") {
         await this.playSwordFeature(
@@ -122,6 +126,7 @@ export class GameController {
     this.state.freeSpins = null;
     this.state.sword = null;
     this.state.bonusSummary = null;
+    this.state.largeWin = null;
     this.view.addLog(`[DEV] Forced ${developmentBonusLabel(bonus)} at bet ${formatUsd(this.state.betCents)}; no wager charged.`);
 
     try {
@@ -242,6 +247,12 @@ export class GameController {
     );
     this.render();
     await this.view.wait(evaluationDelay * 2);
+    await this.playLargeWin(
+      summary.payoutCents,
+      triggeringBetCents,
+      "bonus-complete",
+      spinDuration <= GAME_CONFIG.quickSpinDurationMs,
+    );
   }
 
   private async playSwordFeature(
@@ -321,6 +332,12 @@ export class GameController {
     this.view.addLog(`Sword Cleave complete after ${summary.spinsPlayed} spins. Awarded ${formatUsd(summary.payoutCents)}.`);
     this.render();
     await this.view.wait(evaluationDelay * 2);
+    await this.playLargeWin(
+      summary.payoutCents,
+      triggeringBetCents,
+      "sword-complete",
+      spinDuration <= GAME_CONFIG.quickSpinDurationMs,
+    );
     this.state.sword = null;
   }
 
@@ -348,6 +365,28 @@ export class GameController {
     this.state.lastWinCents = lastWinCents;
   }
 
+  private async playLargeWin(
+    payoutCents: number,
+    triggeringBetCents: number,
+    resumePhase: "base-evaluation" | "bonus-complete" | "sword-complete",
+    quickSpin: boolean,
+  ): Promise<void> {
+    if (getLargeWinTier(payoutCents, triggeringBetCents) === null) {
+      return;
+    }
+
+    this.state.largeWin = { payoutCents, triggeringBetCents };
+    this.state.phase = "large-win";
+    this.render();
+    await this.view.playLargeWinCount(
+      payoutCents,
+      quickSpin ? GAME_CONFIG.quickLargeWinDurationMs : GAME_CONFIG.normalLargeWinDurationMs,
+    );
+    this.state.largeWin = null;
+    this.state.phase = resumePhase;
+    this.render();
+  }
+
   private pickDevelopmentMultiplier(): number {
     const minimum = GAME_CONFIG.cigaretteMultiplierMinimum;
     const maximum = GAME_CONFIG.cigaretteMultiplierMaximum;
@@ -359,6 +398,7 @@ export class GameController {
     this.view.addLog(`Game error: ${message}`);
     this.state.freeSpins = null;
     this.state.sword = null;
+    this.state.largeWin = null;
     this.state.phase = "idle";
     this.render();
   }

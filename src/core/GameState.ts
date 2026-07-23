@@ -5,6 +5,7 @@ import type {
   GamePhase,
   GameViewModel,
   Grid,
+  LargeWin,
   Position,
   SwordFeatureState,
 } from "./types";
@@ -19,6 +20,7 @@ export class GameState {
   freeSpins: FreeSpinState | null = null;
   sword: SwordFeatureState | null = null;
   bonusSummary: BonusSummary | null = null;
+  largeWin: LargeWin | null = null;
 
   reset(): void {
     this.balanceCents = GAME_CONFIG.startingBalanceCents;
@@ -30,6 +32,7 @@ export class GameState {
     this.freeSpins = null;
     this.sword = null;
     this.bonusSummary = null;
+    this.largeWin = null;
   }
 
   toViewModel(): GameViewModel {
@@ -46,6 +49,7 @@ export class GameState {
         board: this.sword.board.map((row) => row.map((cell) => ({ ...cell }))),
       },
       bonusSummary: this.bonusSummary === null ? null : { ...this.bonusSummary },
+      largeWin: this.largeWin === null ? null : { ...this.largeWin },
     };
   }
 }

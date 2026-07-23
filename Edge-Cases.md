@@ -13,6 +13,12 @@ This document is the authoritative public contract for current game behavior, in
 - A SWORD trigger starts Sword Cleave, which awards a separate accumulated feature payout. Ordinary regular-symbol/WILD ways on the triggering grid still pay first.
 - Values must remain within the JavaScript safe-integer range; values are never silently rounded or capped. A validation or overflow error stops the current operation and returns browser play to idle. Browser play is not transactional, so state changes already applied before the error, including a paid wager deduction or completed earlier feature awards, are not automatically rolled back.
 
+## Large-Win Display
+
+- An ordinary ways win or completed free-spin or Sword Cleave payout at least five times its triggering bet shows a large payout count-up after that award resolves. The display does not alter the resolved outcome or award money a second time.
+- The labels are `BIG WIN!` from 5x up to 10x, `HUGE WIN!` from 10x up to 25x, `SUPER WIN!` from 25x up to 50x, and `HELL YEAH!` at 50x or more.
+- The final payout holds for five seconds after the count-up. Clicking or tapping the machine window once the count-up has finished dismisses it and continues the current round or feature. With reduced motion enabled, the final payout is shown immediately.
+
 ## Reels and Symbols
 
 - The game has five separate 64-stop reel strips. One stop is selected on each reel, then three consecutive entries are read with wraparound; the 15 visible cells are not generated independently.

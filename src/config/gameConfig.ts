@@ -58,4 +58,7 @@ export const GAME_CONFIG = {
   quickEvaluationDelayMs: 90,
   normalMultiplierRevealDurationMs: 2_400,
   quickMultiplierRevealDurationMs: 180,
+  normalLargeWinDurationMs: 3_000,
+  quickLargeWinDurationMs: 750,
+  largeWinFinalHoldDurationMs: 5_000,
 } as const;

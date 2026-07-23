@@ -60,6 +60,7 @@ The report uses US-dollar amounts and separately reports total, base-game, free-
 - **Engage** starts a deterministic random sequence from a non-empty seed in the Machine Room.
 - **Release** restores browser Web Crypto randomness.
 - **Spin Ledger** displays the 30 most recent game events. Reset removes its prior history and records the reset.
+- Ways wins and completed feature payouts of at least 5x their triggering bet show a large payout count-up: `BIG WIN!` at 5x-9.99x, `HUGE WIN!` at 10x-24.99x, `SUPER WIN!` at 25x-49.99x, and `HELL YEAH!` at 50x or more. The final payout holds for five seconds, or click/tap the machine window once it finishes counting to continue immediately.
 
 Controls that can mutate the game are disabled while a round or feature is running.
 
@@ -68,7 +69,7 @@ Controls that can mutate the game are disabled while a round or feature is runni
 - A keyboard-accessible skip link moves directly to the game controls.
 - Status changes, feature announcements, and the Spin Ledger use live regions where appropriate.
 - The PixiJS reel and Sword canvases expose text alternatives that update with their visible symbols.
-- With `prefers-reduced-motion: reduce`, the decorative background video is not loaded for playback, reel and multiplier animations are bypassed, and CSS motion is minimized. Outcomes and payouts are unchanged.
+- With `prefers-reduced-motion: reduce`, the decorative background video is not loaded for playback, reel and multiplier animations are bypassed, and CSS motion is minimized. The large-win display shows its final amount immediately. Outcomes and payouts are unchanged.
 
 ## Game Overview
 

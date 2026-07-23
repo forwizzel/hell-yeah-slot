@@ -6,6 +6,7 @@ import { ControlPanel, type ControlActions } from "./ControlPanel";
 import { createBandMultiplierRollValues, createMultiplierRollValues } from "./BonusMultiplierReveal";
 import { EventLogView } from "./EventLogView";
 import { GameAudio, type GameSoundEffect } from "./GameAudio";
+import { getLargeWinTier } from "./LargeWin";
 import { ReelGridView } from "./ReelGridView";
 import { SwordBoardView } from "./SwordBoardView";
 
@@ -25,13 +26,16 @@ export class GameView {
   private readonly featureTitle = requiredElement<HTMLElement>("feature-title");
   private readonly featureMultiplier = requiredElement<HTMLElement>("feature-multiplier");
   private readonly featureMessage = requiredElement<HTMLElement>("feature-message");
+  private largeWinSkip: (() => void) | null = null;
 
   private constructor(
     private readonly reels: ReelGridView,
     private readonly reelHost: HTMLElement,
     private readonly swordBoard: SwordBoardView,
     private readonly swordHost: HTMLElement,
-  ) {}
+  ) {
+    this.featureOverlay.addEventListener("click", () => this.largeWinSkip?.());
+  }
 
   static async create(): Promise<GameView> {
     const reelHost = requiredElement<HTMLElement>("reel-grid");
@@ -204,7 +208,80 @@ export class GameView {
     await this.wait(remainingDuration);
   }
 
+  playLargeWinCount(payoutCents: number, durationMs: number): Promise<void> {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      this.featureMultiplier.textContent = formatUsd(payoutCents);
+      return this.holdLargeWinFinalPayout();
+    }
+
+    return new Promise((resolve) => {
+      let animationFrame = 0;
+      let complete = false;
+      const startedAt = performance.now();
+      const finishCount = () => {
+        if (complete) {
+          return;
+        }
+        complete = true;
+        cancelAnimationFrame(animationFrame);
+        this.featureMultiplier.textContent = formatUsd(payoutCents);
+        void this.holdLargeWinFinalPayout().then(resolve);
+      };
+      const tick = (now: number) => {
+        const progress = Math.min((now - startedAt) / durationMs, 1);
+        this.featureMultiplier.textContent = formatUsd(Math.floor(payoutCents * progress));
+        if (progress === 1) {
+          finishCount();
+          return;
+        }
+        animationFrame = requestAnimationFrame(tick);
+      };
+
+      this.largeWinSkip = null;
+      animationFrame = requestAnimationFrame(tick);
+    });
+  }
+
+  private holdLargeWinFinalPayout(): Promise<void> {
+    return new Promise((resolve) => {
+      let complete = false;
+      let timeout: number | null = null;
+      const finish = () => {
+        if (complete) {
+          return;
+        }
+        complete = true;
+        if (timeout !== null) {
+          window.clearTimeout(timeout);
+        }
+        this.largeWinSkip = null;
+        resolve();
+      };
+
+      timeout = window.setTimeout(finish, GAME_CONFIG.largeWinFinalHoldDurationMs);
+      this.largeWinSkip = finish;
+    });
+  }
+
   private renderFeatureOverlay(model: GameViewModel): void {
+    if (model.phase === "large-win" && model.largeWin !== null) {
+      const tier = getLargeWinTier(model.largeWin.payoutCents, model.largeWin.triggeringBetCents);
+      if (tier === null) {
+        throw new Error("Large-win phase requires a qualifying payout");
+      }
+      this.showFeatureOverlay(
+        `${tier.minimumMultiplier}X BET PAYOUT`,
+        tier.label,
+        `Payout ${formatUsd(model.largeWin.payoutCents)}. Click or tap to finish.`,
+        "jackpot",
+        "feature-overlay--big-win",
+      );
+      this.featureMultiplier.hidden = false;
+      this.featureMultiplier.textContent = formatUsd(0);
+      this.featureMultiplier.className = "feature-overlay__multiplier feature-overlay__multiplier--big-win";
+      return;
+    }
+
     if (model.phase === "sword-intro") {
       this.showFeatureOverlay("Sword feature", "CLEAVE SPINS", "Three spins. Each Sword adds a row and resets the counter.", "intro", "feature-overlay--sword");
       return;
@@ -243,6 +320,7 @@ export class GameView {
     this.featureOverlay.hidden = true;
     this.featureOverlay.className = "feature-overlay";
     this.featureMultiplier.hidden = true;
+    this.largeWinSkip = null;
   }
 
   private showFeatureOverlay(

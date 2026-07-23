@@ -1,6 +1,6 @@
 # Game Rules and Edge Cases
 
-This document is the authoritative public contract for current game behavior, including ambiguous and overlapping outcomes. The old Hold-and-Win mechanic was removed; `Hold-and-Win-Slot-Prototype-Spec.md` is retained only as superseded history.
+This document is the authoritative public contract for current game behavior, including ambiguous and overlapping outcomes.
 
 ## Currency and Rounds
 
@@ -11,7 +11,7 @@ This document is the authoritative public contract for current game behavior, in
 - A paid round awards its ordinary ways win plus every free-spin win from a triggered feature.
 - A free-spin ways win is multiplied by the multiplier active at the start of that spin.
 - A SWORD trigger starts Sword Cleave, which awards a separate accumulated feature payout. Ordinary regular-symbol/WILD ways on the triggering grid still pay first.
-- Values must remain within the JavaScript safe-integer range. An overflow rejects the operation instead of rounding or capping it.
+- Values must remain within the JavaScript safe-integer range; values are never silently rounded or capped. A validation or overflow error stops the current operation and returns browser play to idle. Browser play is not transactional, so state changes already applied before the error, including a paid wager deduction or completed earlier feature awards, are not automatically rolled back.
 
 ## Reels and Symbols
 
@@ -37,7 +37,7 @@ Paytable values are stored as integer tenths so all configured wagers produce ex
 | `J` | x0.1 | x0.1 | x0.2 |
 | `Q` | x0.2 | x0.2 | x0.4 |
 | `K` | x0.2 | x0.4 | x0.5 |
-| `A` | No award | x0.6 | x5.2 |
+| `A` | No award | x0.7 | x5.2 |
 | `COIN` | x4 | x12 | x80 |
 | `SKULL` | x8 | x24 | x160 |
 
@@ -89,7 +89,18 @@ The x5 baseline is applied once when a feature starts and is included in the dis
 
 - At least three SWORD symbols trigger Sword Cleave and take priority over BEER, CIGARETTE, and their chance rolls. The triggering paid grid's independent regular-symbol/WILD ways still pay.
 - Sword Cleave starts with a fresh 5x3 dedicated board, three Cleave Spins, and an active x1 Sword multiplier. Its boards contain `10`, `J`, `Q`, `K`, `A`, WILDs, and at most one non-paying SWORD; COIN and SKULL do not appear, and the boards never create BEER or CIGARETTE triggers. Non-Sword cells use weights `10` 30, `J` 25, `Q` 20, `K` 18, `A` 6, and WILD 1.
-- Every Cleave Spin resolves normal left-to-right ways on its current board, multiplies that award by the active Sword multiplier, and adds it to a Sword-only accumulator. The balance is credited once when Sword Cleave completes.
+- Every Cleave Spin resolves the same left-to-right ways rules and WILD treatment as the base game, but uses the dedicated Sword paytable below. It multiplies that award by the active Sword multiplier and adds it to a Sword-only accumulator. The balance is credited once when Sword Cleave completes.
+
+| Sword symbol | 3 columns | 4 columns | 5 columns |
+| --- | ---: | ---: | ---: |
+| `10` | x0.1 | x0.1 | x0.1 |
+| `J` | x0.1 | x0.1 | x0.2 |
+| `Q` | x0.2 | x0.2 | x0.4 |
+| `K` | x0.2 | x0.4 | x0.8 |
+| `A` | x0.5 | x0.8 | x5.2 |
+
+COIN and SKULL have internal Sword-paytable entries for evaluator completeness but cannot be drawn on a valid Sword board. A qualifying all-WILD Sword result is paid once through the internal Sword SKULL entry: x0.5 for three columns, x0.8 for four, or x5.2 for five.
+
 - Before a 5x3, 5x4, or 5x5 board is drawn, there is a 40%, 25%, or 10% chance respectively for exactly one SWORD expansion. The SWORD replaces a drawn card or WILD and does not contribute to that spin's ways payout. It lands before the board changes; after the spin ends, a fully populated bottom row is revealed and the Cleave counter resets to three for the next spin.
 - The multiplier selected by an expansion replaces, rather than compounds with, the prior Sword multiplier. The destination-row bands are: 5x4 x5-x10, 5x5 x14-x18, and 5x6 x25-x30.
 - The expansion spin uses the multiplier active before its SWORD lands. The selected replacement multiplier begins on the next Cleave Spin.
@@ -105,24 +116,26 @@ The x5 baseline is applied once when a feature starts and is included in the dis
 - Sword Cleave highlights the evaluated ways on each stopped board. On expansion, it shows the larger populated board and a cosmetic roll through the resolved destination multiplier band before the reset Cleave Spins begin; neither animation rerolls the outcome.
 - Normal browser play uses Web Crypto randomness. A non-empty applied seed starts a deterministic sequence.
 - The same seed reproduces the same results only with the same code, configuration, starting state, and player actions.
-- Reel stops, paid-spin chance checks, multiplier picks, free spins, and retriggers consume one sequence in execution order.
+- Reel stops, paid-spin chance checks, free spins, bonus multiplier picks, Sword expansion checks and targets, Sword board-cell and added-row draws, Sword stage multipliers, Final Strikes, and retriggers consume one sequence in execution order.
 - Resetting while a seed is active restores the initial balance and bet and restarts that seed's sequence. Clearing the seed restores Web Crypto randomness.
 
 ## Development Triggers
 
-- Vite development mode exposes forced BEER, CIGARETTE, combined, and SWORD buttons. They are absent from production builds.
+- Vite development mode exposes forced BEER, CIGARETTE, combined, and SWORD buttons. Production startup removes their panel from the UI, and the controller independently rejects forced triggers outside development mode.
 - A forced feature can start only while the game is idle, charges no wager, and uses the current selected bet for free-spin payouts.
 - Forced CIGARETTE and combined features still select their initial factor uniformly from x2 through x10, then combine it with the x5 baseline for an effective x10 through x50 multiplier.
-- Forced multipliers, free spins, reel stops, and retriggers consume the active random sequence normally, so using a development trigger changes subsequent seeded results.
+- Forced multipliers, free spins, reel stops, Sword board and feature selections, and retriggers consume the active random sequence normally, so using a development trigger changes subsequent seeded results.
 - Starting a forced feature clears the previous last-win value and bonus summary, then records awards like a naturally triggered feature.
 
 ## Simulation Interpretation
 
 - The requested spin count includes paid base spins only. The simulator completes every triggered free-spin feature before starting the next paid spin.
-- Total, base-game, and free-spin RTP all use paid base-spin wagers as the denominator; free spins do not add wager.
+- Total, base-game, free-spin, and Sword RTP all use paid base-spin wagers as the denominator; free spins and Sword Cleave do not add wager.
 - The configured target is approximately 98% RTP, allocating about 81 points to paid/free-spin ways and about 17 points to Sword Cleave. Sword Cleave, including Final Strike paths, is the highest-return and rarest feature.
 - The theoretical target is a design calculation, not a guarantee for a finite session or a regulatory certification. Compounding CIGARETTE multipliers and rare Sword Final Strikes create substantial simulation variance.
-- Paid-round hit frequency counts a round as a hit when either the base spin or its complete free-spin feature awards money.
+- Paid-round hit frequency counts a round as a hit when its base spin, complete free-spin feature, or any triggered Sword feature awards money.
 - BEER-only, CIGARETTE-only, combined, and SWORD feature rates are exclusive paid-spin outcomes.
+- The report separately counts Sword features triggered during free spins, Sword spins, expansions, features reaching 5x6, and the total payout from features that received a Final Strike.
+- Maximum observed multiplier refers to the effective free-spin multiplier; it does not include Sword stage or Final Strike multipliers.
 - Results are repeatable for the same spin count, seed, code, and configuration.
 - Reports are observed single-threaded samples, not confidence intervals, certification, or a mathematical proof.

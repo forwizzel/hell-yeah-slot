@@ -1,6 +1,6 @@
 # Hell Yeah
 
-Hell Yeah is a browser-based 3-row by 5-column slot prototype built with TypeScript, Vite, and PixiJS. It demonstrates reel-strip outcomes, left-to-right ways with WILD substitution, multiple bonus modes, deterministic seeded play, and a headless math simulator.
+Hell Yeah is a browser-based 3-row by 5-column slot prototype built with TypeScript, Vite, and PixiJS. It demonstrates reel-strip outcomes, left-to-right ways with WILD substitution, multiple bonus modes, deterministic seeded play, and a headless math simulator. The interface uses the locally bundled Silkscreen and VT323 fonts.
 
 This is a local technical prototype. It has no accounts, payments, backend, persistence, external services, or real-money capability.
 
@@ -17,7 +17,7 @@ This is a local technical prototype. It has no accounts, payments, backend, pers
 
 ## Requirements
 
-- Node.js `^20.19.0` or `>=22.12.0`
+- Node.js `^20.19.0`, `^22.12.0`, or `>=24.0.0`
 - npm
 
 ## Getting Started
@@ -28,6 +28,8 @@ npm run dev
 ```
 
 Open the local URL printed by Vite. The interface remains usable at approximately 320 pixels wide.
+
+`npm install` installs every runtime dependency, including `@fontsource/silkscreen` and `@fontsource/vt323`. Font files are resolved from those packages and bundled by Vite; they are not loaded from a CDN. If a fresh checkout reports that either font package cannot be resolved, install from the current `package-lock.json` before starting the development server.
 
 ## Commands
 
@@ -46,7 +48,7 @@ npm run simulate -- --spins=1000000 --seed=my-seed
 
 `--spins` must be a positive safe integer. `--seed` must be non-empty. Invalid values produce a warning and fall back to the defaults. Triggered free spins are completed in addition to the requested paid spins.
 
-The report uses US-dollar amounts, separates base-game and free-spin RTP, reports the bonus share of return, and includes hit rates, feature rates, activations, retriggers, maximum multiplier, and maximum paid-round win.
+The report uses US-dollar amounts and separately reports total, base-game, free-spin, and Sword RTP. It also includes bonus share of return, hit and feature rates, natural and chance activations, retriggers, Sword features during free spins, Sword spins and expansions, final-stage reaches, payout from Final Strike features, maximum free-spin multiplier, and maximum paid-round win.
 
 ## Playing
 
@@ -54,11 +56,19 @@ The report uses US-dollar amounts, separates base-game and free-spin RTP, report
 - **- / +** moves through the configured bets: `$0.20`, `$0.40`, `$0.60`, `$0.80`, `$1.00`, `$1.20`, `$1.40`, `$1.60`, `$1.80`, `$2.00`, `$2.50`, `$3.00`, `$5.00`, `$10.00`, `$25.00`, `$50.00`, `$75.00`, `$100.00`, `$150.00`, `$200.00`, `$250.00`, `$300.00`, `$400.00`, and `$500.00`.
 - **Turbo** enables Quick Spin, shortening animation without changing the result.
 - **Sound Off / Sound On** controls all audio; sound begins disabled.
-- **Reset Game** restores a `$1,000.00` balance and a `$10.00` bet.
+- **Reset** restores a `$1,000.00` balance and a `$10.00` bet, restarts an active deterministic sequence, and clears prior Spin Ledger entries.
 - **Engage** starts a deterministic random sequence from a non-empty seed in the Machine Room.
 - **Release** restores browser Web Crypto randomness.
+- **Spin Ledger** displays the 30 most recent game events. Reset removes its prior history and records the reset.
 
 Controls that can mutate the game are disabled while a round or feature is running.
+
+## Accessibility and Motion
+
+- A keyboard-accessible skip link moves directly to the game controls.
+- Status changes, feature announcements, and the Spin Ledger use live regions where appropriate.
+- The PixiJS reel and Sword canvases expose text alternatives that update with their visible symbols.
+- With `prefers-reduced-motion: reduce`, the decorative background video is not loaded for playback, reel and multiplier animations are bypassed, and CSS motion is minimized. Outcomes and payouts are unchanged.
 
 ## Game Overview
 
@@ -70,7 +80,7 @@ Regular symbols `10`, `J`, `Q`, `K`, `A`, `COIN`, and `SKULL` pay left to right 
 | `J` | x0.1 | x0.1 | x0.2 |
 | `Q` | x0.2 | x0.2 | x0.4 |
 | `K` | x0.2 | x0.4 | x0.5 |
-| `A` | No award | x0.6 | x5.2 |
+| `A` | No award | x0.7 | x5.2 |
 | `COIN` | x4 | x12 | x80 |
 | `SKULL` | x8 | x24 | x160 |
 
@@ -83,7 +93,7 @@ Regular symbols `10`, `J`, `Q`, `K`, `A`, `COIN`, and `SKULL` pay left to right 
 
 BEER and CIGARETTE can activate naturally or through configured below-threshold chances on paid spins. Free-spin retriggers are natural-only: BEER adds spins, while CIGARETTE compounds the active multiplier by another uniform x2 through x10 selection. The x5 baseline is applied once at feature initialization and is included in the displayed multiplier. SWORD takes priority when outcomes overlap.
 
-Sword Cleave begins at 5x3 with three spins and has no blank cells. Its boards use only `10`, `J`, `Q`, `K`, `A`, WILD, and at most one SWORD; COIN and SKULL do not appear. Before 5x3, 5x4, and 5x5 spins, a Sword expansion has a 40%, 25%, and 10% chance respectively; it replaces a card or WILD, then reveals a populated bottom row after the Sword lands. The board caps at 5x6. Each expansion resets the counter to three and replaces the active multiplier with the destination band: 5x4 x5-x10, 5x5 x14-x18, or 5x6 x25-x30. Reaching 5x6 awards three final spins and applies one weighted x5-x100 Final Strike to the accumulated Sword payout.
+Sword Cleave begins at 5x3 with three spins and has no blank cells. Its boards use only `10`, `J`, `Q`, `K`, `A`, WILD, and at most one SWORD; COIN and SKULL do not appear. Sword ways use a dedicated feature paytable documented in [Game Rules and Edge Cases](Edge-Cases.md). Before 5x3, 5x4, and 5x5 spins, a Sword expansion has a 40%, 25%, and 10% chance respectively; it replaces a card or WILD, then reveals a populated bottom row after the Sword lands. The board caps at 5x6. Each expansion resets the counter to three and replaces the active multiplier with the destination band: 5x4 x5-x10, 5x5 x14-x18, or 5x6 x25-x30. Reaching 5x6 awards three final spins and applies one weighted x5-x100 Final Strike to the accumulated Sword payout.
 
 The configured math targets approximately 98% RTP, allocating roughly 81 points to paid/free-spin ways and roughly 17 points to Sword Cleave. The rare Final Strike paths create substantial short-run variance, so this design target is not a statistical or regulatory certification.
 
@@ -93,13 +103,13 @@ See [Game Rules and Edge Cases](Edge-Cases.md) for the authoritative paytable, t
 
 Normal browser play uses Web Crypto. Applying a seed switches the session to a deterministic random source; resetting the game restarts that seed's sequence.
 
-Reproduction depends on the same seed, code, configuration, starting state, and player actions. Feature triggers and free spins consume the same sequence as reel stops, so forcing a development bonus or changing the order of actions changes later outcomes.
+Reproduction depends on the same seed, code, configuration, starting state, and player actions. Reel stops, chance checks, free spins, bonus multipliers, Sword expansion checks and targets, Sword board cells, stage multipliers, and Final Strikes consume the same sequence. Forcing a development bonus or changing the order of actions therefore changes later outcomes.
 
 The seeded generator is intended for repeatability, not cryptographic security.
 
 ## Development Controls
 
-`npm run dev` exposes buttons for forcing BEER, CIGARETTE, combined, and SWORD features. They are absent from production builds. Forced features place no wager, use the selected bet for payouts, and consume the active random sequence normally.
+`npm run dev` exposes buttons for forcing BEER, CIGARETTE, combined, and SWORD features. Production startup removes their panel from the UI, and the controller independently rejects forced triggers outside Vite development mode. Forced features place no wager, use the selected bet for payouts, and consume the active random sequence normally.
 
 ## Project Layout
 
@@ -114,17 +124,15 @@ src/
   main.ts         Browser entry point
 ```
 
-Artwork is stored in `graphics/`; audio is stored in `sfx/sfx/`. All runtime assets are local.
+Symbol artwork, the top-bar logo, and `BackgroundVideo.webm` are stored in `graphics/`; audio is stored in the intentionally nested `sfx/sfx/`. The Silkscreen and VT323 files come from the installed Fontsource packages. Vite bundles all runtime assets through module URL and CSS imports; the prototype uses no runtime CDN or external asset service.
 
 ## Current Limitations
 
 - The game targets approximately 98% theoretical RTP but has not been independently balanced or certified.
 - Sword Cleave's rare Final Strike paths make short simulations highly volatile.
-- There is no autoplay, persistence, backend, account system, or production asset pipeline.
+- There is no automatic spin mode, persistence, backend, or account system.
 - Refreshing the page resets the balance and seed state.
 - Browser automation, visual-regression testing, and formal statistical analysis are not included.
-
-The superseded Hold-and-Win brief remains in [`Hold-and-Win-Slot-Prototype-Spec.md`](Hold-and-Win-Slot-Prototype-Spec.md) for project history only. It does not describe the current game.
 
 ## License
 

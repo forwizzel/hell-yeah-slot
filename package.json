@@ -10,9 +10,15 @@
     "test": "vitest run",
     "simulate": "tsx src/simulation/runSimulation.ts"
   },
-  "keywords": ["pixijs", "typescript", "slot-prototype"],
+  "keywords": [
+    "pixijs",
+    "typescript",
+    "slot-prototype"
+  ],
   "license": "UNLICENSED",
   "dependencies": {
+    "@fontsource/silkscreen": "^5.3.0",
+    "@fontsource/vt323": "^5.3.0",
     "pixi.js": "^8.19.0"
   },
   "devDependencies": {

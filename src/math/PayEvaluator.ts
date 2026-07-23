@@ -43,11 +43,11 @@ export function evaluateWays(grid: WaysGrid, paytable: Paytable, betCents: numbe
     }
   }
 
-  // A result established only by WILD cells is awarded once as the highest card.
+  // A result established only by WILD cells is awarded once as the highest symbol.
   if (wins.length === 0) {
     const wildColumns = collectConsecutivePositions(grid, (cell) => cell.kind === "wild").slice(0, 5);
     if (wildColumns.length >= 3) {
-      const win = createWin("A", wildColumns, paytable, betCents);
+      const win = createWin("SKULL", wildColumns, paytable, betCents);
       if (win.amountCents > 0) {
         wins.push(win);
       }

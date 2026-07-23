@@ -23,29 +23,27 @@
     <main id="app" aria-labelledby="page-title">
       <header class="page-header">
         <h1 id="page-title" class="sr-only">Hell Yeah Bonus Slot</h1>
-        <div class="brand-lockup">
-          <img
-            id="hell-yeah-logo"
-            class="hell-yeah-logo"
-            width="1024"
-            height="559"
-            alt="Hell Yeah"
-            fetchpriority="high"
-            translate="no"
-            draggable="false"
-          />
-        </div>
+        <img
+          id="hell-yeah-logo"
+          class="hell-yeah-logo"
+          width="384"
+          height="128"
+          alt="Hell Yeah"
+          fetchpriority="high"
+          translate="no"
+          draggable="false"
+        />
       </header>
 
       <dl class="status-panel" aria-label="Game status">
         <div><dt>Balance</dt><dd id="balance">$1,000.00</dd></div>
         <div><dt>Bet</dt><dd id="bet">$10.00</dd></div>
         <div><dt>Last Win</dt><dd id="last-win">$0.00</dd></div>
-        <div><dt>Phase</dt><dd id="phase">Idle</dd></div>
+        <div class="status-panel__phase"><dt>Phase</dt><dd id="phase">Idle</dd></div>
       </dl>
 
-      <section class="game-panel" aria-label="Reel grid">
-        <h2 class="sr-only">Live Reel</h2>
+      <section class="game-panel" aria-label="Slot machine reels">
+        <h2 class="sr-only">Reels</h2>
         <div class="reel-stage">
           <div id="reel-grid"></div>
           <div id="sword-board" class="sword-board" role="img" hidden></div>
@@ -67,63 +65,73 @@
             </div>
           </div>
         </div>
-        <p id="bonus-status" class="bonus-status" aria-live="polite" aria-atomic="true">No active bonus</p>
+        <p id="bonus-status" class="bonus-status" aria-live="polite" aria-atomic="true">Machine ready</p>
       </section>
 
       <section id="game-controls" class="controls" aria-labelledby="controls-title">
         <h2 id="controls-title" class="sr-only">Game Controls</h2>
         <div class="bet-controls">
-          <button id="bet-down" type="button" aria-label="Decrease bet">-</button>
-          <button id="spin" class="spin-button" type="button">Spin</button>
-          <button id="bet-up" type="button" aria-label="Increase bet">+</button>
+          <button id="bet-down" class="bet-step" type="button" aria-label="Decrease bet"><span aria-hidden="true">−</span></button>
+          <button id="spin" class="spin-button" type="button"><span>Spin</span></button>
+          <button id="bet-up" class="bet-step" type="button" aria-label="Increase bet"><span aria-hidden="true">+</span></button>
         </div>
-        <label class="check-control"><input id="quick-spin" name="quick-spin" type="checkbox" /> Quick Spin</label>
-        <button id="sound-toggle" type="button" aria-pressed="false">Sound Off</button>
-        <button id="reset" type="button">Reset Game</button>
-      </section>
-
-      <section id="development-panel" class="development-panel" aria-labelledby="development-title" hidden>
-        <div>
-          <p class="development-panel__eyebrow">Development only</p>
-          <h2 id="development-title">Force Bonus Game</h2>
-          <p>Starts a feature at the current bet without placing a wager.</p>
-        </div>
-        <div class="development-controls">
-          <button id="dev-beer-bonus" type="button">Beer</button>
-          <button id="dev-cigarette-bonus" type="button">Cigarette</button>
-          <button id="dev-combined-bonus" type="button">Beer + Cigarette</button>
-          <button id="dev-sword-bonus" type="button">Sword</button>
+        <div class="utility-controls">
+          <label class="check-control"><input id="quick-spin" name="quick-spin" type="checkbox" /><span>Turbo</span></label>
+          <button id="sound-toggle" type="button" aria-pressed="false">Sound Off</button>
+          <button id="reset" type="button">Reset</button>
         </div>
       </section>
 
-      <section class="seed-panel" aria-labelledby="seed-title">
-        <div>
-          <h2 id="seed-title">Deterministic Seed</h2>
-          <p id="seed-status">Using browser crypto randomness.</p>
-        </div>
-        <div class="seed-controls">
-          <label class="seed-input-label" for="seed-input">
-            <span>Session Seed</span>
-            <input
-              id="seed-input"
-              name="seed"
-              type="text"
-              maxlength="80"
-              autocomplete="off"
-              spellcheck="false"
-              aria-describedby="seed-status"
-              placeholder="Seed…"
-            />
-          </label>
-          <button id="apply-seed" type="button">Apply Seed</button>
-          <button id="clear-seed" type="button">Clear Seed</button>
-        </div>
-      </section>
+      <details class="machine-room">
+        <summary>
+          <span>Machine Room</span>
+          <small>Seed, history, and service controls</small>
+        </summary>
+        <div class="machine-room__content">
+          <section id="development-panel" class="development-panel" aria-labelledby="development-title" hidden>
+            <div>
+              <p class="development-panel__eyebrow">Development only</p>
+              <h2 id="development-title">Feature Service</h2>
+              <p>Starts a feature at the current bet without placing a wager.</p>
+            </div>
+            <div class="development-controls">
+              <button id="dev-beer-bonus" type="button">Beer</button>
+              <button id="dev-cigarette-bonus" type="button">Cigarette</button>
+              <button id="dev-combined-bonus" type="button">Beer + Cigarette</button>
+              <button id="dev-sword-bonus" type="button">Sword</button>
+            </div>
+          </section>
 
-      <section class="log-panel" aria-labelledby="log-title">
-        <h2 id="log-title">Event Log</h2>
-        <ol id="event-log" aria-live="polite"><li class="event-log__empty">Ready for a spin.</li></ol>
-      </section>
+          <section class="seed-panel" aria-labelledby="seed-title">
+            <div>
+              <h2 id="seed-title">Sequence Key</h2>
+              <p id="seed-status">Using browser crypto randomness.</p>
+            </div>
+            <div class="seed-controls">
+              <label class="seed-input-label" for="seed-input">
+                <span>Session Seed</span>
+                <input
+                  id="seed-input"
+                  name="seed"
+                  type="text"
+                  maxlength="80"
+                  autocomplete="off"
+                  spellcheck="false"
+                  aria-describedby="seed-status"
+                  placeholder="Enter seed"
+                />
+              </label>
+              <button id="apply-seed" type="button">Engage</button>
+              <button id="clear-seed" type="button">Release</button>
+            </div>
+          </section>
+
+          <section class="log-panel" aria-labelledby="log-title">
+            <h2 id="log-title">Spin Ledger</h2>
+            <ol id="event-log" aria-live="polite"><li class="event-log__empty">Machine ready.</li></ol>
+          </section>
+        </div>
+      </details>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

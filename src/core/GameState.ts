@@ -51,7 +51,7 @@ export class GameState {
 }
 
 function createInitialGrid(): Grid {
-  const symbols = ["10", "J", "Q", "K", "A"] as const;
+  const symbols = ["10", "J", "Q", "K", "A", "COIN", "SKULL"] as const;
   return Array.from({ length: GAME_CONFIG.rows }, (_, row) =>
     Array.from({ length: GAME_CONFIG.columns }, (_, column) => ({
       kind: "card" as const,

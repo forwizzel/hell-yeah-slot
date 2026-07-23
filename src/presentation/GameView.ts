@@ -230,7 +230,7 @@ export class GameView {
     if (model.phase === "bonus-intro") {
       const message = model.freeSpins === null
         ? "The bonus feature is starting."
-        : `${modeLabel(model.freeSpins.mode)} | ${model.freeSpins.remainingSpins} spins | ${model.freeSpins.multiplier}x multiplier`;
+        : `${modeLabel(model.freeSpins.mode)} // ${model.freeSpins.remainingSpins} spins // x${model.freeSpins.multiplier} multiplier`;
       this.showFeatureOverlay("Feature unlocked", "FREE SPINS", message, "intro");
       return;
     }
@@ -265,15 +265,15 @@ export class GameView {
 
 function statusText(model: GameViewModel): string {
   if (model.phase === "idle" && model.bonusSummary !== null) {
-    return `Last feature: ${summaryText(model.bonusSummary)}`;
+    return `Last feature · ${summaryText(model.bonusSummary)}`;
   }
 
   if (model.sword !== null) {
-    return `Sword Cleave | 5x${model.sword.rows} | ${model.sword.remainingSpins} spins remaining | x${model.sword.activeMultiplier} active | ${formatUsd(model.sword.accumulatedWinCents)} accumulated`;
+    return `Sword Cleave // 5x${model.sword.rows} rig // ${model.sword.remainingSpins} cuts left // x${model.sword.activeMultiplier} multiplier // ${formatUsd(model.sword.accumulatedWinCents)} banked`;
   }
 
   if (model.phase === "bonus-intro") {
-    return "Bonus feature starting";
+    return "Feature mechanism engaged";
   }
 
   if (model.phase === "bonus-complete") {
@@ -284,11 +284,19 @@ function statusText(model: GameViewModel): string {
     return freeSpinStatus(model.freeSpins);
   }
 
-  return "No active bonus";
+  if (model.phase === "base-spinning") {
+    return "Reels in motion";
+  }
+
+  if (model.phase === "base-evaluation") {
+    return "Reels locked · reading result";
+  }
+
+  return "Machine ready";
 }
 
 function freeSpinStatus(state: FreeSpinState): string {
-  return `${modeLabel(state.mode)} | ${state.remainingSpins} spins remaining | ${state.multiplier}x multiplier | ${formatUsd(state.accumulatedWinCents)} won`;
+  return `${modeLabel(state.mode)} // ${state.remainingSpins} spins left // x${state.multiplier} multiplier // ${formatUsd(state.accumulatedWinCents)} banked`;
 }
 
 function completionText(summary: BonusSummary | null): string {
@@ -300,14 +308,14 @@ function summaryText(summary: BonusSummary): string {
     return swordSummaryText(summary);
   }
 
-  return `${modeLabel(summary.mode)} | ${summary.spinsPlayed} spins | ${formatUsd(summary.payoutCents)} won | final ${summary.finalMultiplier}x`;
+  return `${modeLabel(summary.mode)} // ${summary.spinsPlayed} spins // ${formatUsd(summary.payoutCents)} paid // final x${summary.finalMultiplier}`;
 }
 
 function swordSummaryText(summary: Extract<BonusSummary, { kind: "sword" }>): string {
   const finalStrike = summary.finalStrikeMultiplier === null
     ? "no Final Strike"
     : `Final Strike x${summary.finalStrikeMultiplier}`;
-  return `Sword Cleave | ${summary.spinsPlayed} spins | ${formatUsd(summary.payoutCents)} won | ${finalStrike}`;
+  return `Sword Cleave // ${summary.spinsPlayed} spins // ${formatUsd(summary.payoutCents)} paid // ${finalStrike}`;
 }
 
 function modeLabel(mode: FreeSpinMode): string {

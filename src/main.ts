@@ -3,7 +3,7 @@ import { GameController } from "./core/GameController";
 import { GameView } from "./presentation/GameView";
 
 const backgroundVideoUrl = new URL("../graphics/BackgroundVideo.webm", import.meta.url).href;
-const hellYeahLogoUrl = new URL("../graphics/HellYeahLogo.png", import.meta.url).href;
+const hellYeahLogoUrl = new URL("../graphics/TOPBAR_LOGO.png", import.meta.url).href;
 
 async function start(): Promise<void> {
   initializeBackgroundVideo();

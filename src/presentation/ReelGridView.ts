@@ -6,22 +6,24 @@ import { ReelStripCycle } from "./ReelStripCycle";
 
 const WIDTH = 750;
 const HEIGHT = 450;
-const GAP = 8;
-const MARGIN = 12;
+const GAP = 4;
+const MARGIN = 8;
 const CELL_WIDTH = (WIDTH - MARGIN * 2 - GAP * (GAME_CONFIG.columns - 1)) / GAME_CONFIG.columns;
 const CELL_HEIGHT = (HEIGHT - MARGIN * 2 - GAP * (GAME_CONFIG.rows - 1)) / GAME_CONFIG.rows;
 type CellAsset = CardSymbolId | BonusSymbolId | "WILD";
 
 const CELL_ASSET_PATHS: Record<CellAsset, string> = {
-  "10": new URL("../../graphics/Ten.png", import.meta.url).href,
+  "10": new URL("../../graphics/10.png", import.meta.url).href,
   J: new URL("../../graphics/J.png", import.meta.url).href,
   Q: new URL("../../graphics/Q.png", import.meta.url).href,
   K: new URL("../../graphics/K.png", import.meta.url).href,
   A: new URL("../../graphics/A.png", import.meta.url).href,
-  WILD: new URL("../../graphics/Wild.png", import.meta.url).href,
-  BEER: new URL("../../graphics/Beer.png", import.meta.url).href,
-  CIGARETTE: new URL("../../graphics/Cig.png", import.meta.url).href,
-  SWORD: new URL("../../graphics/Sword.png", import.meta.url).href,
+  COIN: new URL("../../graphics/COIN.png", import.meta.url).href,
+  SKULL: new URL("../../graphics/SKULL.png", import.meta.url).href,
+  WILD: new URL("../../graphics/WILD.png", import.meta.url).href,
+  BEER: new URL("../../graphics/BEER.png", import.meta.url).href,
+  CIGARETTE: new URL("../../graphics/CIGARETTE.png", import.meta.url).href,
+  SWORD: new URL("../../graphics/SWORD.png", import.meta.url).href,
 };
 
 interface CellVisual {
@@ -52,29 +54,23 @@ type CellStyle = "card" | "wild" | "beer" | "cigarette" | "sword";
 
 interface CellAppearance {
   readonly fill: number;
-  readonly border: number;
 }
 
 const CELL_APPEARANCES: Record<CellStyle, CellAppearance> = {
   card: {
     fill: 0xfffbec,
-    border: 0x39362f,
   },
   wild: {
     fill: 0x202b31,
-    border: 0xe7b84b,
   },
   beer: {
     fill: 0xf2bd52,
-    border: 0x704719,
   },
   cigarette: {
     fill: 0xf4e8dc,
-    border: 0xa34531,
   },
   sword: {
     fill: 0xc9d9dc,
-    border: 0x38525b,
   },
 };
 
@@ -299,9 +295,8 @@ export class ReelGridView {
     const appearance = CELL_APPEARANCES[cellStyle(cell)];
     visual.box
       .clear()
-      .roundRect(0, 0, CELL_WIDTH, CELL_HEIGHT, 7)
-      .fill(appearance.fill)
-      .stroke({ color: winning ? 0xffd35c : appearance.border, width: winning ? 7 : 3 });
+      .roundRect(0, 0, CELL_WIDTH, CELL_HEIGHT, 2)
+      .fill(winning ? 0xffd889 : appearance.fill);
     visual.container.alpha = spinning ? 0.88 : 1;
     const texture = this.textures.get(cellAsset(cell));
     if (texture === undefined) {

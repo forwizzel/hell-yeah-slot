@@ -10,7 +10,7 @@ This document is the authoritative public contract for current game behavior, in
 - A paid spin deducts the selected bet. Triggered free spins place no additional wager and use the triggering bet.
 - A paid round awards its ordinary ways win plus every free-spin win from a triggered feature.
 - A free-spin ways win is multiplied by the multiplier active at the start of that spin.
-- A SWORD trigger starts Sword Cleave, which awards a separate accumulated feature payout. Ordinary card/WILD ways on the triggering grid still pay first.
+- A SWORD trigger starts Sword Cleave, which awards a separate accumulated feature payout. Ordinary regular-symbol/WILD ways on the triggering grid still pay first.
 - Values must remain within the JavaScript safe-integer range. An overflow rejects the operation instead of rounding or capping it.
 
 ## Reels and Symbols
@@ -19,11 +19,11 @@ This document is the authoritative public contract for current game behavior, in
 - Every reel currently contains three BEER entries, one CIGARETTE entry, and one WILD entry.
 - SWORD appears once on reels 1, 3, and 5 and does not appear on reels 2 or 4.
 - SWORD entries are isolated from other special symbols in their visible windows. This makes a natural SWORD trigger structurally incompatible with a natural BEER or CIGARETTE trigger on the current strips.
-- The card symbols are `10`, `J`, `Q`, `K`, and `A`. `WILD` substitutes for cards. `BEER`, `CIGARETTE`, and `SWORD` neither pay as ways symbols nor substitute for cards.
+- The regular symbols are `10`, `J`, `Q`, `K`, `A`, `COIN`, and `SKULL`. `COIN` ranks directly above `A`, and `SKULL` is the highest-paying regular symbol. `WILD` substitutes for regular symbols. `BEER`, `CIGARETTE`, and `SWORD` neither pay as ways symbols nor substitute for regular symbols.
 
 ## Ways Evaluation
 
-A card symbol wins when that symbol or WILD appears in at least three consecutive columns beginning with the leftmost column. Matching cells in each participating column are multiplied to obtain the number of ways.
+A regular symbol wins when that symbol or WILD appears in at least three consecutive columns beginning with the leftmost column. Matching cells in each participating column are multiplied to obtain the number of ways.
 
 ```text
 award in cents = ways x paytable multiplier tenths x (bet in cents / 10)
@@ -38,10 +38,12 @@ Paytable values are stored as integer tenths so all configured wagers produce ex
 | `Q` | x0.2 | x0.2 | x0.4 |
 | `K` | x0.2 | x0.4 | x0.5 |
 | `A` | No award | x0.6 | x5.2 |
+| `COIN` | x4 | x12 | x80 |
+| `SKULL` | x8 | x24 | x160 |
 
-- Multiple card symbols can win on one result.
-- WILD can support each applicable card symbol, but an award must contain at least one natural instance of that card in its qualifying columns.
-- A qualifying result made entirely from WILD cells is paid once using the `A` paytable, not once for every card symbol.
+- Multiple regular symbols can win on one result.
+- WILD can support each applicable regular symbol, but an award must contain at least one natural instance of that symbol in its qualifying columns.
+- A qualifying result made entirely from WILD cells is paid once using the `SKULL` paytable, not once for every regular symbol.
 - A matching sequence that does not begin in the leftmost column does not pay.
 
 ## Paid-Spin Triggers
@@ -85,8 +87,8 @@ The x5 baseline is applied once when a feature starts and is included in the dis
 
 ## Sword Cleave
 
-- At least three SWORD symbols trigger Sword Cleave and take priority over BEER, CIGARETTE, and their chance rolls. The triggering paid grid's independent card/WILD ways still pay.
-- Sword Cleave starts with a fresh 5x3 dedicated board, three Cleave Spins, and an active x1 Sword multiplier. Its boards contain cards, WILDs, and at most one non-paying SWORD; they never create BEER or CIGARETTE triggers. Non-Sword cells use weights `10` 30, `J` 25, `Q` 20, `K` 18, `A` 6, and WILD 1.
+- At least three SWORD symbols trigger Sword Cleave and take priority over BEER, CIGARETTE, and their chance rolls. The triggering paid grid's independent regular-symbol/WILD ways still pay.
+- Sword Cleave starts with a fresh 5x3 dedicated board, three Cleave Spins, and an active x1 Sword multiplier. Its boards contain `10`, `J`, `Q`, `K`, `A`, WILDs, and at most one non-paying SWORD; COIN and SKULL do not appear, and the boards never create BEER or CIGARETTE triggers. Non-Sword cells use weights `10` 30, `J` 25, `Q` 20, `K` 18, `A` 6, and WILD 1.
 - Every Cleave Spin resolves normal left-to-right ways on its current board, multiplies that award by the active Sword multiplier, and adds it to a Sword-only accumulator. The balance is credited once when Sword Cleave completes.
 - Before a 5x3, 5x4, or 5x5 board is drawn, there is a 40%, 25%, or 10% chance respectively for exactly one SWORD expansion. The SWORD replaces a drawn card or WILD and does not contribute to that spin's ways payout. It lands before the board changes; after the spin ends, a fully populated bottom row is revealed and the Cleave counter resets to three for the next spin.
 - The multiplier selected by an expansion replaces, rather than compounds with, the prior Sword multiplier. The destination-row bands are: 5x4 x5-x10, 5x5 x14-x18, and 5x6 x25-x30.
@@ -118,7 +120,7 @@ The x5 baseline is applied once when a feature starts and is included in the dis
 
 - The requested spin count includes paid base spins only. The simulator completes every triggered free-spin feature before starting the next paid spin.
 - Total, base-game, and free-spin RTP all use paid base-spin wagers as the denominator; free spins do not add wager.
-- The configured target is approximately 98% RTP, allocating about 83 points to paid/free-spin ways and about 15 points to Sword Cleave. Sword Cleave, including Final Strike paths, is the highest-return and rarest feature.
+- The configured target is approximately 98% RTP, allocating about 81 points to paid/free-spin ways and about 17 points to Sword Cleave. Sword Cleave, including Final Strike paths, is the highest-return and rarest feature.
 - The theoretical target is a design calculation, not a guarantee for a finite session or a regulatory certification. Compounding CIGARETTE multipliers and rare Sword Final Strikes create substantial simulation variance.
 - Paid-round hit frequency counts a round as a hit when either the base spin or its complete free-spin feature awards money.
 - BEER-only, CIGARETTE-only, combined, and SWORD feature rates are exclusive paid-spin outcomes.

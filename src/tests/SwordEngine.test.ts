@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SWORD_PAYTABLE } from "../config/paytable";
+import { SWORD_CONFIG } from "../config/swordConfig";
 import type { SwordFeatureState } from "../core/types";
 import { evaluateWays } from "../math/PayEvaluator";
 import { SwordEngine } from "../math/SwordEngine";
@@ -25,6 +26,11 @@ function activeState(overrides: Partial<SwordFeatureState> = {}): SwordFeatureSt
 }
 
 describe("SwordEngine", () => {
+  it("does not include COIN or SKULL in its board symbol weights", () => {
+    expect(SWORD_CONFIG.boardSymbols.map(({ symbol }) => symbol)).not.toContain("COIN");
+    expect(SWORD_CONFIG.boardSymbols.map(({ symbol }) => symbol)).not.toContain("SKULL");
+  });
+
   it("starts at three rows, three spins, and a x1 active multiplier", () => {
     expect(engine().start(20)).toEqual(activeState());
   });

@@ -48,6 +48,8 @@ describe("calibrated payout configuration", () => {
       Q: { 3: 2, 4: 2, 5: 4 },
       K: { 3: 2, 4: 4, 5: 5 },
       A: { 3: 0, 4: 7, 5: 52 },
+      COIN: { 3: 40, 4: 120, 5: 800 },
+      SKULL: { 3: 80, 4: 240, 5: 1600 },
     });
     expect(GAME_CONFIG.freeSpinBaseMultiplier).toBe(5);
     expect(GAME_CONFIG.normalMultiplierRevealDurationMs).toBe(2_400);

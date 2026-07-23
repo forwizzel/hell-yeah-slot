@@ -7,7 +7,7 @@ This is a local technical prototype. It has no accounts, payments, backend, pers
 ## Highlights
 
 - Five independent reel strips rather than independently generated cells
-- Card-symbol ways wins with WILD substitution
+- Regular-symbol ways wins with WILD substitution
 - BEER, CIGARETTE, combined, and SWORD feature outcomes
 - Stateful free spins with natural retriggers and compounding multipliers
 - Browser Web Crypto randomness for normal play
@@ -52,17 +52,17 @@ The report uses US-dollar amounts, separates base-game and free-spin RTP, report
 
 - **Spin** places the selected US-dollar wager and plays one complete paid round.
 - **- / +** moves through the configured bets: `$0.20`, `$0.40`, `$0.60`, `$0.80`, `$1.00`, `$1.20`, `$1.40`, `$1.60`, `$1.80`, `$2.00`, `$2.50`, `$3.00`, `$5.00`, `$10.00`, `$25.00`, `$50.00`, `$75.00`, `$100.00`, `$150.00`, `$200.00`, `$250.00`, `$300.00`, `$400.00`, and `$500.00`.
-- **Quick Spin** shortens animation without changing the result.
+- **Turbo** enables Quick Spin, shortening animation without changing the result.
 - **Sound Off / Sound On** controls all audio; sound begins disabled.
 - **Reset Game** restores a `$1,000.00` balance and a `$10.00` bet.
-- **Apply Seed** starts a deterministic random sequence from a non-empty seed.
-- **Clear Seed** restores browser Web Crypto randomness.
+- **Engage** starts a deterministic random sequence from a non-empty seed in the Machine Room.
+- **Release** restores browser Web Crypto randomness.
 
 Controls that can mutate the game are disabled while a round or feature is running.
 
 ## Game Overview
 
-Card symbols `10`, `J`, `Q`, `K`, and `A` pay left to right from the first reel. `WILD` substitutes for card symbols. `BEER`, `CIGARETTE`, and `SWORD` are non-paying special symbols.
+Regular symbols `10`, `J`, `Q`, `K`, `A`, `COIN`, and `SKULL` pay left to right from the first reel. `COIN` ranks directly above `A`, and `SKULL` is the highest-paying regular symbol. `WILD` substitutes for regular symbols. `BEER`, `CIGARETTE`, and `SWORD` are non-paying special symbols.
 
 | Symbol | 3 columns | 4 columns | 5 columns |
 | --- | ---: | ---: | ---: |
@@ -71,6 +71,8 @@ Card symbols `10`, `J`, `Q`, `K`, and `A` pay left to right from the first reel.
 | `Q` | x0.2 | x0.2 | x0.4 |
 | `K` | x0.2 | x0.4 | x0.5 |
 | `A` | No award | x0.6 | x5.2 |
+| `COIN` | x4 | x12 | x80 |
+| `SKULL` | x8 | x24 | x160 |
 
 | Feature | Initial award |
 | --- | --- |
@@ -81,9 +83,9 @@ Card symbols `10`, `J`, `Q`, `K`, and `A` pay left to right from the first reel.
 
 BEER and CIGARETTE can activate naturally or through configured below-threshold chances on paid spins. Free-spin retriggers are natural-only: BEER adds spins, while CIGARETTE compounds the active multiplier by another uniform x2 through x10 selection. The x5 baseline is applied once at feature initialization and is included in the displayed multiplier. SWORD takes priority when outcomes overlap.
 
-Sword Cleave begins at 5x3 with three spins and has no blank cells. Before 5x3, 5x4, and 5x5 spins, a Sword expansion has a 40%, 25%, and 10% chance respectively; it replaces a card or WILD, then reveals a populated bottom row after the Sword lands. The board caps at 5x6. Each expansion resets the counter to three and replaces the active multiplier with the destination band: 5x4 x5-x10, 5x5 x14-x18, or 5x6 x25-x30. Reaching 5x6 awards three final spins and applies one weighted x5-x100 Final Strike to the accumulated Sword payout.
+Sword Cleave begins at 5x3 with three spins and has no blank cells. Its boards use only `10`, `J`, `Q`, `K`, `A`, WILD, and at most one SWORD; COIN and SKULL do not appear. Before 5x3, 5x4, and 5x5 spins, a Sword expansion has a 40%, 25%, and 10% chance respectively; it replaces a card or WILD, then reveals a populated bottom row after the Sword lands. The board caps at 5x6. Each expansion resets the counter to three and replaces the active multiplier with the destination band: 5x4 x5-x10, 5x5 x14-x18, or 5x6 x25-x30. Reaching 5x6 awards three final spins and applies one weighted x5-x100 Final Strike to the accumulated Sword payout.
 
-The configured math targets approximately 98% RTP, allocating roughly 83 points to paid/free-spin ways and roughly 15 points to Sword Cleave. The rare Final Strike paths create substantial short-run variance, so this design target is not a statistical or regulatory certification.
+The configured math targets approximately 98% RTP, allocating roughly 81 points to paid/free-spin ways and roughly 17 points to Sword Cleave. The rare Final Strike paths create substantial short-run variance, so this design target is not a statistical or regulatory certification.
 
 See [Game Rules and Edge Cases](Edge-Cases.md) for the authoritative paytable, trigger probabilities, retrigger order, WILD treatment, SWORD priority, and round-accounting rules.
 

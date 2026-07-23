@@ -12,7 +12,7 @@ export type GamePhase =
   | "sword-complete"
   | "bonus-complete";
 
-export type CardSymbolId = "10" | "J" | "Q" | "K" | "A";
+export type CardSymbolId = "10" | "J" | "Q" | "K" | "A" | "COIN" | "SKULL";
 export type BonusSymbolId = "BEER" | "CIGARETTE" | "SWORD";
 
 export interface CardCell {

@@ -80,6 +80,15 @@ describe("ReelEngine", () => {
     expect(REEL_STRIPS.filter((strip) => count(strip, "SWORD") === 1)).toHaveLength(3);
   });
 
+  it("includes COIN and rarer SKULL symbols on every base and free-spin reel", () => {
+    for (const strip of REEL_STRIPS) {
+      expect(count(strip, "COIN")).toBeGreaterThan(0);
+      expect(count(strip, "SKULL")).toBeGreaterThan(0);
+      expect(count(strip, "COIN")).toBeLessThanOrEqual(count(strip, "A"));
+      expect(count(strip, "SKULL")).toBeLessThanOrEqual(count(strip, "COIN"));
+    }
+  });
+
   it("makes a Sword trigger structurally exclusive", () => {
     const swordReels = REEL_STRIPS.filter((strip) => strip.includes("SWORD"));
     expect(swordReels).toHaveLength(3);

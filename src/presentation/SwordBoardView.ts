@@ -4,8 +4,8 @@ import type { BonusSymbolId, CardSymbolId, Position, WaysCell, WaysGrid } from "
 const WIDTH = 750;
 const HEIGHT = 450;
 const COLUMNS = 5;
-const GAP = 8;
-const MARGIN = 12;
+const GAP = 4;
+const MARGIN = 8;
 const BASE_ROWS = 3;
 const CELL_HEIGHT = (HEIGHT - MARGIN * 2 - GAP * (BASE_ROWS - 1)) / BASE_ROWS;
 
@@ -13,15 +13,17 @@ type CellAsset = CardSymbolId | BonusSymbolId | "WILD";
 type SwordCellStyle = "card" | "wild" | "sword";
 
 const CELL_ASSET_PATHS: Record<CellAsset, string> = {
-  "10": new URL("../../graphics/Ten.png", import.meta.url).href,
+  "10": new URL("../../graphics/10.png", import.meta.url).href,
   J: new URL("../../graphics/J.png", import.meta.url).href,
   Q: new URL("../../graphics/Q.png", import.meta.url).href,
   K: new URL("../../graphics/K.png", import.meta.url).href,
   A: new URL("../../graphics/A.png", import.meta.url).href,
-  WILD: new URL("../../graphics/Wild.png", import.meta.url).href,
-  BEER: new URL("../../graphics/Beer.png", import.meta.url).href,
-  CIGARETTE: new URL("../../graphics/Cig.png", import.meta.url).href,
-  SWORD: new URL("../../graphics/Sword.png", import.meta.url).href,
+  COIN: new URL("../../graphics/COIN.png", import.meta.url).href,
+  SKULL: new URL("../../graphics/SKULL.png", import.meta.url).href,
+  WILD: new URL("../../graphics/WILD.png", import.meta.url).href,
+  BEER: new URL("../../graphics/BEER.png", import.meta.url).href,
+  CIGARETTE: new URL("../../graphics/CIGARETTE.png", import.meta.url).href,
+  SWORD: new URL("../../graphics/SWORD.png", import.meta.url).href,
 };
 
 const CYCLE_CELLS: readonly WaysCell[] = [
@@ -241,9 +243,8 @@ export class SwordBoardView {
     const appearance = appearances[style];
     visual.box
       .clear()
-      .roundRect(0, 0, this.cellWidth, this.cellHeight, 7)
-      .fill(appearance.fill)
-      .stroke({ color: winning ? 0xffd35c : appearance.border, width: winning ? 7 : 3 });
+      .roundRect(0, 0, this.cellWidth, this.cellHeight, 2)
+      .fill(winning ? 0xffd889 : appearance.fill);
     const asset = cellAsset(cell);
     if (asset === null) {
       visual.sprite.texture = Texture.EMPTY;
@@ -276,10 +277,10 @@ export class SwordBoardView {
   }
 }
 
-const appearances: Record<SwordCellStyle, { readonly fill: number; readonly border: number }> = {
-  card: { fill: 0xfffbec, border: 0x39362f },
-  wild: { fill: 0x202b31, border: 0xe7b84b },
-  sword: { fill: 0xc9d9dc, border: 0x38525b },
+const appearances: Record<SwordCellStyle, { readonly fill: number }> = {
+  card: { fill: 0xfffbec },
+  wild: { fill: 0x202b31 },
+  sword: { fill: 0xc9d9dc },
 };
 
 function cellStyle(cell: WaysCell): SwordCellStyle {

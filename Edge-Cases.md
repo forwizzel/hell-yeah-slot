@@ -1,53 +1,113 @@
-# Bonus Slot Edge Cases
+# Game Rules and Edge Cases
 
-This document is the authoritative record of clarified behavior for ambiguous or overlapping outcomes in the current bonus design. The old Hold-and-Win mechanic is removed; `Hold-and-Win-Slot-Prototype-Spec.md` is retained only as superseded history.
+This document is the authoritative public contract for current game behavior, including ambiguous and overlapping outcomes. The old Hold-and-Win mechanic was removed; `Hold-and-Win-Slot-Prototype-Spec.md` is retained only as superseded history.
 
-## Trigger Matching
+## Credits and Rounds
 
-- A natural trigger requires at least three copies of the same special symbol anywhere on the grid. Three mixed special symbols do not form a trigger. Counts greater than three still produce the same feature type.
-- BEER and CIGARETTE can activate by chance only on paid base spins and only when exactly one or two matching symbols are visible.
-- No chance roll occurs when zero matching symbols are visible. SWORD never activates by chance.
-- The below-threshold BEER and CIGARETTE chance rolls are independent. Both can succeed on the same paid spin and create a combined feature.
-- On a paid spin with at least three SWORD symbols, SWORD has priority over BEER, CIGARETTE, and their chance rolls.
-- The configured strips structurally prevent a valid result from containing both at least three SWORD symbols and at least three BEER or CIGARETTE symbols. The engine still enforces SWORD priority defensively for malformed or future configurations.
+- All credits, bets, counters, multipliers, and payouts are integers.
+- A paid spin deducts the selected bet. Triggered free spins place no additional wager and use the triggering bet.
+- A paid round awards its ordinary ways win plus every free-spin win from a triggered feature.
+- A free-spin ways win is multiplied by the multiplier active at the start of that spin.
+- SWORD currently adds no credits, but ordinary card/WILD ways on the same grid still pay.
+- Values must remain within the JavaScript safe-integer range. An overflow rejects the operation instead of rounding or capping it.
 
-## Initial Awards
+## Reels and Symbols
 
-- A BEER activation starts 10 free spins at x1.
-- A CIGARETTE activation starts 3 free spins and chooses one integer multiplier uniformly from x2 through x10, inclusive.
-- A combined BEER and CIGARETTE activation starts 10 free spins, not 13, and chooses one CIGARETTE multiplier uniformly from x2 through x10.
-- The active multiplier is applied separately to each free spin's ordinary ways payout. It is not a one-time credit award and does not itself pay anything.
-
-## Free Spins And Retriggers
-
-- A free spin is evaluated with the multiplier that was active at the start of that spin.
-- Retrigger changes are applied only after that spin's payout is calculated and after the normal one-spin counter consumption.
-- A natural BEER retrigger adds 10 spins to the remaining count; it does not reset or replace the count.
-- A natural CIGARETTE retrigger chooses a new integer uniformly from x2 through x10 and multiplies the current multiplier by that value.
-- Retriggers are natural-only and require at least three matching symbols. Below-threshold chance activation is never evaluated during free spins.
-- Natural BEER and CIGARETTE retriggers on the same free spin both apply: 10 spins are added and the multiplier compounds.
-- A BEER-mode feature remains in BEER mode until a CIGARETTE retrigger changes it to combined mode. A CIGARETTE-mode feature similarly becomes combined after a BEER retrigger. Combined mode remains combined.
-- There is no configured multiplier cap. Every multiplier, payout, accumulated win, and counter transition must remain a JavaScript safe integer; the engine rejects overflow rather than rounding or silently losing precision.
-
-## Sword Interstitial
-
-- During free spins, a natural SWORD trigger enters the conceptual `JACKPOT` interstitial. SWORD currently awards no credits.
-- The triggering free spin is consumed normally. Its ordinary ways result is still evaluated with the multiplier active at the start of the spin, but SWORD adds no payout.
-- After the interstitial, the existing free-spin feature resumes with the same mode and multiplier and with no counter change beyond the normally consumed spin.
-- SWORD priority suppresses any same-grid BEER or CIGARETTE retrigger defensively.
-- When a playable SWORD game is added, it must execute before the existing free-spin feature resumes.
-- A paid-spin SWORD feature also awards no credits in the current implementation. Any ordinary card/WILD ways win on the paid result remains independent.
+- The game has five separate 64-stop reel strips. One stop is selected on each reel, then three consecutive entries are read with wraparound; the 15 visible cells are not generated independently.
+- Every reel currently contains three BEER entries, one CIGARETTE entry, and one WILD entry.
+- SWORD appears once on reels 1, 3, and 5 and does not appear on reels 2 or 4.
+- SWORD entries are isolated from other special symbols in their visible windows. This makes a natural SWORD trigger structurally incompatible with a natural BEER or CIGARETTE trigger on the current strips.
+- The card symbols are `10`, `J`, `Q`, `K`, and `A`. `WILD` substitutes for cards. `BEER`, `CIGARETTE`, and `SWORD` neither pay as ways symbols nor substitute for cards.
 
 ## Ways Evaluation
 
-- BEER, CIGARETTE, and SWORD do not pay as ways symbols and never substitute for card symbols.
-- Card symbols `10`, `J`, `Q`, `K`, and `A` use standard left-to-right ways: a win needs matching cells in at least three consecutive columns beginning with the leftmost column. Matching counts in each participating column are multiplied to obtain the number of ways.
-- WILD substitutes for every card symbol. A card-symbol award supported by WILD must contain at least one natural instance of that card symbol in its qualifying columns.
-- A qualifying result made entirely from WILD cells is paid once using the highest card policy, currently the `A` paytable. It is not paid once for every card symbol.
+A card symbol wins when that symbol or WILD appears in at least three consecutive columns beginning with the leftmost column. Matching cells in each participating column are multiplied to obtain the number of ways.
+
+```text
+award = ways x paytable multiplier x bet
+```
+
+| Symbol | 3 columns | 4 columns | 5 columns |
+| --- | ---: | ---: | ---: |
+| `10` | x1 | x2 | x5 |
+| `J` | x2 | x4 | x8 |
+| `Q` | x3 | x6 | x12 |
+| `K` | x4 | x8 | x16 |
+| `A` | x5 | x10 | x20 |
+
+- Multiple card symbols can win on one result.
+- WILD can support each applicable card symbol, but an award must contain at least one natural instance of that card in its qualifying columns.
+- A qualifying result made entirely from WILD cells is paid once using the `A` paytable, not once for every card symbol.
+- A matching sequence that does not begin in the leftmost column does not pay.
+
+## Paid-Spin Triggers
+
+A natural feature requires at least three copies of the same special symbol anywhere on the grid. Mixed special symbols are not added together to reach the threshold, and counts above three do not change the feature type.
+
+BEER and CIGARETTE can also activate by chance on paid spins when exactly one or two matching symbols are visible:
+
+| Visible symbols | BEER chance | CIGARETTE chance |
+| ---: | ---: | ---: |
+| 0 | No roll | No roll |
+| 1 | 0.2% | 0.5% |
+| 2 | 0.8% | 1.0% |
+| 3 or more | Natural trigger | Natural trigger |
+
+- BEER and CIGARETTE chance rolls are independent. Both can activate on the same paid spin, including a mixture of natural and chance activation, and create the combined feature.
+- Chance activation is evaluated only on paid spins. Free-spin retriggers are natural-only.
+- SWORD never activates by chance.
+- At least three SWORD symbols take priority over BEER, CIGARETTE, and their chance rolls. The engine retains this priority even for malformed or future reel configurations where outcomes could overlap.
+
+## Initial Feature Awards
+
+- **BEER:** 10 free spins at x1.
+- **CIGARETTE:** 3 free spins with one uniformly selected integer multiplier from x2 through x10, inclusive.
+- **Combined:** 10 free spins, not 13, with one uniformly selected CIGARETTE multiplier from x2 through x10.
+- **SWORD:** a placeholder `JACKPOT` interstitial with no credit award.
+
+The active free-spin multiplier applies separately to each spin's ordinary ways payout. It is not a one-time award and pays nothing by itself.
+
+## Free Spins and Retriggers
+
+- Free spins use the same reel strips as paid spins.
+- A retrigger is natural-only and requires at least three matching BEER or CIGARETTE symbols on the free-spin grid.
+- The multiplier active at the start of a free spin determines that spin's payout.
+- The normal one-spin counter consumption and ways payout are resolved before retrigger changes take effect.
+- A natural BEER retrigger adds 10 to the remaining spins. It does not reset or replace the counter.
+- A natural CIGARETTE retrigger uniformly selects a new integer from x2 through x10 and multiplies it into the current multiplier.
+- Natural BEER and CIGARETTE retriggers on the same spin both apply: 10 spins are added and the multiplier compounds.
+- A BEER feature becomes combined after a CIGARETTE retrigger. A CIGARETTE feature becomes combined after a BEER retrigger. Combined mode never returns to a single-symbol mode.
+- There is no arbitrary multiplier cap; only safe-integer limits apply.
+
+## SWORD Priority
+
+- On a paid spin, a natural SWORD trigger takes feature priority. The paid grid's independent card/WILD ways still pay.
+- During free spins, a natural SWORD trigger consumes the current spin and suppresses same-grid BEER and CIGARETTE retriggers.
+- The triggering free spin still receives its ordinary ways payout using the multiplier active when the spin began.
+- The SWORD interstitial adds no payout and otherwise leaves the existing free-spin mode, multiplier, and counter unchanged beyond the normally consumed spin.
+- The interrupted free-spin feature resumes after the interstitial. A future playable SWORD game must complete before that feature resumes.
+
+## Quick Spin and Deterministic Seeds
+
+- Complete outcomes are fixed before visual animation. Quick Spin changes timing only and cannot change symbols, triggers, multipliers, or payouts.
+- Normal browser play uses Web Crypto randomness. A non-empty applied seed starts a deterministic sequence.
+- The same seed reproduces the same results only with the same code, configuration, starting state, and player actions.
+- Reel stops, paid-spin chance checks, multiplier picks, free spins, and retriggers consume one sequence in execution order.
+- Resetting while a seed is active restores the initial credits and bet and restarts that seed's sequence. Clearing the seed restores Web Crypto randomness.
 
 ## Development Triggers
 
-- Development mode exposes forced BEER, CIGARETTE, combined, and SWORD buttons. The panel is hidden by default, removed at runtime outside Vite development mode, and controller actions are independently guarded by `import.meta.env.DEV`.
-- A forced feature can start only from `idle`, charges no wager, and uses the current bet for any free-spin payouts.
-- CIGARETTE and combined forced features still select their initial multiplier uniformly from x2 through x10. All forced free spins, multipliers, and retriggers consume the active random sequence normally.
-- A forced feature clears the previous `lastWin` and bonus summary before play, then records awards exactly like a naturally triggered feature.
+- Vite development mode exposes forced BEER, CIGARETTE, combined, and SWORD buttons. They are absent from production builds.
+- A forced feature can start only while the game is idle, charges no wager, and uses the current selected bet for free-spin payouts.
+- Forced CIGARETTE and combined features still select their initial multiplier uniformly from x2 through x10.
+- Forced multipliers, free spins, reel stops, and retriggers consume the active random sequence normally, so using a development trigger changes subsequent seeded results.
+- Starting a forced feature clears the previous last-win value and bonus summary, then records awards like a naturally triggered feature.
+
+## Simulation Interpretation
+
+- The requested spin count includes paid base spins only. The simulator completes every triggered free-spin feature before starting the next paid spin.
+- Total, base-game, and free-spin RTP all use paid base-spin wagers as the denominator; free spins do not add wager.
+- Paid-round hit frequency counts a round as a hit when either the base spin or its complete free-spin feature awards credits.
+- BEER-only, CIGARETTE-only, combined, and SWORD feature rates are exclusive paid-spin outcomes.
+- Results are repeatable for the same spin count, seed, code, and configuration.
+- Reports are observed single-threaded samples, not confidence intervals, certification, or a mathematical proof.

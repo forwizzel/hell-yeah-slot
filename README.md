@@ -56,10 +56,11 @@ The report uses US-dollar amounts and separately reports total, base-game, free-
 - **- / +** moves through the configured bets: `$0.20`, `$0.40`, `$0.60`, `$0.80`, `$1.00`, `$1.20`, `$1.40`, `$1.60`, `$1.80`, `$2.00`, `$2.50`, `$3.00`, `$5.00`, `$10.00`, `$25.00`, `$50.00`, `$75.00`, `$100.00`, `$150.00`, `$200.00`, `$250.00`, `$300.00`, `$400.00`, and `$500.00`.
 - **Turbo** enables Quick Spin, shortening animation without changing the result.
 - **Sound Off / Sound On** controls all audio; sound begins disabled.
-- **Reset** restores a `$1,000.00` balance and a `$10.00` bet, restarts an active deterministic sequence, and clears prior Spin Ledger entries.
+- **Reset** restores a `$125,000.00` balance and a `$500.00` bet, restarts an active deterministic sequence, and clears prior Spin Ledger entries.
 - **Engage** starts a deterministic random sequence from a non-empty seed in the Machine Room.
 - **Release** restores browser Web Crypto randomness.
 - **Spin Ledger** displays the 30 most recent game events. Reset removes its prior history and records the reset.
+- **Feature Buy** starts only the selected bonus at the current bet: BEER costs 20x bet, CIGARETTE costs 50x, BEER + CIGARETTE costs 100x, and SWORD costs 250x. The in-game balance must cover the displayed price. These temporary prices do not account for RTP.
 - Ways wins and completed feature payouts of at least 5x their triggering bet show a large payout count-up: `BIG WIN!` at 5x-9.99x, `HUGE WIN!` at 10x-24.99x, `SUPER WIN!` at 25x-49.99x, and `HELL YEAH!` at 50x or more. The final payout holds for five seconds, or click/tap the machine window once it finishes counting to continue immediately.
 
 Controls that can mutate the game are disabled while a round or feature is running.
@@ -104,13 +105,13 @@ See [Game Rules and Edge Cases](Edge-Cases.md) for the authoritative paytable, t
 
 Normal browser play uses Web Crypto. Applying a seed switches the session to a deterministic random source; resetting the game restarts that seed's sequence.
 
-Reproduction depends on the same seed, code, configuration, starting state, and player actions. Reel stops, chance checks, free spins, bonus multipliers, Sword expansion checks and targets, Sword board cells, stage multipliers, and Final Strikes consume the same sequence. Forcing a development bonus or changing the order of actions therefore changes later outcomes.
+Reproduction depends on the same seed, code, configuration, starting state, and player actions. Reel stops, chance checks, free spins, bonus multipliers, Sword expansion checks and targets, Sword board cells, stage multipliers, and Final Strikes consume the same sequence. Buying or forcing a feature, or changing the order of actions, therefore changes later outcomes.
 
 The seeded generator is intended for repeatability, not cryptographic security.
 
 ## Development Controls
 
-`npm run dev` exposes buttons for forcing BEER, CIGARETTE, combined, and SWORD features. Production startup removes their panel from the UI, and the controller independently rejects forced triggers outside Vite development mode. Forced features place no wager, use the selected bet for payouts, and consume the active random sequence normally.
+`npm run dev` exposes a separate service panel for forcing BEER, CIGARETTE, combined, and SWORD features. Production startup removes that panel from the UI, and the controller independently rejects forced triggers outside Vite development mode. Forced features place no wager, use the selected bet for payouts, and consume the active random sequence normally. Production Feature Buy controls always charge the displayed in-game balance price.
 
 ## Project Layout
 

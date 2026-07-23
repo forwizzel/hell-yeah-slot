@@ -5,7 +5,7 @@ This document is the authoritative public contract for current game behavior, in
 ## Currency and Rounds
 
 - Monetary values are displayed as US dollars with two decimal places and stored internally as integer cents. Counters and bonus multipliers are integers; paytable multipliers are stored as integer tenths.
-- The starting balance is `$1,000.00`, and the default bet is `$10.00`.
+- The starting balance is `$125,000.00`, and the default bet is `$500.00`.
 - The available bets are `$0.20`, `$0.40`, `$0.60`, `$0.80`, `$1.00`, `$1.20`, `$1.40`, `$1.60`, `$1.80`, `$2.00`, `$2.50`, `$3.00`, `$5.00`, `$10.00`, `$25.00`, `$50.00`, `$75.00`, `$100.00`, `$150.00`, `$200.00`, `$250.00`, `$300.00`, `$400.00`, and `$500.00`.
 - A paid spin deducts the selected bet. Triggered free spins place no additional wager and use the triggering bet.
 - A paid round awards its ordinary ways win plus every free-spin win from a triggered feature.
@@ -78,6 +78,14 @@ BEER and CIGARETTE can also activate by chance on paid spins when exactly one or
 - **SWORD:** Sword Cleave, described below.
 
 The x5 baseline is applied once when a feature starts and is included in the displayed active multiplier. The active multiplier applies separately to each spin's ordinary ways payout; it is not a one-time award and pays nothing by itself.
+
+## Feature Buys
+
+- Feature Buy starts only the selected feature and does not spin base reels, evaluate base ways, or perform paid-spin chance-trigger checks.
+- The current selected bet determines both the price and the feature's payout denomination: BEER costs 20x bet, CIGARETTE costs 50x, BEER + CIGARETTE costs 100x, and SWORD costs 250x.
+- The price is deducted once before the feature's multiplier selection or feature play begins. A buy is unavailable when the in-game balance is below its displayed price; it then deducts nothing and consumes no random values.
+- These Feature Buy prices are temporary prototype values and do not account for RTP.
+- Bought CIGARETTE and combined features select their initial x2 through x10 factor in the same way as their naturally triggered equivalents. A buy uses the selected bet for feature payouts and large-win tiers, not its purchase price.
 
 ## Free Spins and Retriggers
 

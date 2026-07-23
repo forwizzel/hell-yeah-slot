@@ -85,10 +85,24 @@
       <details class="machine-room">
         <summary>
           <span>Machine Room</span>
-          <small>Seed, history, and service controls</small>
+          <small>Feature buys, seed, history, and service controls</small>
         </summary>
-        <div class="machine-room__content">
-          <section id="development-panel" class="development-panel" aria-labelledby="development-title" hidden>
+          <div class="machine-room__content">
+            <section class="feature-buy-panel" aria-labelledby="feature-buy-title">
+              <div>
+                <p class="feature-buy-panel__eyebrow">Temporary pricing</p>
+                <h2 id="feature-buy-title">Feature Buy</h2>
+                <p>Buy a bonus using the current bet. Prices are temporary and do not account for RTP.</p>
+              </div>
+              <div class="feature-buy-controls">
+                <button id="buy-beer-bonus" type="button">Beer</button>
+                <button id="buy-cigarette-bonus" type="button">Cigarette</button>
+                <button id="buy-combined-bonus" type="button">Beer + Cigarette</button>
+                <button id="buy-sword-bonus" type="button">Sword</button>
+              </div>
+            </section>
+
+            <section id="development-panel" class="development-panel" aria-labelledby="development-title" hidden>
             <div>
               <p class="development-panel__eyebrow">Development only</p>
               <h2 id="development-title">Feature Service</h2>

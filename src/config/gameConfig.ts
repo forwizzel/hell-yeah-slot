@@ -33,9 +33,20 @@ export function getAdjacentBetCents(currentBetCents: number, direction: -1 | 1):
   return BET_OPTIONS_CENTS[currentIndex + direction] ?? currentBetCents;
 }
 
+export function getFeatureBuyCostCents(feature: FeatureBuyId, betCents: number): number {
+  if (!Number.isSafeInteger(betCents) || betCents <= 0) {
+    throw new RangeError("Feature-buy bet must be a positive safe integer number of cents");
+  }
+  return safeMultiply(
+    betCents,
+    FEATURE_BUY_MULTIPLIERS[feature],
+    "Feature-buy cost exceeds the safe integer range",
+  );
+}
+
 export const GAME_CONFIG = {
-  startingBalanceCents: 100_000,
-  defaultBetCents: 1_000,
+  startingBalanceCents: 12_500_000,
+  defaultBetCents: 50_000,
   betOptionsCents: BET_OPTIONS_CENTS,
   rows: 3,
   columns: 5,
@@ -62,3 +73,13 @@ export const GAME_CONFIG = {
   quickLargeWinDurationMs: 750,
   largeWinFinalHoldDurationMs: 5_000,
 } as const;
+import { safeMultiply } from "../math/safeInteger";
+
+export type FeatureBuyId = "beer" | "cigarette" | "combined" | "sword";
+
+export const FEATURE_BUY_MULTIPLIERS: Readonly<Record<FeatureBuyId, number>> = Object.freeze({
+  beer: 20,
+  cigarette: 50,
+  combined: 100,
+  sword: 250,
+});

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { BET_OPTIONS_CENTS, GAME_CONFIG, getAdjacentBetCents } from "../config/gameConfig";
+import {
+  BET_OPTIONS_CENTS,
+  FEATURE_BUY_MULTIPLIERS,
+  GAME_CONFIG,
+  getAdjacentBetCents,
+  getFeatureBuyCostCents,
+} from "../config/gameConfig";
 import { PAYTABLE, PAYOUT_MULTIPLIER_SCALE } from "../config/paytable";
 import { formatUsd } from "../core/formatUsd";
 import { GameState } from "../core/GameState";
@@ -23,7 +29,7 @@ describe("USD money configuration", () => {
     expect(() => getAdjacentBetCents(30, 1)).toThrow("Current bet is not a configured option");
   });
 
-  it("starts and resets at a $1,000 balance and $10 bet", () => {
+  it("starts and resets at a $125,000 balance and $500 bet", () => {
     const state = new GameState();
     state.balanceCents = 20;
     state.betCents = 20;
@@ -32,10 +38,19 @@ describe("USD money configuration", () => {
     state.reset();
 
     expect(state.toViewModel()).toMatchObject({
-      balanceCents: 100_000,
-      betCents: 1_000,
+      balanceCents: 12_500_000,
+      betCents: 50_000,
       lastWinCents: 0,
     });
+  });
+
+  it("prices every feature buy as the configured multiple of the selected bet", () => {
+    expect(FEATURE_BUY_MULTIPLIERS).toEqual({ beer: 20, cigarette: 50, combined: 100, sword: 250 });
+    expect(getFeatureBuyCostCents("beer", 50_000)).toBe(1_000_000);
+    expect(getFeatureBuyCostCents("cigarette", 50_000)).toBe(2_500_000);
+    expect(getFeatureBuyCostCents("combined", 50_000)).toBe(5_000_000);
+    expect(getFeatureBuyCostCents("sword", 50_000)).toBe(12_500_000);
+    expect(() => getFeatureBuyCostCents("beer", 0)).toThrow("Feature-buy bet must be a positive safe integer");
   });
 });
 

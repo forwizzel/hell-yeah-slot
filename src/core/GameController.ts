@@ -1,4 +1,4 @@
-import { GAME_CONFIG, getAdjacentBetCents } from "../config/gameConfig";
+import { GAME_CONFIG, getAdjacentBetCents, getFeatureBuyCostCents, type FeatureBuyId } from "../config/gameConfig";
 import { PAYTABLE } from "../config/paytable";
 import { REEL_STRIPS } from "../config/reelStrips";
 import { BonusEngine } from "../math/BonusEngine";
@@ -39,6 +39,7 @@ export class GameController {
       reset: () => this.reset(),
       applySeed: (seed) => this.applySeed(seed),
       clearSeed: () => this.clearSeed(),
+      buyFeature: (feature) => { void this.buyFeature(feature); },
       triggerDevelopmentBonus: (bonus) => { void this.triggerDevelopmentBonus(bonus); },
     });
   }
@@ -130,20 +131,7 @@ export class GameController {
     this.view.addLog(`[DEV] Forced ${developmentBonusLabel(bonus)} at bet ${formatUsd(this.state.betCents)}; no wager charged.`);
 
     try {
-      if (bonus === "sword") {
-        await this.playSwordFeature(this.state.betCents, false, false, spinDuration, evaluationDelay);
-      } else {
-        const includesCigarette = bonus === "cigarette" || bonus === "combined";
-        const trigger: Extract<BonusTrigger, { kind: "free-spins" }> = {
-          kind: "free-spins",
-          mode: bonus,
-          startingSpins: bonus === "cigarette" ? GAME_CONFIG.cigaretteFreeSpins : GAME_CONFIG.beerFreeSpins,
-          multiplier: includesCigarette ? this.pickDevelopmentMultiplier() : 1,
-          beer: null,
-          cigarette: null,
-        };
-        await this.playFreeSpins(trigger, this.state.betCents, spinDuration, evaluationDelay, false);
-      }
+      await this.playDirectFeature(bonus, this.state.betCents, spinDuration, evaluationDelay);
 
       this.state.freeSpins = null;
       this.state.phase = "idle";
@@ -151,6 +139,62 @@ export class GameController {
     } catch (error: unknown) {
       this.handleGameError(error);
     }
+  }
+
+  private async buyFeature(feature: FeatureBuyId): Promise<void> {
+    if (this.state.phase !== "idle") {
+      return;
+    }
+
+    const triggeringBetCents = this.state.betCents;
+    const costCents = getFeatureBuyCostCents(feature, triggeringBetCents);
+    if (this.state.balanceCents < costCents) {
+      return;
+    }
+
+    const quickSpin = this.view.isQuickSpinEnabled();
+    const spinDuration = quickSpin ? GAME_CONFIG.quickSpinDurationMs : GAME_CONFIG.normalSpinDurationMs;
+    const evaluationDelay = quickSpin ? GAME_CONFIG.quickEvaluationDelayMs : GAME_CONFIG.normalEvaluationDelayMs;
+    this.state.balanceCents -= costCents;
+    this.state.lastWinCents = 0;
+    this.state.winningPositions = [];
+    this.state.freeSpins = null;
+    this.state.sword = null;
+    this.state.bonusSummary = null;
+    this.state.largeWin = null;
+    this.view.addLog(`Feature buy: ${featureBuyLabel(feature)} for ${formatUsd(costCents)} at bet ${formatUsd(triggeringBetCents)}.`);
+
+    try {
+      await this.playDirectFeature(feature, triggeringBetCents, spinDuration, evaluationDelay);
+      this.state.freeSpins = null;
+      this.state.phase = "idle";
+      this.render();
+    } catch (error: unknown) {
+      this.handleGameError(error);
+    }
+  }
+
+  private async playDirectFeature(
+    feature: FeatureBuyId,
+    triggeringBetCents: number,
+    spinDuration: number,
+    evaluationDelay: number,
+  ): Promise<void> {
+    if (feature === "sword") {
+      await this.playSwordFeature(triggeringBetCents, false, false, spinDuration, evaluationDelay);
+      return;
+    }
+
+    const includesCigarette = feature === "cigarette" || feature === "combined";
+    const trigger: Extract<BonusTrigger, { kind: "free-spins" }> = {
+      kind: "free-spins",
+      mode: feature,
+      startingSpins: feature === "cigarette" ? GAME_CONFIG.cigaretteFreeSpins : GAME_CONFIG.beerFreeSpins,
+      multiplier: includesCigarette ? this.pickFeatureMultiplier() : 1,
+      beer: null,
+      cigarette: null,
+    };
+    await this.playFreeSpins(trigger, triggeringBetCents, spinDuration, evaluationDelay, false);
   }
 
   private createPaidSpinResult(betCents: number): SpinResult {
@@ -387,7 +431,7 @@ export class GameController {
     this.render();
   }
 
-  private pickDevelopmentMultiplier(): number {
+  private pickFeatureMultiplier(): number {
     const minimum = GAME_CONFIG.cigaretteMultiplierMinimum;
     const maximum = GAME_CONFIG.cigaretteMultiplierMaximum;
     return this.random.nextInt(maximum - minimum + 1) + minimum;
@@ -499,6 +543,10 @@ function featureLabel(mode: "beer" | "cigarette" | "combined"): string {
 
 function developmentBonusLabel(bonus: DevelopmentBonusId): string {
   return bonus === "sword" ? "Sword Bonus" : featureLabel(bonus);
+}
+
+function featureBuyLabel(feature: FeatureBuyId): string {
+  return feature === "sword" ? "Sword" : featureLabel(feature);
 }
 
 function hasNaturalTriggerSound(trigger: BonusTrigger): boolean {

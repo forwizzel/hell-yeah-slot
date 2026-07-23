@@ -1,8 +1,8 @@
-import { GAME_CONFIG } from "../config/gameConfig";
+import { GAME_CONFIG, getFeatureBuyCostCents, type FeatureBuyId } from "../config/gameConfig";
 import { formatUsd } from "../core/formatUsd";
 import type { GameViewModel } from "../core/types";
 
-export type DevelopmentBonusId = "beer" | "cigarette" | "combined" | "sword";
+export type DevelopmentBonusId = FeatureBuyId;
 
 export interface ControlActions {
   readonly spin: () => void;
@@ -12,6 +12,7 @@ export interface ControlActions {
   readonly reset: () => void;
   readonly applySeed: (seed: string) => void;
   readonly clearSeed: () => void;
+  readonly buyFeature: (feature: FeatureBuyId) => void;
   readonly triggerDevelopmentBonus: (bonus: DevelopmentBonusId) => void;
 }
 
@@ -30,6 +31,12 @@ export class ControlPanel {
   private readonly lastWinValue = requiredElement<HTMLElement>("last-win");
   private readonly phaseValue = requiredElement<HTMLElement>("phase");
   private readonly seedStatus = requiredElement<HTMLElement>("seed-status");
+  private readonly featureBuyButtons: ReadonlyArray<readonly [HTMLButtonElement, FeatureBuyId]> = [
+    [requiredElement<HTMLButtonElement>("buy-beer-bonus"), "beer"],
+    [requiredElement<HTMLButtonElement>("buy-cigarette-bonus"), "cigarette"],
+    [requiredElement<HTMLButtonElement>("buy-combined-bonus"), "combined"],
+    [requiredElement<HTMLButtonElement>("buy-sword-bonus"), "sword"],
+  ];
   private readonly developmentPanel = requiredElement<HTMLElement>("development-panel");
   private readonly developmentButtons: ReadonlyArray<readonly [HTMLButtonElement, DevelopmentBonusId]> = [
     [requiredElement<HTMLButtonElement>("dev-beer-bonus"), "beer"],
@@ -46,6 +53,9 @@ export class ControlPanel {
     this.resetButton.addEventListener("click", actions.reset);
     this.applySeedButton.addEventListener("click", () => actions.applySeed(this.seedInput.value));
     this.clearSeedButton.addEventListener("click", actions.clearSeed);
+    for (const [button, feature] of this.featureBuyButtons) {
+      button.addEventListener("click", () => actions.buyFeature(feature));
+    }
     this.seedInput.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         actions.applySeed(this.seedInput.value);
@@ -77,6 +87,12 @@ export class ControlPanel {
     this.seedInput.disabled = !interactive;
     this.applySeedButton.disabled = !interactive;
     this.clearSeedButton.disabled = !interactive || activeSeed === null;
+    for (const [button, feature] of this.featureBuyButtons) {
+      const costCents = getFeatureBuyCostCents(feature, model.betCents);
+      button.textContent = `${featureBuyLabel(feature)} ${formatUsd(costCents)}`;
+      button.setAttribute("aria-label", `Buy ${featureBuyLabel(feature)} for ${formatUsd(costCents)}`);
+      button.disabled = !interactive || model.balanceCents < costCents;
+    }
     for (const [button] of this.developmentButtons) {
       button.disabled = !interactive;
     }
@@ -92,6 +108,19 @@ export class ControlPanel {
   setSoundEnabled(enabled: boolean): void {
     this.soundToggleButton.textContent = enabled ? "Sound On" : "Sound Off";
     this.soundToggleButton.setAttribute("aria-pressed", String(enabled));
+  }
+}
+
+function featureBuyLabel(feature: FeatureBuyId): string {
+  switch (feature) {
+    case "beer":
+      return "Beer";
+    case "cigarette":
+      return "Cigarette";
+    case "combined":
+      return "Beer + Cigarette";
+    case "sword":
+      return "Sword";
   }
 }
 

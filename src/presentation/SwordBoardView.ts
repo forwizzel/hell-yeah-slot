@@ -6,8 +6,6 @@ const HEIGHT = 450;
 const COLUMNS = 5;
 const GAP = 4;
 const MARGIN = 8;
-const BASE_ROWS = 3;
-const CELL_HEIGHT = (HEIGHT - MARGIN * 2 - GAP * (BASE_ROWS - 1)) / BASE_ROWS;
 
 type CellAsset = CardSymbolId | BonusSymbolId | "WILD";
 type SwordCellStyle = "card" | "wild" | "sword";
@@ -198,13 +196,17 @@ export class SwordBoardView {
     this.application.stage.removeChildren();
     this.columns.length = 0;
     this.rows = rows;
-    this.cellWidth = (WIDTH - MARGIN * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
-    this.cellHeight = CELL_HEIGHT;
+    const maximumCellWidth = (WIDTH - MARGIN * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
+    const maximumCellHeight = (HEIGHT - MARGIN * 2 - GAP * (rows - 1)) / rows;
+    const cellSize = Math.min(maximumCellWidth, maximumCellHeight);
+    this.cellWidth = cellSize;
+    this.cellHeight = cellSize;
     const reelHeight = rows * this.cellHeight + (rows - 1) * GAP;
-    this.application.renderer.resize(WIDTH, reelHeight + MARGIN * 2);
+    const reelWidth = COLUMNS * this.cellWidth + (COLUMNS - 1) * GAP;
+    const startX = (WIDTH - reelWidth) / 2;
 
     for (let column = 0; column < COLUMNS; column += 1) {
-      const viewport = new Container({ x: MARGIN + column * (this.cellWidth + GAP), y: MARGIN });
+      const viewport = new Container({ x: startX + column * (this.cellWidth + GAP), y: MARGIN });
       const mask = new Graphics().rect(0, 0, this.cellWidth, reelHeight).fill(0xffffff);
       const track = new Container();
       const cells: CellVisual[] = [];

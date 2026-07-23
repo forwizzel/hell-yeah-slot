@@ -4,7 +4,7 @@ This document is the authoritative public contract for current game behavior, in
 
 ## Currency and Rounds
 
-- Monetary values are displayed as US dollars with two decimal places and stored internally as integer cents. Counters and multipliers are also integers.
+- Monetary values are displayed as US dollars with two decimal places and stored internally as integer cents. Counters and bonus multipliers are integers; paytable multipliers are stored as integer tenths.
 - The starting balance is `$1,000.00`, and the default bet is `$10.00`.
 - The available bets are `$0.20`, `$0.40`, `$0.60`, `$0.80`, `$1.00`, `$1.20`, `$1.40`, `$1.60`, `$1.80`, `$2.00`, `$2.50`, `$3.00`, `$5.00`, `$10.00`, `$25.00`, `$50.00`, `$75.00`, `$100.00`, `$150.00`, `$200.00`, `$250.00`, `$300.00`, `$400.00`, and `$500.00`.
 - A paid spin deducts the selected bet. Triggered free spins place no additional wager and use the triggering bet.
@@ -26,16 +26,18 @@ This document is the authoritative public contract for current game behavior, in
 A card symbol wins when that symbol or WILD appears in at least three consecutive columns beginning with the leftmost column. Matching cells in each participating column are multiplied to obtain the number of ways.
 
 ```text
-award in cents = ways x paytable multiplier x bet in cents
+award in cents = ways x paytable multiplier tenths x (bet in cents / 10)
 ```
+
+Paytable values are stored as integer tenths so all configured wagers produce exact cent payouts without rounding. For example, one x0.1 way at a `$0.20` bet awards `$0.02`.
 
 | Symbol | 3 columns | 4 columns | 5 columns |
 | --- | ---: | ---: | ---: |
-| `10` | x1 | x2 | x5 |
-| `J` | x2 | x4 | x8 |
-| `Q` | x3 | x6 | x12 |
-| `K` | x4 | x8 | x16 |
-| `A` | x5 | x10 | x20 |
+| `10` | x0.1 | x0.1 | x0.1 |
+| `J` | x0.1 | x0.1 | x0.2 |
+| `Q` | x0.2 | x0.2 | x0.4 |
+| `K` | x0.2 | x0.4 | x0.8 |
+| `A` | x0.5 | x0.8 | x5.2 |
 
 - Multiple card symbols can win on one result.
 - WILD can support each applicable card symbol, but an award must contain at least one natural instance of that card in its qualifying columns.
@@ -62,12 +64,12 @@ BEER and CIGARETTE can also activate by chance on paid spins when exactly one or
 
 ## Initial Feature Awards
 
-- **BEER:** 10 free spins at x1.
-- **CIGARETTE:** 3 free spins with one uniformly selected integer multiplier from x2 through x10, inclusive.
-- **Combined:** 10 free spins, not 13, with one uniformly selected CIGARETTE multiplier from x2 through x10.
+- **BEER:** 10 free spins at the x6 free-spin baseline.
+- **CIGARETTE:** 3 free spins with the x6 baseline multiplied by one uniformly selected integer from x2 through x10, producing an initial x12 through x60 multiplier.
+- **Combined:** 10 free spins, not 13, with the same x6 baseline and uniformly selected CIGARETTE factor, producing an initial x12 through x60 multiplier.
 - **SWORD:** a placeholder `JACKPOT` interstitial with no monetary award.
 
-The active free-spin multiplier applies separately to each spin's ordinary ways payout. It is not a one-time award and pays nothing by itself.
+The x6 baseline is applied once when a feature starts and is included in the displayed active multiplier. The active multiplier applies separately to each spin's ordinary ways payout; it is not a one-time award and pays nothing by itself.
 
 ## Free Spins and Retriggers
 
@@ -76,7 +78,7 @@ The active free-spin multiplier applies separately to each spin's ordinary ways 
 - The multiplier active at the start of a free spin determines that spin's payout.
 - The normal one-spin counter consumption and ways payout are resolved before retrigger changes take effect.
 - A natural BEER retrigger adds 10 to the remaining spins. It does not reset or replace the counter.
-- A natural CIGARETTE retrigger uniformly selects a new integer from x2 through x10 and multiplies it into the current multiplier.
+- A natural CIGARETTE retrigger uniformly selects a new integer from x2 through x10 and multiplies it into the current effective multiplier. The x6 baseline is not applied again.
 - Natural BEER and CIGARETTE retriggers on the same spin both apply: 10 spins are added and the multiplier compounds.
 - A BEER feature becomes combined after a CIGARETTE retrigger. A CIGARETTE feature becomes combined after a BEER retrigger. Combined mode never returns to a single-symbol mode.
 - There is no arbitrary multiplier cap; only safe-integer limits apply.
@@ -92,6 +94,8 @@ The active free-spin multiplier applies separately to each spin's ordinary ways 
 ## Quick Spin and Deterministic Seeds
 
 - Complete outcomes are fixed before visual animation. Quick Spin changes timing only and cannot change symbols, triggers, multipliers, or payouts.
+- Transient scrolling symbols traverse each column's configured reel strip from a presentation-only random offset. They preserve that reel's symbol frequency and ordering but do not select or alter the predetermined final stop.
+- The Beer x6 reveal and Cigarette multiplier roll are cosmetic. The displayed Cigarette or combined roll always stops on the multiplier resolved before the bonus-intro animation begins.
 - Normal browser play uses Web Crypto randomness. A non-empty applied seed starts a deterministic sequence.
 - The same seed reproduces the same results only with the same code, configuration, starting state, and player actions.
 - Reel stops, paid-spin chance checks, multiplier picks, free spins, and retriggers consume one sequence in execution order.
@@ -101,7 +105,7 @@ The active free-spin multiplier applies separately to each spin's ordinary ways 
 
 - Vite development mode exposes forced BEER, CIGARETTE, combined, and SWORD buttons. They are absent from production builds.
 - A forced feature can start only while the game is idle, charges no wager, and uses the current selected bet for free-spin payouts.
-- Forced CIGARETTE and combined features still select their initial multiplier uniformly from x2 through x10.
+- Forced CIGARETTE and combined features still select their initial factor uniformly from x2 through x10, then combine it with the x6 baseline for an effective x12 through x60 multiplier.
 - Forced multipliers, free spins, reel stops, and retriggers consume the active random sequence normally, so using a development trigger changes subsequent seeded results.
 - Starting a forced feature clears the previous last-win value and bonus summary, then records awards like a naturally triggered feature.
 
@@ -109,6 +113,8 @@ The active free-spin multiplier applies separately to each spin's ordinary ways 
 
 - The requested spin count includes paid base spins only. The simulator completes every triggered free-spin feature before starting the next paid spin.
 - Total, base-game, and free-spin RTP all use paid base-spin wagers as the denominator; free spins do not add wager.
+- The configured theoretical RTP is approximately 98%: about 28.76 percentage points from paid-spin ways and 69.24 from free spins. Free spins represent about 70.65% of expected return.
+- The theoretical target is a design calculation, not a guarantee for a finite session or a regulatory certification. Compounding CIGARETTE multipliers create substantial simulation variance.
 - Paid-round hit frequency counts a round as a hit when either the base spin or its complete free-spin feature awards money.
 - BEER-only, CIGARETTE-only, combined, and SWORD feature rates are exclusive paid-spin outcomes.
 - Results are repeatable for the same spin count, seed, code, and configuration.

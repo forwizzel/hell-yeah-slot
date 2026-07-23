@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BET_OPTIONS_CENTS, GAME_CONFIG, getAdjacentBetCents } from "../config/gameConfig";
+import { PAYTABLE, PAYOUT_MULTIPLIER_SCALE } from "../config/paytable";
 import { formatUsd } from "../core/formatUsd";
 import { GameState } from "../core/GameState";
 
@@ -11,6 +12,7 @@ describe("USD money configuration", () => {
       25_000, 30_000, 40_000, 50_000,
     ]);
     expect(BET_OPTIONS_CENTS).toContain(GAME_CONFIG.defaultBetCents);
+    expect(BET_OPTIONS_CENTS.every((betCents) => betCents % PAYOUT_MULTIPLIER_SCALE === 0)).toBe(true);
   });
 
   it("moves between adjacent options and stops at the bounds", () => {
@@ -34,6 +36,22 @@ describe("USD money configuration", () => {
       betCents: 1_000,
       lastWinCents: 0,
     });
+  });
+});
+
+describe("calibrated payout configuration", () => {
+  it("uses the approved tenth-unit paytable and free-spin baseline", () => {
+    expect(PAYOUT_MULTIPLIER_SCALE).toBe(10);
+    expect(PAYTABLE).toEqual({
+      "10": { 3: 1, 4: 1, 5: 1 },
+      J: { 3: 1, 4: 1, 5: 2 },
+      Q: { 3: 2, 4: 2, 5: 4 },
+      K: { 3: 2, 4: 4, 5: 8 },
+      A: { 3: 5, 4: 8, 5: 52 },
+    });
+    expect(GAME_CONFIG.freeSpinBaseMultiplier).toBe(6);
+    expect(GAME_CONFIG.normalMultiplierRevealDurationMs).toBe(2_400);
+    expect(GAME_CONFIG.quickMultiplierRevealDurationMs).toBe(180);
   });
 });
 

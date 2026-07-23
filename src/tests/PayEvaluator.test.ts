@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PAYTABLE } from "../config/paytable";
+import { PAYTABLE, PAYOUT_MULTIPLIER_SCALE } from "../config/paytable";
 import type { BonusSymbolId, CardSymbolId, Cell, Grid } from "../core/types";
 import { evaluateWays } from "../math/PayEvaluator";
 
@@ -25,17 +25,19 @@ describe("evaluateWays", () => {
   });
 
   it.each([
-    { columns: 3, multiplier: 5 },
-    { columns: 4, multiplier: 10 },
-    { columns: 5, multiplier: 20 },
-  ] as const)("pays the configured amount for $columns A columns", ({ columns, multiplier }) => {
+    { columns: 3, multiplierTenths: 5 },
+    { columns: 4, multiplierTenths: 8 },
+    { columns: 5, multiplierTenths: 52 },
+  ] as const)("pays the configured amount for $columns A columns", ({ columns, multiplierTenths }) => {
     const reelColumns = Array.from({ length: 5 }, (_, column) => [
       column < columns ? card("A") : bonus(),
       bonus(),
       bonus(),
     ]);
 
-    expect(evaluateWays(fromColumns(reelColumns), PAYTABLE, 20).totalWinCents).toBe(multiplier * 20);
+    expect(evaluateWays(fromColumns(reelColumns), PAYTABLE, 20).totalWinCents).toBe(
+      multiplierTenths * (20 / PAYOUT_MULTIPLIER_SCALE),
+    );
   });
 
   it("scales the same outcome from the minimum through the maximum configured bet", () => {
@@ -43,12 +45,12 @@ describe("evaluateWays", () => {
       [card("A")],
       [card("A")],
       [card("A")],
-      [bonus()],
-      [bonus()],
+      [card("A")],
+      [card("A")],
     ]);
 
-    expect(evaluateWays(grid, PAYTABLE, 20).totalWinCents).toBe(100);
-    expect(evaluateWays(grid, PAYTABLE, 50_000).totalWinCents).toBe(250_000);
+    expect(evaluateWays(grid, PAYTABLE, 20).totalWinCents).toBe(104);
+    expect(evaluateWays(grid, PAYTABLE, 50_000).totalWinCents).toBe(260_000);
   });
 
   it("multiplies matching symbol counts into the number of ways", () => {
@@ -62,7 +64,7 @@ describe("evaluateWays", () => {
     const evaluation = evaluateWays(grid, PAYTABLE, 20);
 
     expect(evaluation.wins[0]?.ways).toBe(12);
-    expect(evaluation.totalWinCents).toBe(240);
+    expect(evaluation.totalWinCents).toBe(24);
   });
 
   it("allows WILD cells to support every win containing a natural target symbol", () => {
@@ -72,7 +74,7 @@ describe("evaluateWays", () => {
 
     expect(evaluation.wins.map((win) => win.symbol)).toEqual(["K", "A"]);
     expect(evaluation.wins.map((win) => win.ways)).toEqual([8, 8]);
-    expect(evaluation.totalWinCents).toBe(1_440);
+    expect(evaluation.totalWinCents).toBe(112);
   });
 
   it("awards a pure-WILD result once as the highest-paying A symbol", () => {
@@ -86,7 +88,13 @@ describe("evaluateWays", () => {
     const evaluation = evaluateWays(grid, PAYTABLE, 20);
 
     expect(evaluation.wins).toHaveLength(1);
-    expect(evaluation.wins[0]).toMatchObject({ symbol: "A", columns: 3, ways: 1, amountCents: 100 });
+    expect(evaluation.wins[0]).toMatchObject({
+      symbol: "A",
+      columns: 3,
+      ways: 1,
+      multiplierTenths: 5,
+      amountCents: 10,
+    });
   });
 
   it("ignores all bonus symbols in card wins", () => {
@@ -105,12 +113,42 @@ describe("evaluateWays", () => {
       [card("A")],
       [card("A")],
       [card("A")],
+      [card("A")],
+      [card("A")],
+    ]);
+
+    expect(() => evaluateWays(grid, PAYTABLE, Number.MAX_SAFE_INTEGER - 1)).toThrow(
+      "Ways payout exceeds the safe integer range",
+    );
+  });
+
+  it("rejects bets that cannot produce exact tenth-step payouts", () => {
+    const grid = fromColumns([
+      [card("A")],
+      [card("A")],
+      [card("A")],
       [bonus()],
       [bonus()],
     ]);
 
-    expect(() => evaluateWays(grid, PAYTABLE, Number.MAX_SAFE_INTEGER)).toThrow(
-      "Ways payout exceeds the safe integer range",
+    expect(() => evaluateWays(grid, PAYTABLE, 21)).toThrow("Bet must be divisible by 10 cents");
+  });
+
+  it("rejects fractional paytable units", () => {
+    const grid = fromColumns([
+      [card("A")],
+      [card("A")],
+      [card("A")],
+      [bonus()],
+      [bonus()],
+    ]);
+    const invalidPaytable = {
+      ...PAYTABLE,
+      A: { ...PAYTABLE.A, 3: 0.5 },
+    };
+
+    expect(() => evaluateWays(grid, invalidPaytable, 20)).toThrow(
+      "Paytable multipliers must be positive integer tenths",
     );
   });
 });

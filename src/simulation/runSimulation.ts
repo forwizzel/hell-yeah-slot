@@ -76,6 +76,7 @@ function simulate(options: SimulationOptions): SimulationStats {
     GAME_CONFIG.belowThresholdTriggerChances,
     GAME_CONFIG.beerFreeSpins,
     GAME_CONFIG.cigaretteFreeSpins,
+    GAME_CONFIG.freeSpinBaseMultiplier,
     GAME_CONFIG.cigaretteMultiplierMinimum,
     GAME_CONFIG.cigaretteMultiplierMaximum,
   );
@@ -214,6 +215,7 @@ function printResults(options: SimulationOptions, stats: SimulationStats): void 
   console.log(`Total RTP: ${percentage(totalWonCents, stats.totalWageredCents)}`);
   console.log(`Base-game RTP: ${percentage(stats.baseGameWonCents, stats.totalWageredCents)}`);
   console.log(`Free-spin RTP: ${percentage(stats.freeSpinsWonCents, stats.totalWageredCents)}`);
+  console.log(`Bonus share of return: ${percentage(stats.freeSpinsWonCents, totalWonCents)}`);
   console.log(`Paid-round hit frequency: ${percentage(stats.winningPaidRounds, stats.paidBaseSpins)}`);
   console.log(`Free-spin feature rate: ${percentage(stats.freeSpinFeatures, stats.paidBaseSpins)}`);
   console.log(`Beer-only feature rate: ${percentage(stats.beerFeatures, stats.paidBaseSpins)}`);

@@ -162,12 +162,19 @@ export class GameController {
     this.state.phase = "bonus-intro";
     this.logTrigger(trigger.beer);
     this.logTrigger(trigger.cigarette);
-    this.view.addLog(`${featureLabel(trigger.mode)} started with ${trigger.startingSpins} free spins at x${trigger.multiplier}.`);
+    this.view.addLog(
+      `${featureLabel(trigger.mode)} started with ${trigger.startingSpins} free spins at x${this.state.freeSpins.multiplier}.`,
+    );
     this.render();
     if (playWinnerSound) {
       this.view.playSound("symbol-winner");
     }
-    await this.view.wait(evaluationDelay * 2);
+    const multiplierRevealDuration = trigger.mode === "beer"
+      ? evaluationDelay * 2
+      : spinDuration <= GAME_CONFIG.quickSpinDurationMs
+        ? GAME_CONFIG.quickMultiplierRevealDurationMs
+        : GAME_CONFIG.normalMultiplierRevealDurationMs;
+    await this.view.playBonusIntroReveal(this.state.freeSpins, multiplierRevealDuration);
 
     while (this.state.freeSpins.remainingSpins > 0) {
       const previousState = this.state.freeSpins;
@@ -346,6 +353,7 @@ export class GameController {
       GAME_CONFIG.belowThresholdTriggerChances,
       GAME_CONFIG.beerFreeSpins,
       GAME_CONFIG.cigaretteFreeSpins,
+      GAME_CONFIG.freeSpinBaseMultiplier,
       GAME_CONFIG.cigaretteMultiplierMinimum,
       GAME_CONFIG.cigaretteMultiplierMaximum,
     );

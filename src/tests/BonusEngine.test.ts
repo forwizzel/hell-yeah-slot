@@ -20,7 +20,7 @@ function gridWith(symbols: ReadonlyArray<BonusSymbolId>): Grid {
 }
 
 function engine(random = new ControlledRandomSource()): BonusEngine {
-  return new BonusEngine(random, CHANCES, 10, 3, 2, 10);
+  return new BonusEngine(random, CHANCES, 10, 3, 6, 2, 10);
 }
 
 function activeState(overrides: Partial<FreeSpinState> = {}): FreeSpinState {
@@ -97,7 +97,20 @@ describe("BonusEngine", () => {
       throw new Error("Expected free spins");
     }
 
-    expect(bonusEngine.startFreeSpins(trigger, 700)).toEqual(activeState({ triggeringBetCents: 700 }));
+    expect(bonusEngine.startFreeSpins(trigger, 700)).toEqual(activeState({
+      triggeringBetCents: 700,
+      multiplier: 6,
+    }));
+  });
+
+  it("combines the x6 free-spin baseline with the initial Cigarette multiplier", () => {
+    const bonusEngine = engine(new ControlledRandomSource([], [8]));
+    const trigger = bonusEngine.resolveBaseTrigger(gridWith(["CIGARETTE", "CIGARETTE", "CIGARETTE"]));
+    if (trigger.kind !== "free-spins") {
+      throw new Error("Expected free spins");
+    }
+
+    expect(bonusEngine.startFreeSpins(trigger, 500).multiplier).toBe(60);
   });
 
   it("pays with the multiplier active before retrigger changes", () => {
@@ -179,5 +192,26 @@ describe("BonusEngine", () => {
       gridWith(["CIGARETTE", "CIGARETTE", "CIGARETTE"]),
       0,
     )).toThrow("Free-spin multiplier exceeds the safe integer range");
+  });
+
+  it("validates the free-spin baseline multiplier", () => {
+    expect(() => new BonusEngine(new ControlledRandomSource(), CHANCES, 10, 3, 0, 2, 10)).toThrow(
+      "Free-spin base multiplier must be a positive integer",
+    );
+  });
+
+  it("rejects an initial effective multiplier outside the safe integer range", () => {
+    const trigger = {
+      kind: "free-spins",
+      mode: "cigarette",
+      startingSpins: 3,
+      multiplier: Number.MAX_SAFE_INTEGER,
+      beer: null,
+      cigarette: null,
+    } as const;
+
+    expect(() => engine().startFreeSpins(trigger, 500)).toThrow(
+      "Initial free-spin multiplier exceeds the safe integer range",
+    );
   });
 });

@@ -37,7 +37,7 @@ export interface SymbolWin {
   readonly symbol: CardSymbolId;
   readonly columns: number;
   readonly ways: number;
-  readonly multiplier: number;
+  readonly multiplierTenths: number;
   readonly amountCents: number;
   readonly positions: Position[];
 }

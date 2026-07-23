@@ -1,6 +1,8 @@
 import { Application, Assets, Container, Graphics, Sprite, Texture } from "pixi.js";
 import { GAME_CONFIG } from "../config/gameConfig";
+import { REEL_STRIPS } from "../config/reelStrips";
 import type { CardSymbolId, BonusSymbolId, Cell, Grid, Position } from "../core/types";
+import { ReelStripCycle } from "./ReelStripCycle";
 
 const WIDTH = 750;
 const HEIGHT = 450;
@@ -8,18 +10,6 @@ const GAP = 8;
 const MARGIN = 12;
 const CELL_WIDTH = (WIDTH - MARGIN * 2 - GAP * (GAME_CONFIG.columns - 1)) / GAME_CONFIG.columns;
 const CELL_HEIGHT = (HEIGHT - MARGIN * 2 - GAP * (GAME_CONFIG.rows - 1)) / GAME_CONFIG.rows;
-const CYCLE_CELLS = [
-  { kind: "card", symbol: "10" },
-  { kind: "card", symbol: "J" },
-  { kind: "card", symbol: "Q" },
-  { kind: "card", symbol: "K" },
-  { kind: "card", symbol: "A" },
-  { kind: "wild" },
-  { kind: "bonus", symbol: "BEER" },
-  { kind: "bonus", symbol: "CIGARETTE" },
-  { kind: "bonus", symbol: "SWORD" },
-] as const satisfies readonly Cell[];
-
 type CellAsset = CardSymbolId | BonusSymbolId | "WILD";
 
 const CELL_ASSET_PATHS: Record<CellAsset, string> = {
@@ -55,6 +45,7 @@ interface ReelSpinState {
   finalSequenceStarted: boolean;
   finalSequenceComplete: boolean;
   locked: boolean;
+  readonly stripCycle: ReelStripCycle;
 }
 
 type CellStyle = "card" | "wild" | "beer" | "cigarette" | "sword";
@@ -169,6 +160,7 @@ export class ReelGridView {
       finalSequenceStarted: false,
       finalSequenceComplete: false,
       locked: false,
+      stripCycle: createStripCycle(column),
     }));
 
     return new Promise((resolve) => {
@@ -330,10 +322,6 @@ function cellAsset(cell: Cell): CellAsset {
   return cell.symbol;
 }
 
-function randomCycleCell(): Cell {
-  return CYCLE_CELLS[Math.floor(Math.random() * CYCLE_CELLS.length)]!;
-}
-
 function recycleReelCell(reel: ReelVisual, draw: (cell: CellVisual) => void): void {
   const recycled = reel.cells.pop();
   if (recycled === undefined) {
@@ -351,11 +339,19 @@ function recycleSpinCell(
   state: ReelSpinState,
   draw: (cell: CellVisual, symbol: Cell) => void,
 ): void {
-  const symbol = state.finalSequenceStarted ? state.finalQueue.shift() : randomCycleCell();
+  const symbol = state.finalSequenceStarted ? state.finalQueue.shift() : state.stripCycle.takeNextCell();
   if (symbol === undefined) {
     throw new Error("Final reel sequence was exhausted before settling");
   }
   recycleReelCell(reel, (cell) => draw(cell, symbol));
+}
+
+function createStripCycle(column: number): ReelStripCycle {
+  const strip = REEL_STRIPS[column];
+  if (strip === undefined) {
+    throw new Error("Animated reel strip was not configured");
+  }
+  return new ReelStripCycle(strip, Math.floor(Math.random() * strip.length));
 }
 
 function clamp(value: number, minimum: number, maximum: number): number {

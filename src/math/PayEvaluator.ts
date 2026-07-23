@@ -1,4 +1,9 @@
-import { CARD_SYMBOLS, type MatchLength, type Paytable } from "../config/paytable";
+import {
+  CARD_SYMBOLS,
+  PAYOUT_MULTIPLIER_SCALE,
+  type MatchLength,
+  type Paytable,
+} from "../config/paytable";
 import type { CardSymbolId, Grid, PayEvaluation, Position, SymbolWin } from "../core/types";
 import { safeAdd, safeMultiply } from "./safeInteger";
 
@@ -6,6 +11,9 @@ export function evaluateWays(grid: Grid, paytable: Paytable, betCents: number): 
   validateGrid(grid);
   if (!Number.isSafeInteger(betCents) || betCents <= 0) {
     throw new RangeError("Bet must be a positive integer number of cents");
+  }
+  if (betCents % PAYOUT_MULTIPLIER_SCALE !== 0) {
+    throw new RangeError(`Bet must be divisible by ${PAYOUT_MULTIPLIER_SCALE} cents`);
   }
 
   const wins: SymbolWin[] = [];
@@ -85,14 +93,25 @@ function createWin(
 ): SymbolWin {
   const columns = columnPositions.length as MatchLength;
   const ways = columnPositions.reduce((total, positions) => total * positions.length, 1);
-  const multiplier = paytable[symbol][columns];
-  const waysAward = safeMultiply(ways, multiplier, "Ways award exceeds the safe integer range");
+  const multiplierTenths = paytable[symbol][columns];
+  if (!Number.isSafeInteger(multiplierTenths) || multiplierTenths <= 0) {
+    throw new RangeError("Paytable multipliers must be positive integer tenths");
+  }
+  const waysAwardTenths = safeMultiply(
+    ways,
+    multiplierTenths,
+    "Ways award exceeds the safe integer range",
+  );
   return {
     symbol,
     columns,
     ways,
-    multiplier,
-    amountCents: safeMultiply(waysAward, betCents, "Ways payout exceeds the safe integer range"),
+    multiplierTenths,
+    amountCents: safeMultiply(
+      waysAwardTenths,
+      betCents / PAYOUT_MULTIPLIER_SCALE,
+      "Ways payout exceeds the safe integer range",
+    ),
     positions: columnPositions.flat(),
   };
 }

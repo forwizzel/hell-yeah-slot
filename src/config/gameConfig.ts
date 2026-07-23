@@ -41,6 +41,7 @@ export const GAME_CONFIG = {
   columns: 5,
   beerFreeSpins: 10,
   cigaretteFreeSpins: 3,
+  freeSpinBaseMultiplier: 6,
   cigaretteMultiplierMinimum: 2,
   cigaretteMultiplierMaximum: 10,
   belowThresholdTriggerChances: {
@@ -55,4 +56,6 @@ export const GAME_CONFIG = {
   reelSettleDurationMs: 320,
   normalEvaluationDelayMs: 420,
   quickEvaluationDelayMs: 90,
+  normalMultiplierRevealDurationMs: 2_400,
+  quickMultiplierRevealDurationMs: 180,
 } as const;

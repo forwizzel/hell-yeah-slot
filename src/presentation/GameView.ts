@@ -2,6 +2,7 @@ import { GAME_CONFIG } from "../config/gameConfig";
 import { formatUsd } from "../core/formatUsd";
 import type { BonusSummary, FreeSpinMode, FreeSpinState, GameViewModel, Grid, Position } from "../core/types";
 import { ControlPanel, type ControlActions } from "./ControlPanel";
+import { createMultiplierRollValues } from "./BonusMultiplierReveal";
 import { EventLogView } from "./EventLogView";
 import { GameAudio, type GameSoundEffect } from "./GameAudio";
 import { ReelGridView } from "./ReelGridView";
@@ -20,6 +21,7 @@ export class GameView {
   private readonly featureOverlay = requiredElement<HTMLElement>("feature-overlay");
   private readonly featureKicker = requiredElement<HTMLElement>("feature-kicker");
   private readonly featureTitle = requiredElement<HTMLElement>("feature-title");
+  private readonly featureMultiplier = requiredElement<HTMLElement>("feature-multiplier");
   private readonly featureMessage = requiredElement<HTMLElement>("feature-message");
 
   private constructor(
@@ -96,6 +98,49 @@ export class GameView {
     this.log.clear();
   }
 
+  async playBonusIntroReveal(state: FreeSpinState, durationMs: number): Promise<void> {
+    const isBeer = state.mode === "beer";
+    const skipRoll = durationMs <= GAME_CONFIG.quickMultiplierRevealDurationMs
+      || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const title = `${state.remainingSpins} FREE SPINS`;
+    const message = isBeer
+      ? `Beer free spins start at an X${state.multiplier} multiplier.`
+      : `X${GAME_CONFIG.freeSpinBaseMultiplier} baseline x selected multiplier = X${state.multiplier}.`;
+    this.showFeatureOverlay(
+      isBeer ? "Beer bonus" : state.mode === "cigarette" ? "Cigarette bonus" : "Beer + Cigarette bonus",
+      title,
+      message,
+      "intro",
+      `feature-overlay--${state.mode}`,
+    );
+    this.featureMultiplier.hidden = false;
+
+    if (isBeer) {
+      this.featureMultiplier.textContent = `X${state.multiplier}`;
+      this.featureMultiplier.className = "feature-overlay__multiplier feature-overlay__multiplier--impact";
+      await this.wait(durationMs);
+      return;
+    }
+
+    const rollValues = createMultiplierRollValues(state.multiplier);
+    this.featureMultiplier.className = "feature-overlay__multiplier feature-overlay__multiplier--rolling";
+    if (skipRoll) {
+      this.featureMultiplier.textContent = `X${state.multiplier}`;
+      this.featureMultiplier.className = "feature-overlay__multiplier feature-overlay__multiplier--locked";
+      await this.wait(durationMs);
+      return;
+    }
+
+    const rollStepDuration = Math.max(45, Math.floor((durationMs * 0.78) / rollValues.length));
+    for (const multiplier of rollValues) {
+      this.featureMultiplier.textContent = `X${multiplier}`;
+      await this.wait(rollStepDuration);
+    }
+    this.featureMultiplier.className = "feature-overlay__multiplier feature-overlay__multiplier--locked";
+    const remainingDuration = Math.max(durationMs - rollStepDuration * rollValues.length, 0);
+    await this.wait(remainingDuration);
+  }
+
   private renderFeatureOverlay(model: GameViewModel): void {
     if (model.phase === "sword-bonus") {
       this.showFeatureOverlay("Sword feature", "JACKPOT!", "Jackpot interstitial", "jackpot");
@@ -117,6 +162,7 @@ export class GameView {
 
     this.featureOverlay.hidden = true;
     this.featureOverlay.className = "feature-overlay";
+    this.featureMultiplier.hidden = true;
   }
 
   private showFeatureOverlay(
@@ -124,11 +170,14 @@ export class GameView {
     title: string,
     message: string,
     variant: "intro" | "jackpot" | "complete",
+    modifier = "",
   ): void {
     this.featureKicker.textContent = kicker;
     this.featureTitle.textContent = title;
+    this.featureMultiplier.hidden = true;
+    this.featureMultiplier.className = "feature-overlay__multiplier";
     this.featureMessage.textContent = message;
-    this.featureOverlay.className = `feature-overlay feature-overlay--${variant}`;
+    this.featureOverlay.className = `feature-overlay feature-overlay--${variant}${modifier.length > 0 ? ` ${modifier}` : ""}`;
     this.featureOverlay.setAttribute("aria-live", variant === "jackpot" ? "assertive" : "polite");
     this.featureOverlay.hidden = false;
   }

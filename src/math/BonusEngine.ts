@@ -23,6 +23,7 @@ export class BonusEngine {
     private readonly triggerChances: TriggerChances,
     private readonly beerFreeSpins: number,
     private readonly cigaretteFreeSpins: number,
+    private readonly freeSpinBaseMultiplier: number,
     private readonly multiplierMinimum: number,
     private readonly multiplierMaximum: number,
   ) {
@@ -44,6 +45,9 @@ export class BonusEngine {
     if (!Number.isSafeInteger(multiplierMinimum) || !Number.isSafeInteger(multiplierMaximum)
       || multiplierMinimum < 1 || multiplierMaximum < multiplierMinimum) {
       throw new RangeError("Multiplier range is invalid");
+    }
+    if (!Number.isSafeInteger(freeSpinBaseMultiplier) || freeSpinBaseMultiplier < 1) {
+      throw new RangeError("Free-spin base multiplier must be a positive integer");
     }
   }
 
@@ -74,11 +78,16 @@ export class BonusEngine {
     if (!Number.isSafeInteger(triggeringBetCents) || triggeringBetCents <= 0) {
       throw new RangeError("Triggering bet must be a positive integer number of cents");
     }
+    const multiplier = safeMultiply(
+      this.freeSpinBaseMultiplier,
+      trigger.multiplier,
+      "Initial free-spin multiplier exceeds the safe integer range",
+    );
     return {
       mode: trigger.mode,
       remainingSpins: trigger.startingSpins,
       totalSpinsPlayed: 0,
-      multiplier: trigger.multiplier,
+      multiplier,
       triggeringBetCents,
       accumulatedWinCents: 0,
     };

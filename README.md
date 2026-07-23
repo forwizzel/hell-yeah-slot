@@ -46,7 +46,7 @@ npm run simulate -- --spins=1000000 --seed=my-seed
 
 `--spins` must be a positive safe integer. `--seed` must be non-empty. Invalid values produce a warning and fall back to the defaults. Triggered free spins are completed in addition to the requested paid spins.
 
-The report uses US-dollar amounts, separates base-game and free-spin RTP, and includes hit rates, feature rates, activations, retriggers, maximum multiplier, and maximum paid-round win.
+The report uses US-dollar amounts, separates base-game and free-spin RTP, reports the bonus share of return, and includes hit rates, feature rates, activations, retriggers, maximum multiplier, and maximum paid-round win.
 
 ## Playing
 
@@ -64,14 +64,24 @@ Controls that can mutate the game are disabled while a round or feature is runni
 
 Card symbols `10`, `J`, `Q`, `K`, and `A` pay left to right from the first reel. `WILD` substitutes for card symbols. `BEER`, `CIGARETTE`, and `SWORD` are non-paying special symbols.
 
+| Symbol | 3 columns | 4 columns | 5 columns |
+| --- | ---: | ---: | ---: |
+| `10` | x0.1 | x0.1 | x0.1 |
+| `J` | x0.1 | x0.1 | x0.2 |
+| `Q` | x0.2 | x0.2 | x0.4 |
+| `K` | x0.2 | x0.4 | x0.8 |
+| `A` | x0.5 | x0.8 | x5.2 |
+
 | Feature | Initial award |
 | --- | --- |
-| BEER | 10 free spins at x1 |
-| CIGARETTE | 3 free spins with a uniformly selected x2 through x10 multiplier |
-| BEER + CIGARETTE | 10 free spins with a uniformly selected x2 through x10 multiplier |
+| BEER | 10 free spins at x6 |
+| CIGARETTE | 3 free spins at x12 through x60: the x6 baseline times a uniform x2 through x10 selection |
+| BEER + CIGARETTE | 10 free spins at x12 through x60: the x6 baseline times a uniform x2 through x10 selection |
 | SWORD | A placeholder `JACKPOT` interstitial with no monetary award |
 
-BEER and CIGARETTE can activate naturally or through configured below-threshold chances on paid spins. Free-spin retriggers are natural-only: BEER adds spins, while CIGARETTE compounds the active multiplier. SWORD takes priority when outcomes overlap.
+BEER and CIGARETTE can activate naturally or through configured below-threshold chances on paid spins. Free-spin retriggers are natural-only: BEER adds spins, while CIGARETTE compounds the active multiplier by another uniform x2 through x10 selection. The x6 baseline is applied once at feature initialization and is included in the displayed multiplier. SWORD takes priority when outcomes overlap.
+
+The configured math targets approximately 98% theoretical RTP: about 28.76 percentage points from paid-spin ways and 69.24 from free spins. Free spins therefore account for about 70.65% of expected return. This design target is not a statistical or regulatory certification.
 
 See [Game Rules and Edge Cases](Edge-Cases.md) for the authoritative paytable, trigger probabilities, retrigger order, WILD treatment, SWORD priority, and round-accounting rules.
 
@@ -104,7 +114,7 @@ Artwork is stored in `graphics/`; audio is stored in `sfx/sfx/`. All runtime ass
 
 ## Current Limitations
 
-- The reel strips, paytable, and probabilities are illustrative and have not been balanced or certified.
+- The game targets approximately 98% theoretical RTP but has not been independently balanced or certified.
 - SWORD has no playable game or monetary award.
 - There is no autoplay, persistence, backend, account system, or production asset pipeline.
 - Refreshing the page resets the balance and seed state.

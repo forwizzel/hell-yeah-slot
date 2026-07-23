@@ -124,7 +124,7 @@ export class ReelGridView {
       ] as const),
     );
     const application = new Application();
-    await application.init({ width: WIDTH, height: HEIGHT, backgroundColor: 0x202427, antialias: true });
+    await application.init({ width: WIDTH, height: HEIGHT, backgroundColor: 0x111819, antialias: true });
     application.canvas.setAttribute("aria-label", "Three row by five column slot grid");
     application.canvas.setAttribute("role", "img");
     host.append(application.canvas);

@@ -5,6 +5,7 @@ export class EventLogView {
   ) {}
 
   add(message: string): void {
+    this.element.querySelector(".event-log__empty")?.remove();
     const entry = document.createElement("li");
     entry.textContent = message;
     this.element.append(entry);
@@ -16,6 +17,9 @@ export class EventLogView {
   }
 
   clear(): void {
-    this.element.replaceChildren();
+    const placeholder = document.createElement("li");
+    placeholder.className = "event-log__empty";
+    placeholder.textContent = "Ready for a spin.";
+    this.element.replaceChildren(placeholder);
   }
 }

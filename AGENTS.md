@@ -21,7 +21,7 @@
 - `src/main.ts` boots the browser app; `GameController` owns sequencing and state transitions; `src/presentation/` owns rendering, animation, audio, and control wiring but not game outcomes. `src/simulation/runSimulation.ts` is a Node entrypoint that must use the same config and `src/math/` APIs as browser play.
 - Keep `ReelEngine`, `BonusEngine`, and payout evaluation free of DOM/PixiJS dependencies. Complete outcomes, including chance triggers and retriggers, must be resolved before animation; presentation must never reroll or reinterpret them.
 - `ReelEngine` and `BonusEngine` must share one injected `RandomSource`. Seed reproducibility depends on preserving random-call order across reel stops, chance checks, multiplier picks, free spins, and retriggers.
-- Credits, bets, counters, multipliers, and payouts are integer-only and must remain JavaScript safe integers. Use the checks in `src/math/safeInteger.ts`; do not silently round or cap overflow.
+- Balances, bets, and payouts are stored as integer cents; counters and multipliers are also integer-only. All must remain JavaScript safe integers. Use the checks in `src/math/safeInteger.ts`; do not silently round or cap overflow.
 - Development bonus buttons are Vite-development-only, charge no wager, and still consume the active random sequence. Preserve both the UI removal and the controller's `import.meta.env.DEV` guard.
 - Browser assets live outside `src/`: graphics under `graphics/`, audio under the intentionally nested `sfx/sfx/`. They are bundled through `new URL(..., import.meta.url)` references; do not treat those paths as public-folder URLs.
 - Presentation changes must preserve usability around 320px width and a text or ARIA equivalent for visual symbol content.

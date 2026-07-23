@@ -2,13 +2,15 @@
 
 This document is the authoritative public contract for current game behavior, including ambiguous and overlapping outcomes. The old Hold-and-Win mechanic was removed; `Hold-and-Win-Slot-Prototype-Spec.md` is retained only as superseded history.
 
-## Credits and Rounds
+## Currency and Rounds
 
-- All credits, bets, counters, multipliers, and payouts are integers.
+- Monetary values are displayed as US dollars with two decimal places and stored internally as integer cents. Counters and multipliers are also integers.
+- The starting balance is `$1,000.00`, and the default bet is `$10.00`.
+- The available bets are `$0.20`, `$0.40`, `$0.60`, `$0.80`, `$1.00`, `$1.20`, `$1.40`, `$1.60`, `$1.80`, `$2.00`, `$2.50`, `$3.00`, `$5.00`, `$10.00`, `$25.00`, `$50.00`, `$75.00`, `$100.00`, `$150.00`, `$200.00`, `$250.00`, `$300.00`, `$400.00`, and `$500.00`.
 - A paid spin deducts the selected bet. Triggered free spins place no additional wager and use the triggering bet.
 - A paid round awards its ordinary ways win plus every free-spin win from a triggered feature.
 - A free-spin ways win is multiplied by the multiplier active at the start of that spin.
-- SWORD currently adds no credits, but ordinary card/WILD ways on the same grid still pay.
+- SWORD currently adds no money, but ordinary card/WILD ways on the same grid still pay.
 - Values must remain within the JavaScript safe-integer range. An overflow rejects the operation instead of rounding or capping it.
 
 ## Reels and Symbols
@@ -24,7 +26,7 @@ This document is the authoritative public contract for current game behavior, in
 A card symbol wins when that symbol or WILD appears in at least three consecutive columns beginning with the leftmost column. Matching cells in each participating column are multiplied to obtain the number of ways.
 
 ```text
-award = ways x paytable multiplier x bet
+award in cents = ways x paytable multiplier x bet in cents
 ```
 
 | Symbol | 3 columns | 4 columns | 5 columns |
@@ -63,7 +65,7 @@ BEER and CIGARETTE can also activate by chance on paid spins when exactly one or
 - **BEER:** 10 free spins at x1.
 - **CIGARETTE:** 3 free spins with one uniformly selected integer multiplier from x2 through x10, inclusive.
 - **Combined:** 10 free spins, not 13, with one uniformly selected CIGARETTE multiplier from x2 through x10.
-- **SWORD:** a placeholder `JACKPOT` interstitial with no credit award.
+- **SWORD:** a placeholder `JACKPOT` interstitial with no monetary award.
 
 The active free-spin multiplier applies separately to each spin's ordinary ways payout. It is not a one-time award and pays nothing by itself.
 
@@ -93,7 +95,7 @@ The active free-spin multiplier applies separately to each spin's ordinary ways 
 - Normal browser play uses Web Crypto randomness. A non-empty applied seed starts a deterministic sequence.
 - The same seed reproduces the same results only with the same code, configuration, starting state, and player actions.
 - Reel stops, paid-spin chance checks, multiplier picks, free spins, and retriggers consume one sequence in execution order.
-- Resetting while a seed is active restores the initial credits and bet and restarts that seed's sequence. Clearing the seed restores Web Crypto randomness.
+- Resetting while a seed is active restores the initial balance and bet and restarts that seed's sequence. Clearing the seed restores Web Crypto randomness.
 
 ## Development Triggers
 
@@ -107,7 +109,7 @@ The active free-spin multiplier applies separately to each spin's ordinary ways 
 
 - The requested spin count includes paid base spins only. The simulator completes every triggered free-spin feature before starting the next paid spin.
 - Total, base-game, and free-spin RTP all use paid base-spin wagers as the denominator; free spins do not add wager.
-- Paid-round hit frequency counts a round as a hit when either the base spin or its complete free-spin feature awards credits.
+- Paid-round hit frequency counts a round as a hit when either the base spin or its complete free-spin feature awards money.
 - BEER-only, CIGARETTE-only, combined, and SWORD feature rates are exclusive paid-spin outcomes.
 - Results are repeatable for the same spin count, seed, code, and configuration.
 - Reports are observed single-threaded samples, not confidence intervals, certification, or a mathematical proof.

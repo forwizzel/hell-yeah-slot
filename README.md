@@ -46,15 +46,15 @@ npm run simulate -- --spins=1000000 --seed=my-seed
 
 `--spins` must be a positive safe integer. `--seed` must be non-empty. Invalid values produce a warning and fall back to the defaults. Triggered free spins are completed in addition to the requested paid spins.
 
-The report separates base-game and free-spin RTP and includes hit rates, feature rates, activations, retriggers, maximum multiplier, and maximum paid-round win.
+The report uses US-dollar amounts, separates base-game and free-spin RTP, and includes hit rates, feature rates, activations, retriggers, maximum multiplier, and maximum paid-round win.
 
 ## Playing
 
-- **Spin** places the selected integer-credit wager and plays one complete paid round.
-- **- / +** changes the bet from 1 through 100 in steps of 1.
+- **Spin** places the selected US-dollar wager and plays one complete paid round.
+- **- / +** moves through the configured bets: `$0.20`, `$0.40`, `$0.60`, `$0.80`, `$1.00`, `$1.20`, `$1.40`, `$1.60`, `$1.80`, `$2.00`, `$2.50`, `$3.00`, `$5.00`, `$10.00`, `$25.00`, `$50.00`, `$75.00`, `$100.00`, `$150.00`, `$200.00`, `$250.00`, `$300.00`, `$400.00`, and `$500.00`.
 - **Quick Spin** shortens animation without changing the result.
 - **Sound Off / Sound On** controls all audio; sound begins disabled.
-- **Reset Game** restores 1,000 credits and a bet of 10.
+- **Reset Game** restores a `$1,000.00` balance and a `$10.00` bet.
 - **Apply Seed** starts a deterministic random sequence from a non-empty seed.
 - **Clear Seed** restores browser Web Crypto randomness.
 
@@ -69,7 +69,7 @@ Card symbols `10`, `J`, `Q`, `K`, and `A` pay left to right from the first reel.
 | BEER | 10 free spins at x1 |
 | CIGARETTE | 3 free spins with a uniformly selected x2 through x10 multiplier |
 | BEER + CIGARETTE | 10 free spins with a uniformly selected x2 through x10 multiplier |
-| SWORD | A placeholder `JACKPOT` interstitial with no credit award |
+| SWORD | A placeholder `JACKPOT` interstitial with no monetary award |
 
 BEER and CIGARETTE can activate naturally or through configured below-threshold chances on paid spins. Free-spin retriggers are natural-only: BEER adds spins, while CIGARETTE compounds the active multiplier. SWORD takes priority when outcomes overlap.
 
@@ -105,9 +105,9 @@ Artwork is stored in `graphics/`; audio is stored in `sfx/sfx/`. All runtime ass
 ## Current Limitations
 
 - The reel strips, paytable, and probabilities are illustrative and have not been balanced or certified.
-- SWORD has no playable game or credit award.
+- SWORD has no playable game or monetary award.
 - There is no autoplay, persistence, backend, account system, or production asset pipeline.
-- Refreshing the page resets credits and seed state.
+- Refreshing the page resets the balance and seed state.
 - Browser automation, visual-regression testing, and formal statistical analysis are not included.
 
 The superseded Hold-and-Win brief remains in [`Hold-and-Win-Slot-Prototype-Spec.md`](Hold-and-Win-Slot-Prototype-Spec.md) for project history only. It does not describe the current game.

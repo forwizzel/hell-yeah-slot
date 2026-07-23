@@ -29,8 +29,8 @@ function activeState(overrides: Partial<FreeSpinState> = {}): FreeSpinState {
     remainingSpins: 10,
     totalSpinsPlayed: 0,
     multiplier: 1,
-    triggeringBet: 5,
-    accumulatedWin: 0,
+    triggeringBetCents: 500,
+    accumulatedWinCents: 0,
     ...overrides,
   };
 }
@@ -97,18 +97,18 @@ describe("BonusEngine", () => {
       throw new Error("Expected free spins");
     }
 
-    expect(bonusEngine.startFreeSpins(trigger, 7)).toEqual(activeState({ triggeringBet: 7 }));
+    expect(bonusEngine.startFreeSpins(trigger, 700)).toEqual(activeState({ triggeringBetCents: 700 }));
   });
 
   it("pays with the multiplier active before retrigger changes", () => {
     const result = engine(new ControlledRandomSource([], [3])).applyFreeSpin(
       activeState({ mode: "cigarette", remainingSpins: 3, multiplier: 4 }),
       gridWith(["CIGARETTE", "CIGARETTE", "CIGARETTE"]),
-      2,
+      200,
     );
 
-    expect(result).toMatchObject({ spinWin: 8, cigaretteRetriggered: true, awardedMultiplier: 5 });
-    expect(result.state).toMatchObject({ remainingSpins: 2, multiplier: 20, accumulatedWin: 8 });
+    expect(result).toMatchObject({ spinWinCents: 800, cigaretteRetriggered: true, awardedMultiplier: 5 });
+    expect(result.state).toMatchObject({ remainingSpins: 2, multiplier: 20, accumulatedWinCents: 800 });
   });
 
   it("adds 10 Beer spins rather than resetting the counter", () => {
@@ -126,11 +126,11 @@ describe("BonusEngine", () => {
     const result = engine(new ControlledRandomSource([], [1])).applyFreeSpin(
       activeState({ remainingSpins: 2, multiplier: 1 }),
       gridWith(["BEER", "BEER", "BEER", "CIGARETTE", "CIGARETTE", "CIGARETTE"]),
-      10,
+      1_000,
     );
 
     expect(result).toMatchObject({
-      spinWin: 10,
+      spinWinCents: 1_000,
       beerRetriggered: true,
       cigaretteRetriggered: true,
       addedSpins: 10,
@@ -143,14 +143,14 @@ describe("BonusEngine", () => {
     const result = engine().applyFreeSpin(
       activeState({ remainingSpins: 2 }),
       gridWith(["SWORD", "SWORD", "SWORD", "BEER", "BEER", "BEER"]),
-      3,
+      300,
     );
 
     expect(result).toMatchObject({
       swordTriggered: true,
       beerRetriggered: false,
       cigaretteRetriggered: false,
-      spinWin: 3,
+      spinWinCents: 300,
     });
     expect(result.state).toMatchObject({ remainingSpins: 1, multiplier: 1 });
   });
@@ -161,14 +161,14 @@ describe("BonusEngine", () => {
       remainingSpins: 0,
       totalSpinsPlayed: 14,
       multiplier: 12,
-      accumulatedWin: 420,
+      accumulatedWinCents: 42_000,
     }));
 
     expect(summary).toEqual({
       kind: "free-spins",
       mode: "combined",
       spinsPlayed: 14,
-      payout: 420,
+      payoutCents: 42_000,
       finalMultiplier: 12,
     });
   });

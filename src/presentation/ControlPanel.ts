@@ -1,4 +1,5 @@
 import { GAME_CONFIG } from "../config/gameConfig";
+import { formatUsd } from "../core/formatUsd";
 import type { GameViewModel } from "../core/types";
 
 export type DevelopmentBonusId = "beer" | "cigarette" | "combined" | "sword";
@@ -24,7 +25,7 @@ export class ControlPanel {
   private readonly seedInput = requiredElement<HTMLInputElement>("seed-input");
   private readonly applySeedButton = requiredElement<HTMLButtonElement>("apply-seed");
   private readonly clearSeedButton = requiredElement<HTMLButtonElement>("clear-seed");
-  private readonly creditsValue = requiredElement<HTMLElement>("credits");
+  private readonly balanceValue = requiredElement<HTMLElement>("balance");
   private readonly betValue = requiredElement<HTMLElement>("bet");
   private readonly lastWinValue = requiredElement<HTMLElement>("last-win");
   private readonly phaseValue = requiredElement<HTMLElement>("phase");
@@ -62,14 +63,15 @@ export class ControlPanel {
 
   update(model: GameViewModel, activeSeed: string | null): void {
     const interactive = model.phase === "idle";
-    this.creditsValue.textContent = String(model.credits);
-    this.betValue.textContent = String(model.bet);
-    this.lastWinValue.textContent = String(model.lastWin);
+    this.balanceValue.textContent = formatUsd(model.balanceCents);
+    this.betValue.textContent = formatUsd(model.betCents);
+    this.lastWinValue.textContent = formatUsd(model.lastWinCents);
     this.phaseValue.textContent = formatPhase(model.phase);
 
-    this.spinButton.disabled = !interactive || model.credits < model.bet;
-    this.decreaseButton.disabled = !interactive || model.bet <= GAME_CONFIG.minimumBet;
-    this.increaseButton.disabled = !interactive || model.bet >= GAME_CONFIG.maximumBet;
+    this.spinButton.disabled = !interactive || model.balanceCents < model.betCents;
+    this.decreaseButton.disabled = !interactive || model.betCents === GAME_CONFIG.betOptionsCents[0];
+    this.increaseButton.disabled = !interactive
+      || model.betCents === GAME_CONFIG.betOptionsCents[GAME_CONFIG.betOptionsCents.length - 1];
     this.resetButton.disabled = !interactive;
     this.quickSpinInput.disabled = !interactive;
     this.seedInput.disabled = !interactive;

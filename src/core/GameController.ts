@@ -1,4 +1,4 @@
-import { GAME_CONFIG } from "../config/gameConfig";
+import { GAME_CONFIG, getAdjacentBetCents } from "../config/gameConfig";
 import { PAYTABLE } from "../config/paytable";
 import { REEL_STRIPS } from "../config/reelStrips";
 import { BonusEngine } from "../math/BonusEngine";
@@ -10,6 +10,7 @@ import { safeAdd } from "../math/safeInteger";
 import { SeededRandomSource } from "../math/SeededRandomSource";
 import type { GameView } from "../presentation/GameView";
 import type { DevelopmentBonusId } from "../presentation/ControlPanel";
+import { formatUsd } from "./formatUsd";
 import { GameState } from "./GameState";
 import type {
   BonusActivation,
@@ -31,8 +32,8 @@ export class GameController {
   constructor(private readonly view: GameView) {
     view.bindControls({
       spin: () => { void this.spin(); },
-      decreaseBet: () => this.adjustBet(-GAME_CONFIG.betIncrement),
-      increaseBet: () => this.adjustBet(GAME_CONFIG.betIncrement),
+      decreaseBet: () => this.adjustBet(-1),
+      increaseBet: () => this.adjustBet(1),
       toggleSound: () => this.view.toggleSound(),
       reset: () => this.reset(),
       applySeed: (seed) => this.applySeed(seed),
@@ -47,36 +48,36 @@ export class GameController {
   }
 
   private async spin(): Promise<void> {
-    if (this.state.phase !== "idle" || this.state.credits < this.state.bet) {
+    if (this.state.phase !== "idle" || this.state.balanceCents < this.state.betCents) {
       return;
     }
 
     const quickSpin = this.view.isQuickSpinEnabled();
     const spinDuration = quickSpin ? GAME_CONFIG.quickSpinDurationMs : GAME_CONFIG.normalSpinDurationMs;
     const evaluationDelay = quickSpin ? GAME_CONFIG.quickEvaluationDelayMs : GAME_CONFIG.normalEvaluationDelayMs;
-    const triggeringBet = this.state.bet;
+    const triggeringBetCents = this.state.betCents;
 
     try {
-      this.state.credits -= triggeringBet;
-      this.state.lastWin = 0;
+      this.state.balanceCents -= triggeringBetCents;
+      this.state.lastWinCents = 0;
       this.state.winningPositions = [];
       this.state.freeSpins = null;
       this.state.bonusSummary = null;
       this.state.phase = "base-spinning";
-      this.view.addLog(`Bet ${triggeringBet} placed.`);
+      this.view.addLog(`Bet ${formatUsd(triggeringBetCents)} placed.`);
       this.view.addLog("Base spin started.");
       this.render();
       this.view.playSound("spin");
 
       // The complete paid-spin outcome, including chance triggers, is fixed before animation.
-      const result = this.createPaidSpinResult(triggeringBet);
+      const result = this.createPaidSpinResult(triggeringBetCents);
       const bonusSoundGroups = naturalTriggerPositionGroups(result.bonusTrigger);
       await this.view.animateBaseSpin(result.grid, spinDuration, bonusSoundGroups);
       this.state.grid = result.grid;
       this.state.phase = "base-evaluation";
       this.state.winningPositions = result.winningPositions;
-      this.awardWin(result.regularWin);
-      this.view.addLog(result.regularWin > 0 ? `Base win: ${result.regularWin}.` : "No base win.");
+      this.awardWin(result.regularWinCents);
+      this.view.addLog(result.regularWinCents > 0 ? `Base win: ${formatUsd(result.regularWinCents)}.` : "No base win.");
       this.render();
       await this.view.wait(evaluationDelay);
 
@@ -85,6 +86,7 @@ export class GameController {
       } else if (result.bonusTrigger.kind === "free-spins") {
         await this.playFreeSpins(
           result.bonusTrigger,
+          triggeringBetCents,
           spinDuration,
           evaluationDelay,
           bonusSoundGroups.length > 0,
@@ -107,11 +109,11 @@ export class GameController {
     const quickSpin = this.view.isQuickSpinEnabled();
     const spinDuration = quickSpin ? GAME_CONFIG.quickSpinDurationMs : GAME_CONFIG.normalSpinDurationMs;
     const evaluationDelay = quickSpin ? GAME_CONFIG.quickEvaluationDelayMs : GAME_CONFIG.normalEvaluationDelayMs;
-    this.state.lastWin = 0;
+    this.state.lastWinCents = 0;
     this.state.winningPositions = [];
     this.state.freeSpins = null;
     this.state.bonusSummary = null;
-    this.view.addLog(`[DEV] Forced ${developmentBonusLabel(bonus)} at bet ${this.state.bet}; no wager charged.`);
+    this.view.addLog(`[DEV] Forced ${developmentBonusLabel(bonus)} at bet ${formatUsd(this.state.betCents)}; no wager charged.`);
 
     try {
       if (bonus === "sword") {
@@ -126,7 +128,7 @@ export class GameController {
           beer: null,
           cigarette: null,
         };
-        await this.playFreeSpins(trigger, spinDuration, evaluationDelay, false);
+        await this.playFreeSpins(trigger, this.state.betCents, spinDuration, evaluationDelay, false);
       }
 
       this.state.freeSpins = null;
@@ -137,12 +139,12 @@ export class GameController {
     }
   }
 
-  private createPaidSpinResult(bet: number): SpinResult {
+  private createPaidSpinResult(betCents: number): SpinResult {
     const grid = this.reelEngine.spin();
-    const evaluation = evaluateWays(grid, PAYTABLE, bet);
+    const evaluation = evaluateWays(grid, PAYTABLE, betCents);
     return {
       grid,
-      regularWin: evaluation.totalWin,
+      regularWinCents: evaluation.totalWinCents,
       bonusTrigger: this.bonusEngine.resolveBaseTrigger(grid),
       winningPositions: evaluation.winningPositions,
     };
@@ -150,12 +152,13 @@ export class GameController {
 
   private async playFreeSpins(
     trigger: Extract<BonusTrigger, { kind: "free-spins" }>,
+    triggeringBetCents: number,
     spinDuration: number,
     evaluationDelay: number,
     playWinnerSound: boolean,
   ): Promise<void> {
     this.state.winningPositions = [];
-    this.state.freeSpins = this.bonusEngine.startFreeSpins(trigger, this.state.bet);
+    this.state.freeSpins = this.bonusEngine.startFreeSpins(trigger, triggeringBetCents);
     this.state.phase = "bonus-intro";
     this.logTrigger(trigger.beer);
     this.logTrigger(trigger.cigarette);
@@ -174,8 +177,8 @@ export class GameController {
 
       // Free-spin payout and all retrigger effects are fixed before animation.
       const grid = this.reelEngine.spin();
-      const evaluation = evaluateWays(grid, PAYTABLE, previousState.triggeringBet);
-      const result = this.bonusEngine.applyFreeSpin(previousState, grid, evaluation.totalWin);
+      const evaluation = evaluateWays(grid, PAYTABLE, previousState.triggeringBetCents);
+      const result = this.bonusEngine.applyFreeSpin(previousState, grid, evaluation.totalWinCents);
       const bonusSoundGroups = freeSpinTriggerPositionGroups(grid, result);
       await this.view.animateBaseSpin(grid, spinDuration, bonusSoundGroups);
 
@@ -183,10 +186,12 @@ export class GameController {
       this.state.winningPositions = evaluation.winningPositions;
       this.state.freeSpins = result.state;
       this.state.phase = "free-spin-evaluation";
-      this.awardWin(result.spinWin);
+      this.awardWin(result.spinWinCents);
       const spinNumber = result.state.totalSpinsPlayed;
-      if (result.spinWin > 0) {
-        this.view.addLog(`Free spin ${spinNumber}: ${evaluation.totalWin} x${previousState.multiplier} = ${result.spinWin}.`);
+      if (result.spinWinCents > 0) {
+        this.view.addLog(
+          `Free spin ${spinNumber}: ${formatUsd(evaluation.totalWinCents)} x${previousState.multiplier} = ${formatUsd(result.spinWinCents)}.`,
+        );
       } else {
         this.view.addLog(`Free spin ${spinNumber}: no ways win.`);
       }
@@ -210,7 +215,9 @@ export class GameController {
     const summary = this.bonusEngine.summarize(this.state.freeSpins);
     this.state.bonusSummary = summary;
     this.state.phase = "bonus-complete";
-    this.view.addLog(`${featureLabel(summary.mode)} complete after ${summary.spinsPlayed} spins. Awarded ${summary.payout}.`);
+    this.view.addLog(
+      `${featureLabel(summary.mode)} complete after ${summary.spinsPlayed} spins. Awarded ${formatUsd(summary.payoutCents)}.`,
+    );
     this.render();
     await this.view.wait(evaluationDelay * 2);
   }
@@ -243,11 +250,19 @@ export class GameController {
     this.view.addLog(`${featureLabel(mode)} triggered ${source} with ${activation.symbolCount} symbol${activation.symbolCount === 1 ? "" : "s"}.`);
   }
 
-  private awardWin(amount: number): void {
-    const credits = safeAdd(this.state.credits, amount, "Credit balance exceeds the safe integer range");
-    const lastWin = safeAdd(this.state.lastWin, amount, "Round win exceeds the safe integer range");
-    this.state.credits = credits;
-    this.state.lastWin = lastWin;
+  private awardWin(amountCents: number): void {
+    const balanceCents = safeAdd(
+      this.state.balanceCents,
+      amountCents,
+      "Balance exceeds the safe integer range",
+    );
+    const lastWinCents = safeAdd(
+      this.state.lastWinCents,
+      amountCents,
+      "Round win exceeds the safe integer range",
+    );
+    this.state.balanceCents = balanceCents;
+    this.state.lastWinCents = lastWinCents;
   }
 
   private pickDevelopmentMultiplier(): number {
@@ -264,19 +279,16 @@ export class GameController {
     this.render();
   }
 
-  private adjustBet(change: number): void {
+  private adjustBet(direction: -1 | 1): void {
     if (this.state.phase !== "idle") {
       return;
     }
-    const nextBet = Math.min(
-      GAME_CONFIG.maximumBet,
-      Math.max(GAME_CONFIG.minimumBet, this.state.bet + change),
-    );
-    if (nextBet === this.state.bet) {
+    const nextBetCents = getAdjacentBetCents(this.state.betCents, direction);
+    if (nextBetCents === this.state.betCents) {
       return;
     }
-    this.state.bet = nextBet;
-    this.view.playSound(change > 0 ? "bet-up" : "bet-down");
+    this.state.betCents = nextBetCents;
+    this.view.playSound(direction > 0 ? "bet-up" : "bet-down");
     this.render();
   }
 

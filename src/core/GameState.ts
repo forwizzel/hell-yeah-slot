@@ -2,9 +2,9 @@ import { GAME_CONFIG } from "../config/gameConfig";
 import type { BonusSummary, FreeSpinState, GamePhase, GameViewModel, Grid, Position } from "./types";
 
 export class GameState {
-  credits: number = GAME_CONFIG.startingCredits;
-  bet: number = GAME_CONFIG.defaultBet;
-  lastWin: number = 0;
+  balanceCents: number = GAME_CONFIG.startingBalanceCents;
+  betCents: number = GAME_CONFIG.defaultBetCents;
+  lastWinCents: number = 0;
   phase: GamePhase = "idle";
   grid: Grid = createInitialGrid();
   winningPositions: Position[] = [];
@@ -12,9 +12,9 @@ export class GameState {
   bonusSummary: BonusSummary | null = null;
 
   reset(): void {
-    this.credits = GAME_CONFIG.startingCredits;
-    this.bet = GAME_CONFIG.defaultBet;
-    this.lastWin = 0;
+    this.balanceCents = GAME_CONFIG.startingBalanceCents;
+    this.betCents = GAME_CONFIG.defaultBetCents;
+    this.lastWinCents = 0;
     this.phase = "idle";
     this.grid = createInitialGrid();
     this.winningPositions = [];
@@ -24,9 +24,9 @@ export class GameState {
 
   toViewModel(): GameViewModel {
     return {
-      credits: this.credits,
-      bet: this.bet,
-      lastWin: this.lastWin,
+      balanceCents: this.balanceCents,
+      betCents: this.betCents,
+      lastWinCents: this.lastWinCents,
       phase: this.phase,
       grid: this.grid.map((row) => row.map((cell) => ({ ...cell }))),
       winningPositions: this.winningPositions.map((position) => ({ ...position })),

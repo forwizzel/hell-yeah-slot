@@ -1,6 +1,7 @@
 import { GAME_CONFIG } from "../config/gameConfig";
 import { PAYTABLE } from "../config/paytable";
 import { REEL_STRIPS } from "../config/reelStrips";
+import { formatUsd } from "../core/formatUsd";
 import { BonusEngine } from "../math/BonusEngine";
 import { evaluateWays } from "../math/PayEvaluator";
 import { ReelEngine } from "../math/ReelEngine";
@@ -17,9 +18,9 @@ interface SimulationOptions {
 
 interface SimulationStats {
   paidBaseSpins: number;
-  totalWagered: number;
-  baseGameWon: number;
-  freeSpinsWon: number;
+  totalWageredCents: number;
+  baseGameWonCents: number;
+  freeSpinsWonCents: number;
   winningPaidRounds: number;
   beerFeatures: number;
   cigaretteFeatures: number;
@@ -35,7 +36,7 @@ interface SimulationStats {
   cigaretteRetriggers: number;
   freeSpinSwordInterstitials: number;
   maximumMultiplier: number;
-  maximumTotalPaidRoundWin: number;
+  maximumTotalPaidRoundWinCents: number;
 }
 
 function parseOptions(argumentsList: readonly string[]): SimulationOptions {
@@ -78,12 +79,16 @@ function simulate(options: SimulationOptions): SimulationStats {
     GAME_CONFIG.cigaretteMultiplierMinimum,
     GAME_CONFIG.cigaretteMultiplierMaximum,
   );
-  const bet = GAME_CONFIG.defaultBet;
+  const betCents = GAME_CONFIG.defaultBetCents;
   const stats: SimulationStats = {
     paidBaseSpins: options.spins,
-    totalWagered: safeMultiply(options.spins, bet, "Simulation wager total exceeds the safe integer range"),
-    baseGameWon: 0,
-    freeSpinsWon: 0,
+    totalWageredCents: safeMultiply(
+      options.spins,
+      betCents,
+      "Simulation wager total exceeds the safe integer range",
+    ),
+    baseGameWonCents: 0,
+    freeSpinsWonCents: 0,
     winningPaidRounds: 0,
     beerFeatures: 0,
     cigaretteFeatures: 0,
@@ -99,14 +104,14 @@ function simulate(options: SimulationOptions): SimulationStats {
     cigaretteRetriggers: 0,
     freeSpinSwordInterstitials: 0,
     maximumMultiplier: 1,
-    maximumTotalPaidRoundWin: 0,
+    maximumTotalPaidRoundWinCents: 0,
   };
 
   for (let spin = 0; spin < options.spins; spin += 1) {
     const grid = reelEngine.spin();
-    const baseWin = evaluateWays(grid, PAYTABLE, bet).totalWin;
+    const baseWinCents = evaluateWays(grid, PAYTABLE, betCents).totalWinCents;
     const trigger = bonusEngine.resolveBaseTrigger(grid);
-    let freeSpinWin = 0;
+    let freeSpinWinCents = 0;
 
     if (trigger.kind === "sword") {
       stats.swordFeatures += 1;
@@ -131,12 +136,16 @@ function simulate(options: SimulationOptions): SimulationStats {
         stats.cigaretteChanceActivations += 1;
       }
 
-      let freeSpinState = bonusEngine.startFreeSpins(trigger, bet);
+      let freeSpinState = bonusEngine.startFreeSpins(trigger, betCents);
       stats.maximumMultiplier = Math.max(stats.maximumMultiplier, freeSpinState.multiplier);
       while (freeSpinState.remainingSpins > 0) {
         const freeSpinGrid = reelEngine.spin();
-        const freeSpinBaseWin = evaluateWays(freeSpinGrid, PAYTABLE, freeSpinState.triggeringBet).totalWin;
-        const freeSpinResult = bonusEngine.applyFreeSpin(freeSpinState, freeSpinGrid, freeSpinBaseWin);
+        const freeSpinBaseWinCents = evaluateWays(
+          freeSpinGrid,
+          PAYTABLE,
+          freeSpinState.triggeringBetCents,
+        ).totalWinCents;
+        const freeSpinResult = bonusEngine.applyFreeSpin(freeSpinState, freeSpinGrid, freeSpinBaseWinCents);
         freeSpinState = freeSpinResult.state;
         stats.freeSpinsPlayed += 1;
         stats.maximumMultiplier = Math.max(stats.maximumMultiplier, freeSpinState.multiplier);
@@ -152,16 +161,31 @@ function simulate(options: SimulationOptions): SimulationStats {
       }
 
       const summary = bonusEngine.summarize(freeSpinState);
-      freeSpinWin = summary.payout;
+      freeSpinWinCents = summary.payoutCents;
     }
 
-    const totalPaidRoundWin = safeAdd(baseWin, freeSpinWin, "Paid-round win exceeds the safe integer range");
-    stats.baseGameWon = safeAdd(stats.baseGameWon, baseWin, "Simulation base-win total exceeds the safe integer range");
-    stats.freeSpinsWon = safeAdd(stats.freeSpinsWon, freeSpinWin, "Simulation free-spin total exceeds the safe integer range");
-    if (totalPaidRoundWin > 0) {
+    const totalPaidRoundWinCents = safeAdd(
+      baseWinCents,
+      freeSpinWinCents,
+      "Paid-round win exceeds the safe integer range",
+    );
+    stats.baseGameWonCents = safeAdd(
+      stats.baseGameWonCents,
+      baseWinCents,
+      "Simulation base-win total exceeds the safe integer range",
+    );
+    stats.freeSpinsWonCents = safeAdd(
+      stats.freeSpinsWonCents,
+      freeSpinWinCents,
+      "Simulation free-spin total exceeds the safe integer range",
+    );
+    if (totalPaidRoundWinCents > 0) {
       stats.winningPaidRounds += 1;
     }
-    stats.maximumTotalPaidRoundWin = Math.max(stats.maximumTotalPaidRoundWin, totalPaidRoundWin);
+    stats.maximumTotalPaidRoundWinCents = Math.max(
+      stats.maximumTotalPaidRoundWinCents,
+      totalPaidRoundWinCents,
+    );
   }
 
   return stats;
@@ -176,15 +200,20 @@ function average(total: number, count: number): string {
 }
 
 function printResults(options: SimulationOptions, stats: SimulationStats): void {
-  const totalWon = safeAdd(stats.baseGameWon, stats.freeSpinsWon, "Simulation win total exceeds the safe integer range");
+  const totalWonCents = safeAdd(
+    stats.baseGameWonCents,
+    stats.freeSpinsWonCents,
+    "Simulation win total exceeds the safe integer range",
+  );
   console.log("Bonus Slot Simulation");
   console.log(`Seed: ${options.seed}`);
   console.log(`Paid base spins: ${stats.paidBaseSpins}`);
-  console.log(`Total amount wagered: ${stats.totalWagered}`);
-  console.log(`Total amount won: ${totalWon}`);
-  console.log(`Total RTP: ${percentage(totalWon, stats.totalWagered)}`);
-  console.log(`Base-game RTP: ${percentage(stats.baseGameWon, stats.totalWagered)}`);
-  console.log(`Free-spin RTP: ${percentage(stats.freeSpinsWon, stats.totalWagered)}`);
+  console.log(`Bet per paid spin: ${formatUsd(GAME_CONFIG.defaultBetCents)}`);
+  console.log(`Total amount wagered: ${formatUsd(stats.totalWageredCents)}`);
+  console.log(`Total amount won: ${formatUsd(totalWonCents)}`);
+  console.log(`Total RTP: ${percentage(totalWonCents, stats.totalWageredCents)}`);
+  console.log(`Base-game RTP: ${percentage(stats.baseGameWonCents, stats.totalWageredCents)}`);
+  console.log(`Free-spin RTP: ${percentage(stats.freeSpinsWonCents, stats.totalWageredCents)}`);
   console.log(`Paid-round hit frequency: ${percentage(stats.winningPaidRounds, stats.paidBaseSpins)}`);
   console.log(`Free-spin feature rate: ${percentage(stats.freeSpinFeatures, stats.paidBaseSpins)}`);
   console.log(`Beer-only feature rate: ${percentage(stats.beerFeatures, stats.paidBaseSpins)}`);
@@ -201,7 +230,7 @@ function printResults(options: SimulationOptions, stats: SimulationStats): void 
   console.log(`Cigarette retriggers: ${stats.cigaretteRetriggers} (${percentage(stats.cigaretteRetriggers, stats.freeSpinsPlayed)} of free spins)`);
   console.log(`Sword interstitials during free spins: ${stats.freeSpinSwordInterstitials} (${percentage(stats.freeSpinSwordInterstitials, stats.freeSpinsPlayed)} of free spins)`);
   console.log(`Maximum observed multiplier: x${stats.maximumMultiplier}`);
-  console.log(`Maximum observed total paid-round win: ${stats.maximumTotalPaidRoundWin}`);
+  console.log(`Maximum observed total paid-round win: ${formatUsd(stats.maximumTotalPaidRoundWinCents)}`);
 }
 
 const options = parseOptions(process.argv.slice(2));

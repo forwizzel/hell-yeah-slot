@@ -70,31 +70,35 @@ export class BonusEngine {
     };
   }
 
-  startFreeSpins(trigger: Extract<BonusTrigger, { kind: "free-spins" }>, triggeringBet: number): FreeSpinState {
-    if (!Number.isSafeInteger(triggeringBet) || triggeringBet <= 0) {
-      throw new RangeError("Triggering bet must be a positive integer");
+  startFreeSpins(trigger: Extract<BonusTrigger, { kind: "free-spins" }>, triggeringBetCents: number): FreeSpinState {
+    if (!Number.isSafeInteger(triggeringBetCents) || triggeringBetCents <= 0) {
+      throw new RangeError("Triggering bet must be a positive integer number of cents");
     }
     return {
       mode: trigger.mode,
       remainingSpins: trigger.startingSpins,
       totalSpinsPlayed: 0,
       multiplier: trigger.multiplier,
-      triggeringBet,
-      accumulatedWin: 0,
+      triggeringBetCents,
+      accumulatedWinCents: 0,
     };
   }
 
-  applyFreeSpin(state: FreeSpinState, grid: Grid, baseWin: number): FreeSpinResult {
+  applyFreeSpin(state: FreeSpinState, grid: Grid, baseWinCents: number): FreeSpinResult {
     validateFreeSpinState(state);
     if (state.remainingSpins <= 0) {
       throw new Error("Cannot play a completed free-spin feature");
     }
-    if (!Number.isSafeInteger(baseWin) || baseWin < 0) {
-      throw new RangeError("Base win must be a non-negative integer");
+    if (!Number.isSafeInteger(baseWinCents) || baseWinCents < 0) {
+      throw new RangeError("Base win must be a non-negative integer number of cents");
     }
 
-    const spinWin = safeMultiply(baseWin, state.multiplier, "Free-spin payout exceeds the safe integer range");
-    const accumulatedWin = safeAdd(state.accumulatedWin, spinWin, "Accumulated free-spin win exceeds the safe integer range");
+    const spinWinCents = safeMultiply(baseWinCents, state.multiplier, "Free-spin payout exceeds the safe integer range");
+    const accumulatedWinCents = safeAdd(
+      state.accumulatedWinCents,
+      spinWinCents,
+      "Accumulated free-spin win exceeds the safe integer range",
+    );
     const swordTriggered = findPositions(grid, "SWORD").length >= 3;
     const beerRetriggered = !swordTriggered && findPositions(grid, "BEER").length >= 3;
     const cigaretteRetriggered = !swordTriggered && findPositions(grid, "CIGARETTE").length >= 3;
@@ -114,13 +118,13 @@ export class BonusEngine {
       remainingSpins,
       totalSpinsPlayed: safeAdd(state.totalSpinsPlayed, 1, "Free-spin count exceeds the safe integer range"),
       multiplier,
-      triggeringBet: state.triggeringBet,
-      accumulatedWin,
+      triggeringBetCents: state.triggeringBetCents,
+      accumulatedWinCents,
     };
 
     return {
       state: nextState,
-      spinWin,
+      spinWinCents,
       beerRetriggered,
       cigaretteRetriggered,
       swordTriggered,
@@ -139,7 +143,7 @@ export class BonusEngine {
       kind: "free-spins",
       mode: state.mode,
       spinsPlayed: state.totalSpinsPlayed,
-      payout: state.accumulatedWin,
+      payoutCents: state.accumulatedWinCents,
       finalMultiplier: state.multiplier,
     };
   }
@@ -191,13 +195,19 @@ function nextMode(mode: FreeSpinMode, beer: boolean, cigarette: boolean): FreeSp
 }
 
 function validateFreeSpinState(state: FreeSpinState): void {
-  const values = [state.remainingSpins, state.totalSpinsPlayed, state.multiplier, state.triggeringBet, state.accumulatedWin];
+  const values = [
+    state.remainingSpins,
+    state.totalSpinsPlayed,
+    state.multiplier,
+    state.triggeringBetCents,
+    state.accumulatedWinCents,
+  ];
   if (values.some((value) => !Number.isSafeInteger(value))
     || state.remainingSpins < 0
     || state.totalSpinsPlayed < 0
     || state.multiplier < 1
-    || state.triggeringBet <= 0
-    || state.accumulatedWin < 0) {
+    || state.triggeringBetCents <= 0
+    || state.accumulatedWinCents < 0) {
     throw new Error("Free-spin state is invalid");
   }
 }

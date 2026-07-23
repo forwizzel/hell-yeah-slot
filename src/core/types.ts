@@ -38,12 +38,12 @@ export interface SymbolWin {
   readonly columns: number;
   readonly ways: number;
   readonly multiplier: number;
-  readonly amount: number;
+  readonly amountCents: number;
   readonly positions: Position[];
 }
 
 export interface PayEvaluation {
-  readonly totalWin: number;
+  readonly totalWinCents: number;
   readonly wins: SymbolWin[];
   readonly winningPositions: Position[];
 }
@@ -75,7 +75,7 @@ export type BonusTrigger =
 
 export interface SpinResult {
   readonly grid: Grid;
-  readonly regularWin: number;
+  readonly regularWinCents: number;
   readonly bonusTrigger: BonusTrigger;
   readonly winningPositions: Position[];
 }
@@ -85,13 +85,13 @@ export interface FreeSpinState {
   readonly remainingSpins: number;
   readonly totalSpinsPlayed: number;
   readonly multiplier: number;
-  readonly triggeringBet: number;
-  readonly accumulatedWin: number;
+  readonly triggeringBetCents: number;
+  readonly accumulatedWinCents: number;
 }
 
 export interface FreeSpinResult {
   readonly state: FreeSpinState;
-  readonly spinWin: number;
+  readonly spinWinCents: number;
   readonly beerRetriggered: boolean;
   readonly cigaretteRetriggered: boolean;
   readonly swordTriggered: boolean;
@@ -104,7 +104,7 @@ export interface FreeSpinSummary {
   readonly kind: "free-spins";
   readonly mode: FreeSpinMode;
   readonly spinsPlayed: number;
-  readonly payout: number;
+  readonly payoutCents: number;
   readonly finalMultiplier: number;
 }
 
@@ -115,9 +115,9 @@ export interface SwordSummary {
 export type BonusSummary = FreeSpinSummary | SwordSummary;
 
 export interface GameViewModel {
-  readonly credits: number;
-  readonly bet: number;
-  readonly lastWin: number;
+  readonly balanceCents: number;
+  readonly betCents: number;
+  readonly lastWinCents: number;
   readonly phase: GamePhase;
   readonly grid: Grid;
   readonly winningPositions: Position[];

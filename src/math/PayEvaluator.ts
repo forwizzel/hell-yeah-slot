@@ -2,10 +2,10 @@ import { CARD_SYMBOLS, type MatchLength, type Paytable } from "../config/paytabl
 import type { CardSymbolId, Grid, PayEvaluation, Position, SymbolWin } from "../core/types";
 import { safeAdd, safeMultiply } from "./safeInteger";
 
-export function evaluateWays(grid: Grid, paytable: Paytable, bet: number): PayEvaluation {
+export function evaluateWays(grid: Grid, paytable: Paytable, betCents: number): PayEvaluation {
   validateGrid(grid);
-  if (!Number.isSafeInteger(bet) || bet <= 0) {
-    throw new RangeError("Bet must be a positive integer");
+  if (!Number.isSafeInteger(betCents) || betCents <= 0) {
+    throw new RangeError("Bet must be a positive integer number of cents");
   }
 
   const wins: SymbolWin[] = [];
@@ -29,14 +29,14 @@ export function evaluateWays(grid: Grid, paytable: Paytable, bet: number): PayEv
       continue;
     }
 
-    wins.push(createWin(symbol, qualifyingColumns, paytable, bet));
+    wins.push(createWin(symbol, qualifyingColumns, paytable, betCents));
   }
 
   // A result established only by WILD cells is awarded once as the highest card.
   if (wins.length === 0) {
     const wildColumns = collectConsecutivePositions(grid, (cell) => cell.kind === "wild").slice(0, 5);
     if (wildColumns.length >= 3) {
-      wins.push(createWin("A", wildColumns, paytable, bet));
+      wins.push(createWin("A", wildColumns, paytable, betCents));
     }
   }
 
@@ -47,8 +47,8 @@ export function evaluateWays(grid: Grid, paytable: Paytable, bet: number): PayEv
   }
 
   return {
-    totalWin: wins.reduce(
-      (total, win) => safeAdd(total, win.amount, "Total ways win exceeds the safe integer range"),
+    totalWinCents: wins.reduce(
+      (total, win) => safeAdd(total, win.amountCents, "Total ways win exceeds the safe integer range"),
       0,
     ),
     wins,
@@ -81,7 +81,7 @@ function createWin(
   symbol: CardSymbolId,
   columnPositions: Position[][],
   paytable: Paytable,
-  bet: number,
+  betCents: number,
 ): SymbolWin {
   const columns = columnPositions.length as MatchLength;
   const ways = columnPositions.reduce((total, positions) => total * positions.length, 1);
@@ -92,7 +92,7 @@ function createWin(
     columns,
     ways,
     multiplier,
-    amount: safeMultiply(waysAward, bet, "Ways payout exceeds the safe integer range"),
+    amountCents: safeMultiply(waysAward, betCents, "Ways payout exceeds the safe integer range"),
     positions: columnPositions.flat(),
   };
 }

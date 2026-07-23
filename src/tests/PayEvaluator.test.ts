@@ -21,7 +21,7 @@ describe("evaluateWays", () => {
       [bonus(), bonus(), bonus()],
     ]);
 
-    expect(evaluateWays(grid, PAYTABLE, 10).totalWin).toBe(0);
+    expect(evaluateWays(grid, PAYTABLE, 20).totalWinCents).toBe(0);
   });
 
   it.each([
@@ -35,7 +35,20 @@ describe("evaluateWays", () => {
       bonus(),
     ]);
 
-    expect(evaluateWays(fromColumns(reelColumns), PAYTABLE, 10).totalWin).toBe(multiplier * 10);
+    expect(evaluateWays(fromColumns(reelColumns), PAYTABLE, 20).totalWinCents).toBe(multiplier * 20);
+  });
+
+  it("scales the same outcome from the minimum through the maximum configured bet", () => {
+    const grid = fromColumns([
+      [card("A")],
+      [card("A")],
+      [card("A")],
+      [bonus()],
+      [bonus()],
+    ]);
+
+    expect(evaluateWays(grid, PAYTABLE, 20).totalWinCents).toBe(100);
+    expect(evaluateWays(grid, PAYTABLE, 50_000).totalWinCents).toBe(250_000);
   });
 
   it("multiplies matching symbol counts into the number of ways", () => {
@@ -46,20 +59,20 @@ describe("evaluateWays", () => {
       [bonus(), bonus(), bonus()],
       [bonus(), bonus(), bonus()],
     ]);
-    const evaluation = evaluateWays(grid, PAYTABLE, 2);
+    const evaluation = evaluateWays(grid, PAYTABLE, 20);
 
     expect(evaluation.wins[0]?.ways).toBe(12);
-    expect(evaluation.totalWin).toBe(24);
+    expect(evaluation.totalWinCents).toBe(240);
   });
 
   it("allows WILD cells to support every win containing a natural target symbol", () => {
     const mixedColumn = [card("A"), card("K"), wild()];
     const grid = fromColumns([mixedColumn, mixedColumn, mixedColumn, [bonus(), bonus(), bonus()], [bonus(), bonus(), bonus()]]);
-    const evaluation = evaluateWays(grid, PAYTABLE, 1);
+    const evaluation = evaluateWays(grid, PAYTABLE, 20);
 
     expect(evaluation.wins.map((win) => win.symbol)).toEqual(["K", "A"]);
     expect(evaluation.wins.map((win) => win.ways)).toEqual([8, 8]);
-    expect(evaluation.totalWin).toBe(72);
+    expect(evaluation.totalWinCents).toBe(1_440);
   });
 
   it("awards a pure-WILD result once as the highest-paying A symbol", () => {
@@ -70,10 +83,10 @@ describe("evaluateWays", () => {
       [bonus(), bonus(), bonus()],
       [bonus(), bonus(), bonus()],
     ]);
-    const evaluation = evaluateWays(grid, PAYTABLE, 2);
+    const evaluation = evaluateWays(grid, PAYTABLE, 20);
 
     expect(evaluation.wins).toHaveLength(1);
-    expect(evaluation.wins[0]).toMatchObject({ symbol: "A", columns: 3, ways: 1, amount: 10 });
+    expect(evaluation.wins[0]).toMatchObject({ symbol: "A", columns: 3, ways: 1, amountCents: 100 });
   });
 
   it("ignores all bonus symbols in card wins", () => {
@@ -84,7 +97,7 @@ describe("evaluateWays", () => {
       bonus(),
     ]));
 
-    expect(evaluateWays(grid, PAYTABLE, 10)).toMatchObject({ totalWin: 0, wins: [] });
+    expect(evaluateWays(grid, PAYTABLE, 20)).toMatchObject({ totalWinCents: 0, wins: [] });
   });
 
   it("rejects payouts outside the safe integer range", () => {

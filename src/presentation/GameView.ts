@@ -1,4 +1,5 @@
 import { GAME_CONFIG } from "../config/gameConfig";
+import { formatUsd } from "../core/formatUsd";
 import type { BonusSummary, FreeSpinMode, FreeSpinState, GameViewModel, Grid, Position } from "../core/types";
 import { ControlPanel, type ControlActions } from "./ControlPanel";
 import { EventLogView } from "./EventLogView";
@@ -158,7 +159,7 @@ function statusText(model: GameViewModel): string {
 }
 
 function freeSpinStatus(state: FreeSpinState): string {
-  return `${modeLabel(state.mode)} | ${state.remainingSpins} spins remaining | ${state.multiplier}x multiplier | ${state.accumulatedWin} won`;
+  return `${modeLabel(state.mode)} | ${state.remainingSpins} spins remaining | ${state.multiplier}x multiplier | ${formatUsd(state.accumulatedWinCents)} won`;
 }
 
 function completionText(summary: BonusSummary | null): string {
@@ -170,7 +171,7 @@ function summaryText(summary: BonusSummary): string {
     return "Sword JACKPOT displayed | No award";
   }
 
-  return `${modeLabel(summary.mode)} | ${summary.spinsPlayed} spins | ${summary.payout} won | final ${summary.finalMultiplier}x`;
+  return `${modeLabel(summary.mode)} | ${summary.spinsPlayed} spins | ${formatUsd(summary.payoutCents)} won | final ${summary.finalMultiplier}x`;
 }
 
 function modeLabel(mode: FreeSpinMode): string {

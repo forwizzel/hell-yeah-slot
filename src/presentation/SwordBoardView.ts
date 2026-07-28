@@ -1,6 +1,12 @@
 import { Application, Assets, Container, Graphics, Sprite, Texture } from "pixi.js";
 import { GAME_CONFIG } from "../config/gameConfig";
 import type { BonusSymbolId, CardSymbolId, Position, WaysCell, WaysGrid } from "../core/types";
+import {
+  REEL_LOCK_SOUND_PREROLL_MS,
+  reelLockFlashAlpha,
+  reelLockImpactDurationMs,
+  reelLockImpactOffset,
+} from "./ReelLockImpact";
 
 const WIDTH = 750;
 const HEIGHT = 450;
@@ -43,6 +49,7 @@ interface CellVisual {
 interface ColumnVisual {
   readonly track: Container;
   readonly cells: CellVisual[];
+  readonly impactFlash: Graphics;
 }
 
 interface SpinState {
@@ -55,6 +62,9 @@ interface SpinState {
   finalSequenceStarted: boolean;
   finalSequenceComplete: boolean;
   locked: boolean;
+  soundTriggered: boolean;
+  impactStartedAt: number | null;
+  impactDurationMs: number;
   cycleIndex: number;
 }
 
@@ -94,6 +104,7 @@ export class SwordBoardView {
     this.buildGrid(grid.length, false);
     for (const column of this.columns) {
       column.track.y = 0;
+      column.impactFlash.alpha = 0;
     }
     const winningKeys = new Set(winningPositions.map((position) => `${position.row}:${position.column}`));
     for (let row = 0; row < grid.length; row += 1) {
@@ -133,6 +144,9 @@ export class SwordBoardView {
       finalSequenceStarted: false,
       finalSequenceComplete: false,
       locked: false,
+      soundTriggered: false,
+      impactStartedAt: null,
+      impactDurationMs: 0,
       cycleIndex: index,
     }));
 
@@ -148,14 +162,17 @@ export class SwordBoardView {
         }
         complete = true;
         cancelAnimationFrame(animationFrame);
+        this.render(result);
         for (let column = 0; column < COLUMNS; column += 1) {
           const state = states[column];
-          if (state !== undefined && !state.locked) {
-            state.locked = true;
+          if (state !== undefined && !state.soundTriggered) {
+            state.soundTriggered = true;
             onColumnLocked?.(column);
           }
+          if (state !== undefined && !state.locked) {
+            state.locked = true;
+          }
         }
-        this.render(result);
         this.activeAnimation = null;
         resolve();
       };
@@ -174,10 +191,15 @@ export class SwordBoardView {
           if (visual === undefined || state === undefined) {
             throw new Error("Sword animation column was not initialized");
           }
+          if (state.locked) {
+            updateColumnLockImpact(visual, state, now);
+            continue;
+          }
 
-           const stopTime = normalDuration * (0.55 + ((column + 1) / COLUMNS) * 0.45);
+          const stopTime = normalDuration * (0.55 + ((column + 1) / COLUMNS) * 0.45);
           const settleDuration = Math.min(320, stopTime * 0.35);
           const settleStart = stopTime - settleDuration;
+          const soundPreroll = REEL_LOCK_SOUND_PREROLL_MS * (turbo ? normalDuration / quickDuration : 1);
           if (state.stepStartedAt === 0) {
             state.stepStartedAt = elapsed;
             this.recycleCell(visual, state, (cell, symbol) => this.drawCellVisual(cell, symbol));
@@ -196,7 +218,7 @@ export class SwordBoardView {
                 state.finalSequenceStarted = true;
                 state.stepDuration = Math.max(remainingSpinTime / result.length, 1);
               } else {
-                 state.stepDuration = Math.min(state.stepDuration * 1.22, turbo ? 86 : 220);
+                state.stepDuration = Math.min(state.stepDuration * 1.22, turbo ? 86 : 220);
               }
             }
             this.recycleCell(visual, state, (cell, symbol) => this.drawCellVisual(cell, symbol));
@@ -209,6 +231,10 @@ export class SwordBoardView {
             visual.track.y = -pitch * (1 - progress);
           }
 
+          if (elapsed >= stopTime - soundPreroll && !state.soundTriggered) {
+            state.soundTriggered = true;
+            onColumnLocked?.(column);
+          }
           if (elapsed >= settleStart) {
             if (!state.settling) {
               state.settling = true;
@@ -219,12 +245,15 @@ export class SwordBoardView {
             visual.track.y = settlePosition(state.settleStartY, state.settleStartVelocity, settleDuration, progress);
             if (elapsed >= stopTime && !state.locked) {
               state.locked = true;
-              onColumnLocked?.(column);
+              state.impactStartedAt = now;
+              state.impactDurationMs = reelLockImpactDurationMs(turbo);
+              updateColumnLockImpact(visual, state, now);
             }
           }
         }
 
-        if (elapsed < normalDuration) {
+        const impactActive = states.some((state) => state.impactStartedAt !== null);
+        if (elapsed < normalDuration || impactActive) {
           animationFrame = requestAnimationFrame(frame);
         } else {
           finish();
@@ -257,15 +286,20 @@ export class SwordBoardView {
       const viewport = new Container({ x: startX + column * (this.cellWidth + GAP), y: MARGIN });
       const mask = new Graphics().rect(0, 0, this.cellWidth, reelHeight).fill(0xffffff);
       const track = new Container();
+      const impactFlash = new Graphics()
+        .roundRect(1, 1, this.cellWidth - 2, reelHeight - 2, 3)
+        .fill({ color: 0xe7a53a, alpha: 0.18 })
+        .stroke({ color: 0xffcf71, width: 4, alpha: 0.9 });
+      impactFlash.alpha = 0;
       const cells: CellVisual[] = [];
-      viewport.addChild(mask, track);
+      viewport.addChild(mask, track, impactFlash);
       viewport.mask = mask;
       this.application.stage.addChild(viewport);
       for (let row = 0; row < rows + (includeEnteringCell ? 1 : 0); row += 1) {
         const visual = this.createCellVisual(track, row);
         cells.push(visual);
       }
-      this.columns.push({ track, cells });
+      this.columns.push({ track, cells, impactFlash });
     }
   }
 
@@ -392,6 +426,20 @@ function cellLabel(cell: WaysCell): string {
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.max(minimum, Math.min(maximum, value));
+}
+
+function updateColumnLockImpact(column: ColumnVisual, state: SpinState, now: number): void {
+  if (state.impactStartedAt === null) {
+    column.track.y = 0;
+    column.impactFlash.alpha = 0;
+    return;
+  }
+  const progress = Math.min((now - state.impactStartedAt) / Math.max(state.impactDurationMs, 1), 1);
+  column.track.y = reelLockImpactOffset(progress);
+  column.impactFlash.alpha = reelLockFlashAlpha(progress);
+  if (progress === 1) {
+    state.impactStartedAt = null;
+  }
 }
 
 function settlePosition(startY: number, startVelocity: number, duration: number, progress: number): number {

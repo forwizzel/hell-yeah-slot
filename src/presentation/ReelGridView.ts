@@ -2,6 +2,12 @@ import { Application, Assets, Container, Graphics, Sprite, Texture } from "pixi.
 import { GAME_CONFIG } from "../config/gameConfig";
 import { REEL_STRIPS } from "../config/reelStrips";
 import type { CardSymbolId, BonusSymbolId, Cell, Grid, Position } from "../core/types";
+import {
+  REEL_LOCK_SOUND_PREROLL_MS,
+  reelLockFlashAlpha,
+  reelLockImpactDurationMs,
+  reelLockImpactOffset,
+} from "./ReelLockImpact";
 import { ReelStripCycle } from "./ReelStripCycle";
 
 const WIDTH = 750;
@@ -35,6 +41,7 @@ interface CellVisual {
 interface ReelVisual {
   readonly track: Container;
   readonly cells: CellVisual[];
+  readonly impactFlash: Graphics;
 }
 
 interface ReelSpinState {
@@ -47,6 +54,9 @@ interface ReelSpinState {
   finalSequenceStarted: boolean;
   finalSequenceComplete: boolean;
   locked: boolean;
+  soundTriggered: boolean;
+  impactStartedAt: number | null;
+  impactDurationMs: number;
   readonly stripCycle: ReelStripCycle;
 }
 
@@ -95,9 +105,14 @@ export class ReelGridView {
       });
       const mask = new Graphics().rect(0, 0, CELL_WIDTH, reelHeight).fill(0xffffff);
       const track = new Container();
+      const impactFlash = new Graphics()
+        .roundRect(1, 1, CELL_WIDTH - 2, reelHeight - 2, 3)
+        .fill({ color: 0xe7a53a, alpha: 0.18 })
+        .stroke({ color: 0xffcf71, width: 4, alpha: 0.9 });
+      impactFlash.alpha = 0;
       const reelCells: CellVisual[] = [];
 
-      viewport.addChild(mask, track);
+      viewport.addChild(mask, track, impactFlash);
       viewport.mask = mask;
       this.application.stage.addChild(viewport);
 
@@ -105,7 +120,7 @@ export class ReelGridView {
         const visual = this.createCellVisual(track, row);
         reelCells.push(visual);
       }
-      this.reels.push({ track, cells: reelCells });
+      this.reels.push({ track, cells: reelCells, impactFlash });
     }
   }
 
@@ -128,6 +143,7 @@ export class ReelGridView {
     validateGrid(grid);
     for (const reel of this.reels) {
       reel.track.y = 0;
+      reel.impactFlash.alpha = 0;
       for (const cell of reel.cells) {
         cell.container.alpha = 1;
       }
@@ -169,6 +185,9 @@ export class ReelGridView {
       finalSequenceStarted: false,
       finalSequenceComplete: false,
       locked: false,
+      soundTriggered: false,
+      impactStartedAt: null,
+      impactDurationMs: 0,
       stripCycle: createStripCycle(column),
     }));
 
@@ -184,14 +203,17 @@ export class ReelGridView {
         }
         complete = true;
         cancelAnimationFrame(animationFrame);
+        this.renderGrid(result);
         for (let column = 0; column < GAME_CONFIG.columns; column += 1) {
           const state = spinStates[column];
-          if (state !== undefined && !state.locked) {
-            state.locked = true;
+          if (state !== undefined && !state.soundTriggered) {
+            state.soundTriggered = true;
             onColumnLocked?.(column);
           }
+          if (state !== undefined && !state.locked) {
+            state.locked = true;
+          }
         }
-        this.renderGrid(result);
         this.activeAnimation = null;
         resolve();
       };
@@ -215,9 +237,14 @@ export class ReelGridView {
           if (state === undefined) {
             throw new Error("Reel spin state was not initialized");
           }
+          if (state.locked) {
+            updateReelLockImpact(reel, state, now);
+            continue;
+          }
 
           const settleDuration = Math.min(GAME_CONFIG.reelSettleDurationMs, stopTime * 0.35);
           const settleStart = stopTime - settleDuration;
+          const soundPreroll = REEL_LOCK_SOUND_PREROLL_MS * (turbo ? normalDuration / quickDuration : 1);
 
           if (state.stepStartedAt === 0) {
             state.stepStartedAt = elapsed;
@@ -260,12 +287,16 @@ export class ReelGridView {
             reel.track.y = -(CELL_HEIGHT + GAP) * (1 - stepProgress);
           }
 
+          if (elapsed >= stopTime - soundPreroll && !state.soundTriggered) {
+            state.soundTriggered = true;
+            onColumnLocked?.(column);
+          }
           if (elapsed >= settleStart) {
             if (!state.settling) {
               state.settling = true;
               state.settleStartY = reel.track.y;
               state.settleStartVelocity = (CELL_HEIGHT + GAP) / state.stepDuration;
-               if (turbo && !state.finalSequenceComplete) {
+              if (turbo && !state.finalSequenceComplete) {
                 for (let row = 0; row < GAME_CONFIG.rows; row += 1) {
                   this.drawCell(row, column, result[row]![column]!, false, true);
                 }
@@ -283,13 +314,16 @@ export class ReelGridView {
                 this.drawCell(row, column, result[row]![column]!, false, false);
               }
               state.locked = true;
-              onColumnLocked?.(column);
+              state.impactStartedAt = now;
+              state.impactDurationMs = reelLockImpactDurationMs(turbo);
+              updateReelLockImpact(reel, state, now);
             }
             continue;
           }
         }
 
-        if (elapsed < normalDuration) {
+        const impactActive = spinStates.some((state) => state.impactStartedAt !== null);
+        if (elapsed < normalDuration || impactActive) {
           animationFrame = requestAnimationFrame(frame);
         } else {
           finish();
@@ -395,6 +429,20 @@ function createStripCycle(column: number): ReelStripCycle {
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.max(minimum, Math.min(maximum, value));
+}
+
+function updateReelLockImpact(reel: ReelVisual, state: ReelSpinState, now: number): void {
+  if (state.impactStartedAt === null) {
+    reel.track.y = 0;
+    reel.impactFlash.alpha = 0;
+    return;
+  }
+  const progress = Math.min((now - state.impactStartedAt) / Math.max(state.impactDurationMs, 1), 1);
+  reel.track.y = reelLockImpactOffset(progress);
+  reel.impactFlash.alpha = reelLockFlashAlpha(progress);
+  if (progress === 1) {
+    state.impactStartedAt = null;
+  }
 }
 
 function settleTrackPosition(startY: number, startVelocity: number, duration: number, progress: number): number {

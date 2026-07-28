@@ -135,6 +135,15 @@ COIN and SKULL can now land on valid Sword boards and use the dedicated Sword pa
 - Reel stops, combined 3+2 orientation, purchased or development bonus-symbol positions, free spins, bonus multiplier picks, Sword expansion checks and targets, Sword board-cell and added-row draws, Sword stage multipliers, Final Strikes, and retriggers consume one sequence in execution order.
 - Resetting while a seed is active restores the initial balance and bet and restarts that seed's sequence. Clearing the seed restores Web Crypto randomness.
 
+## Reel Lock Animation and SFX Sync
+
+- Base, free-spin, and Sword Cleave columns use the same mechanical reel-lock response. The final cells enter their stopped position, then the column moves 8px past rest, recoils 3px in the opposite direction, makes a 1.5px final rebound, and returns to rest while a warm amber impact flash fades.
+- The normal mechanical response lasts 120ms. Turbo uses a 72ms version so the impact remains visible without slowing quick play. The spin animation completes only after the final active impact finishes.
+- Column effects begin 28ms before the visual lock to compensate for the approximately 24-31ms leading silence retained in the MP3 effect files. The audible click, symbol hit, or win transient should therefore align with the physical impact rather than the later recoil.
+- `src/presentation/ReelLockImpact.ts` owns the pre-roll, duration, offset curve, and flash-alpha tuning values. `ReelGridView` and `SwordBoardView` apply them independently to their columns.
+- Manual Settle immediately renders the resolved result and fires any not-yet-started column effects in left-to-right order. It intentionally skips the mechanical slam rather than adding a delay to the player action.
+- The slam, flash, and audio pre-roll are presentation-only. They must not alter resolved symbols, payouts, feature triggers, random-call order, or evaluation timing.
+
 ## Development Triggers
 
 - Vite development mode exposes forced BEER, CIGARETTE, combined, and SWORD buttons. Production startup removes their panel from the UI, and the controller independently rejects forced triggers outside development mode.

@@ -61,12 +61,10 @@ export interface PayEvaluation {
   readonly winningPositions: Position[];
 }
 
-export type BonusTriggerSource = "natural" | "chance";
 export type FreeSpinMode = "beer" | "cigarette" | "combined";
 
 export interface BonusActivation {
   readonly symbol: "BEER" | "CIGARETTE";
-  readonly source: BonusTriggerSource;
   readonly symbolCount: number;
   readonly positions: Position[];
 }

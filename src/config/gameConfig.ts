@@ -45,7 +45,7 @@ export function getFeatureBuyCostCents(feature: FeatureBuyId, betCents: number):
 }
 
 export const GAME_CONFIG = {
-  startingBalanceCents: 12_500_000,
+  startingBalanceCents: 45_000_000,
   defaultBetCents: 50_000,
   betOptionsCents: BET_OPTIONS_CENTS,
   rows: 3,
@@ -55,10 +55,6 @@ export const GAME_CONFIG = {
   freeSpinBaseMultiplier: 5,
   cigaretteMultiplierMinimum: 2,
   cigaretteMultiplierMaximum: 10,
-  belowThresholdTriggerChances: {
-    BEER: { 1: 0.002, 2: 0.008 },
-    CIGARETTE: { 1: 0.0005, 2: 0.001 },
-  },
   cigaretteMultiplierWeights: [
     { multiplier: 2, weight: 77 },
     { multiplier: 3, weight: 10 },
@@ -89,8 +85,8 @@ import { safeMultiply } from "../math/safeInteger";
 export type FeatureBuyId = "beer" | "cigarette" | "combined" | "sword";
 
 export const FEATURE_BUY_MULTIPLIERS: Readonly<Record<FeatureBuyId, number>> = Object.freeze({
-  beer: 20,
-  cigarette: 50,
-  combined: 100,
-  sword: 250,
+  beer: 23.5,
+  cigarette: 58.5,
+  combined: 58.6,
+  sword: 900,
 });

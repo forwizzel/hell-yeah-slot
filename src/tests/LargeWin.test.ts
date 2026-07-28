@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getLargeWinTier } from "../presentation/LargeWin";
+import { formatLargeWinMultiplier, getLargeWinTier } from "../presentation/LargeWin";
 
 describe("getLargeWinTier", () => {
   const betCents = 100;
@@ -20,5 +20,13 @@ describe("getLargeWinTier", () => {
   it("rejects invalid monetary inputs", () => {
     expect(() => getLargeWinTier(-1, betCents)).toThrow("safe positive integer cents");
     expect(() => getLargeWinTier(500, 0)).toThrow("safe positive integer cents");
+  });
+
+  it.each([
+    [5_700, 100, "57"],
+    [575, 10, "57.5"],
+    [5_000, 100, "50"],
+  ] as const)("formats the exact payout multiplier for %i cents at a %i-cent bet", (payoutCents, wagerCents, expected) => {
+    expect(formatLargeWinMultiplier(payoutCents, wagerCents)).toBe(expected);
   });
 });

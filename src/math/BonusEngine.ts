@@ -12,11 +12,6 @@ import type {
 import type { RandomSource } from "./RandomSource";
 import { safeAdd, safeMultiply } from "./safeInteger";
 
-export interface TriggerChances {
-  readonly BEER: Readonly<Record<1 | 2, number>>;
-  readonly CIGARETTE: Readonly<Record<1 | 2, number>>;
-}
-
 export interface MultiplierWeight {
   readonly multiplier: number;
   readonly weight: number;
@@ -25,23 +20,11 @@ export interface MultiplierWeight {
 export class BonusEngine {
   constructor(
     private readonly random: RandomSource,
-    private readonly triggerChances: TriggerChances,
     private readonly beerFreeSpins: number,
     private readonly cigaretteFreeSpins: number,
     private readonly freeSpinBaseMultiplier: number,
     private readonly multiplierWeights: ReadonlyArray<MultiplierWeight>,
   ) {
-    const configuredChances = [
-      triggerChances.BEER[1],
-      triggerChances.BEER[2],
-      triggerChances.CIGARETTE[1],
-      triggerChances.CIGARETTE[2],
-    ];
-    for (const chance of configuredChances) {
-      if (!Number.isFinite(chance) || chance < 0 || chance > 1) {
-        throw new RangeError("Trigger chances must be between 0 and 1");
-      }
-    }
     if (!Number.isSafeInteger(beerFreeSpins) || beerFreeSpins <= 0
       || !Number.isSafeInteger(cigaretteFreeSpins) || cigaretteFreeSpins <= 0) {
       throw new RangeError("Free-spin awards must be positive integers");
@@ -160,16 +143,10 @@ export class BonusEngine {
 
   private resolveActivation(grid: Grid, symbol: "BEER" | "CIGARETTE"): BonusActivation | null {
     const positions = findPositions(grid, symbol);
-    if (positions.length >= 3) {
-      return { symbol, source: "natural", symbolCount: positions.length, positions };
-    }
-    if (positions.length === 0) {
+    if (positions.length < 3) {
       return null;
     }
-    const count = positions.length as 1 | 2;
-    return this.random.nextFloat() < this.triggerChances[symbol][count]
-      ? { symbol, source: "chance", symbolCount: count, positions }
-      : null;
+    return { symbol, symbolCount: positions.length, positions };
   }
 
   private pickMultiplier(): number {

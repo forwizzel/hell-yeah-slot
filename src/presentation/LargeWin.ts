@@ -13,13 +13,23 @@ const TIERS: readonly LargeWinTier[] = [
 ];
 
 export function getLargeWinTier(payoutCents: number, betCents: number): LargeWinTier | null {
-  if (!Number.isSafeInteger(payoutCents) || payoutCents < 0 || !Number.isSafeInteger(betCents) || betCents <= 0) {
-    throw new RangeError("Large-win payout and bet must be safe positive integer cents");
-  }
+  validateLargeWinAmounts(payoutCents, betCents);
 
   return TIERS.find((tier) => payoutCents >= safeMultiply(
     betCents,
     tier.minimumMultiplier,
     "Large-win threshold exceeds the safe integer range",
   )) ?? null;
+}
+
+export function formatLargeWinMultiplier(payoutCents: number, betCents: number): string {
+  validateLargeWinAmounts(payoutCents, betCents);
+  const multiplier = payoutCents / betCents;
+  return Number.isInteger(multiplier) ? String(multiplier) : multiplier.toFixed(1);
+}
+
+function validateLargeWinAmounts(payoutCents: number, betCents: number): void {
+  if (!Number.isSafeInteger(payoutCents) || payoutCents < 0 || !Number.isSafeInteger(betCents) || betCents <= 0) {
+    throw new RangeError("Large-win payout and bet must be safe positive integer cents");
+  }
 }

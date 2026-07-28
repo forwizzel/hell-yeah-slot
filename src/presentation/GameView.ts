@@ -6,7 +6,7 @@ import { ControlPanel, type ControlActions } from "./ControlPanel";
 import { createBandMultiplierRollValues, createMultiplierRollValues } from "./BonusMultiplierReveal";
 import { EventLogView } from "./EventLogView";
 import { GameAudio, type GameSoundEffect } from "./GameAudio";
-import { getLargeWinTier } from "./LargeWin";
+import { formatLargeWinMultiplier, getLargeWinTier } from "./LargeWin";
 import { ReelGridView } from "./ReelGridView";
 import { SwordBoardView } from "./SwordBoardView";
 
@@ -300,7 +300,7 @@ export class GameView {
         throw new Error("Large-win phase requires a qualifying payout");
       }
       this.showFeatureOverlay(
-        `${tier.minimumMultiplier}X BET PAYOUT`,
+        `${formatLargeWinMultiplier(model.largeWin.payoutCents, model.largeWin.triggeringBetCents)}X BET PAYOUT`,
         tier.label,
         `Payout ${formatUsd(model.largeWin.payoutCents)}. Click or tap to finish.`,
         "jackpot",

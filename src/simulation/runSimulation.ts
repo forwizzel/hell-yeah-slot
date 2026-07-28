@@ -28,10 +28,8 @@ interface SimulationStats {
   cigaretteFeatures: number;
   combinedFeatures: number;
   swordFeatures: number;
-  beerNaturalActivations: number;
-  beerChanceActivations: number;
-  cigaretteNaturalActivations: number;
-  cigaretteChanceActivations: number;
+  beerActivations: number;
+  cigaretteActivations: number;
   freeSpinFeatures: number;
   freeSpinsPlayed: number;
   beerRetriggers: number;
@@ -79,12 +77,11 @@ function simulate(options: SimulationOptions): SimulationStats {
   const reelEngine = new ReelEngine(REEL_STRIPS, random, GAME_CONFIG.rows);
   const bonusEngine = new BonusEngine(
     random,
-    GAME_CONFIG.belowThresholdTriggerChances,
-      GAME_CONFIG.beerFreeSpins,
-      GAME_CONFIG.cigaretteFreeSpins,
-      GAME_CONFIG.freeSpinBaseMultiplier,
-      GAME_CONFIG.cigaretteMultiplierWeights,
-    );
+    GAME_CONFIG.beerFreeSpins,
+    GAME_CONFIG.cigaretteFreeSpins,
+    GAME_CONFIG.freeSpinBaseMultiplier,
+    GAME_CONFIG.cigaretteMultiplierWeights,
+  );
   const swordEngine = new SwordEngine(random);
   const betCents = GAME_CONFIG.defaultBetCents;
   const stats: SimulationStats = {
@@ -102,10 +99,8 @@ function simulate(options: SimulationOptions): SimulationStats {
     cigaretteFeatures: 0,
     combinedFeatures: 0,
     swordFeatures: 0,
-    beerNaturalActivations: 0,
-    beerChanceActivations: 0,
-    cigaretteNaturalActivations: 0,
-    cigaretteChanceActivations: 0,
+    beerActivations: 0,
+    cigaretteActivations: 0,
     freeSpinFeatures: 0,
     freeSpinsPlayed: 0,
     beerRetriggers: 0,
@@ -139,15 +134,11 @@ function simulate(options: SimulationOptions): SimulationStats {
         stats.combinedFeatures += 1;
       }
 
-      if (trigger.beer?.source === "natural") {
-        stats.beerNaturalActivations += 1;
-      } else if (trigger.beer?.source === "chance") {
-        stats.beerChanceActivations += 1;
+      if (trigger.beer !== null) {
+        stats.beerActivations += 1;
       }
-      if (trigger.cigarette?.source === "natural") {
-        stats.cigaretteNaturalActivations += 1;
-      } else if (trigger.cigarette?.source === "chance") {
-        stats.cigaretteChanceActivations += 1;
+      if (trigger.cigarette !== null) {
+        stats.cigaretteActivations += 1;
       }
 
       let freeSpinState = bonusEngine.startFreeSpins(trigger, betCents);
@@ -251,10 +242,8 @@ function printResults(options: SimulationOptions, stats: SimulationStats): void 
   console.log(`Cigarette-only feature rate: ${percentage(stats.cigaretteFeatures, stats.paidBaseSpins)}`);
   console.log(`Combined feature rate: ${percentage(stats.combinedFeatures, stats.paidBaseSpins)}`);
   console.log(`Sword feature rate: ${percentage(stats.swordFeatures, stats.paidBaseSpins)}`);
-  console.log(`Beer natural activations: ${stats.beerNaturalActivations} (${percentage(stats.beerNaturalActivations, stats.paidBaseSpins)})`);
-  console.log(`Beer chance activations: ${stats.beerChanceActivations} (${percentage(stats.beerChanceActivations, stats.paidBaseSpins)})`);
-  console.log(`Cigarette natural activations: ${stats.cigaretteNaturalActivations} (${percentage(stats.cigaretteNaturalActivations, stats.paidBaseSpins)})`);
-  console.log(`Cigarette chance activations: ${stats.cigaretteChanceActivations} (${percentage(stats.cigaretteChanceActivations, stats.paidBaseSpins)})`);
+  console.log(`Beer activations: ${stats.beerActivations} (${percentage(stats.beerActivations, stats.paidBaseSpins)})`);
+  console.log(`Cigarette activations: ${stats.cigaretteActivations} (${percentage(stats.cigaretteActivations, stats.paidBaseSpins)})`);
   console.log(`Free spins played: ${stats.freeSpinsPlayed}`);
   console.log(`Average free spins per feature: ${average(stats.freeSpinsPlayed, stats.freeSpinFeatures)}`);
   console.log(`Beer retriggers: ${stats.beerRetriggers} (${percentage(stats.beerRetriggers, stats.freeSpinsPlayed)} of free spins)`);

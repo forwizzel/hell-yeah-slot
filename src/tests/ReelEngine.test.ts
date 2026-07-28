@@ -90,10 +90,15 @@ describe("ReelEngine", () => {
   });
 
   it("configures the requested relative bonus rarity", () => {
-    expect(REEL_STRIPS.every((strip) => count(strip, "BEER") === 3)).toBe(true);
-    expect(REEL_STRIPS.filter((strip) => count(strip, "CIGARETTE") === 1)).toHaveLength(4);
-    expect(REEL_STRIPS.filter((strip) => count(strip, "CIGARETTE") === 0)).toHaveLength(1);
-    expect(REEL_STRIPS.filter((strip) => count(strip, "SWORD") === 1)).toHaveLength(3);
+    expect(REEL_STRIPS.map((strip) => count(strip, "BEER"))).toEqual([3, 3, 3, 4, 3]);
+    expect(REEL_STRIPS.map((strip) => count(strip, "CIGARETTE"))).toEqual([3, 3, 3, 0, 3]);
+    expect(REEL_STRIPS.map((strip) => count(strip, "SWORD"))).toEqual([1, 2, 2, 0, 6]);
+  });
+
+  it("targets the configured natural feature trigger rates", () => {
+    expect(featureTriggerRate("BEER")).toBeCloseTo(2.6381, 3);
+    expect(featureTriggerRate("CIGARETTE")).toBeCloseTo(0.9950, 3);
+    expect(featureTriggerRate("SWORD")).toBeCloseTo(0.5008, 3);
   });
 
   it("includes visible COIN and SKULL symbols on every base and free-spin reel", () => {
@@ -107,7 +112,7 @@ describe("ReelEngine", () => {
 
   it("makes a Sword trigger structurally exclusive", () => {
     const swordReels = REEL_STRIPS.filter((strip) => strip.includes("SWORD"));
-    expect(swordReels).toHaveLength(3);
+    expect(swordReels).toHaveLength(4);
 
     for (const strip of REEL_STRIPS) {
       for (let stop = 0; stop < strip.length; stop += 1) {
@@ -146,4 +151,29 @@ function visibleWindow(strip: ReadonlyArray<ReelSymbol>, stop: number): ReelSymb
 
 function count(symbols: ReadonlyArray<ReelSymbol>, symbol: ReelSymbol): number {
   return symbols.filter((candidate) => candidate === symbol).length;
+}
+
+function featureTriggerRate(symbol: ReelSymbol): number {
+  let distributions = new Map<number, number>([[0, 1]]);
+  for (const strip of REEL_STRIPS) {
+    const windows = new Map<number, number>();
+    for (let stop = 0; stop < strip.length; stop += 1) {
+      const visibleCount = Math.min(3, visibleWindow(strip, stop).filter((candidate) => candidate === symbol).length);
+      windows.set(visibleCount, (windows.get(visibleCount) ?? 0) + 1);
+    }
+
+    const next = new Map<number, number>();
+    for (const [currentCount, currentWays] of distributions) {
+      for (const [windowCount, windowWays] of windows) {
+        const totalCount = Math.min(3, currentCount + windowCount);
+        next.set(totalCount, (next.get(totalCount) ?? 0) + currentWays * windowWays);
+      }
+    }
+    distributions = next;
+  }
+
+  const triggeringStops = [...distributions]
+    .filter(([countValue]) => countValue >= 3)
+    .reduce((total, [, ways]) => total + ways, 0);
+  return triggeringStops / (REEL_STRIPS[0]!.length ** REEL_STRIPS.length) * 100;
 }

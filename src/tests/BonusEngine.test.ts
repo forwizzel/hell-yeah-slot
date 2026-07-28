@@ -1,12 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { BonusSymbolId, Cell, FreeSpinState, Grid } from "../core/types";
-import { BonusEngine, type TriggerChances } from "../math/BonusEngine";
+import { BonusEngine } from "../math/BonusEngine";
 import { ControlledRandomSource } from "./testUtils";
 
-const CHANCES: TriggerChances = {
-  BEER: { 1: 0.002, 2: 0.008 },
-  CIGARETTE: { 1: 0.005, 2: 0.01 },
-};
 const MULTIPLIER_WEIGHTS = [
   { multiplier: 2, weight: 77 },
   { multiplier: 3, weight: 10 },
@@ -31,7 +27,7 @@ function gridWith(symbols: ReadonlyArray<BonusSymbolId>): Grid {
 }
 
 function engine(random = new ControlledRandomSource()): BonusEngine {
-  return new BonusEngine(random, CHANCES, 10, 10, 5, MULTIPLIER_WEIGHTS);
+  return new BonusEngine(random, 10, 10, 5, MULTIPLIER_WEIGHTS);
 }
 
 function activeState(overrides: Partial<FreeSpinState> = {}): FreeSpinState {
@@ -69,23 +65,9 @@ describe("BonusEngine", () => {
     expect(trigger).toMatchObject({ kind: "free-spins", mode: "combined", startingSpins: 10, multiplier: 5 });
   });
 
-  it("independently rolls below-three Beer and Cigarette triggers", () => {
-    const trigger = engine(new ControlledRandomSource([0.001, 0.004], [4])).resolveBaseTrigger(
-      gridWith(["BEER", "CIGARETTE"]),
-    );
-
-    expect(trigger).toMatchObject({
-      kind: "free-spins",
-      mode: "combined",
-      multiplier: 2,
-      beer: { source: "chance", symbolCount: 1 },
-      cigarette: { source: "chance", symbolCount: 1 },
-    });
-  });
-
-  it("does not roll a chance trigger when no matching symbol appears", () => {
-    const random = new ControlledRandomSource([0]);
-    expect(engine(random).resolveBaseTrigger(gridWith([]))).toEqual({ kind: "none" });
+  it("requires at least three matching Beer or Cigarette symbols", () => {
+    const random = new ControlledRandomSource([0.001, 0.004], [4]);
+    expect(engine(random).resolveBaseTrigger(gridWith(["BEER", "BEER", "CIGARETTE", "CIGARETTE"]))).toEqual({ kind: "none" });
     expect(random.floatCalls).toBe(0);
     expect(random.integerCalls).toBe(0);
   });
@@ -206,7 +188,7 @@ describe("BonusEngine", () => {
   });
 
   it("validates the free-spin baseline multiplier", () => {
-    expect(() => new BonusEngine(new ControlledRandomSource(), CHANCES, 10, 10, 0, MULTIPLIER_WEIGHTS)).toThrow(
+    expect(() => new BonusEngine(new ControlledRandomSource(), 10, 10, 0, MULTIPLIER_WEIGHTS)).toThrow(
       "Free-spin base multiplier must be a positive integer",
     );
   });

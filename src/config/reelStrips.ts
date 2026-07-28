@@ -22,12 +22,12 @@ function createReel(offset: number, specials: ReadonlyArray<readonly [number, Re
   return reel;
 }
 
-// Sword reels isolate SWORD by two stops in either direction. Since only three
-// reels contain SWORD, a Sword trigger leaves at most two reels for other bonuses.
+// Sword entries isolate SWORD by two stops in either direction. This keeps a
+// Sword trigger structurally exclusive from the other bonus symbols.
 export const REEL_STRIPS: ReadonlyArray<ReadonlyArray<ReelSymbol>> = [
-  createReel(0, [[0, "SWORD"], [10, "BEER"], [11, "CIGARETTE"], [22, "WILD"], [31, "BEER"], [50, "BEER"]]),
-  createReel(3, [[8, "BEER"], [9, "CIGARETTE"], [29, "BEER"], [47, "BEER"], [60, "WILD"]]),
-  createReel(6, [[3, "BEER"], [4, "CIGARETTE"], [16, "SWORD"], [23, "WILD"], [31, "BEER"], [50, "BEER"]]),
-  createReel(9, [[12, "BEER"], [26, "WILD"], [35, "BEER"], [53, "BEER"]]),
-  createReel(12, [[7, "BEER"], [8, "CIGARETTE"], [20, "WILD"], [32, "SWORD"], [44, "BEER"], [57, "BEER"]]),
+  createReel(0, [[0, "SWORD"], [3, "CIGARETTE"], [10, "BEER"], [11, "CIGARETTE"], [14, "CIGARETTE"], [22, "WILD"], [31, "BEER"], [50, "BEER"]]),
+  createReel(3, [[0, "SWORD"], [3, "SWORD"], [8, "BEER"], [9, "CIGARETTE"], [12, "CIGARETTE"], [15, "CIGARETTE"], [29, "BEER"], [47, "BEER"], [60, "WILD"]]),
+  createReel(6, [[0, "SWORD"], [3, "BEER"], [4, "CIGARETTE"], [7, "CIGARETTE"], [10, "CIGARETTE"], [16, "SWORD"], [23, "WILD"], [31, "BEER"], [50, "BEER"]]),
+  createReel(9, [[0, "BEER"], [12, "BEER"], [26, "WILD"], [35, "BEER"], [53, "BEER"]]),
+  createReel(12, [[3, "SWORD"], [7, "BEER"], [8, "CIGARETTE"], [11, "SWORD"], [14, "SWORD"], [17, "SWORD"], [20, "WILD"], [21, "SKULL"], [22, "CIGARETTE"], [27, "SWORD"], [32, "SWORD"], [37, "CIGARETTE"], [44, "BEER"], [57, "BEER"]]),
 ];

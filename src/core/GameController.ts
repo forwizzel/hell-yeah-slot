@@ -71,7 +71,7 @@ export class GameController {
       this.state.largeWin = null;
       this.view.addLog(`Bet ${formatUsd(triggeringBetCents)} placed.`);
 
-      // The complete paid-spin outcome, including chance triggers, is fixed before animation.
+      // The complete paid-spin outcome, including any feature trigger, is fixed before animation.
       const result = this.createPaidSpinResult(triggeringBetCents);
       await this.playTriggeringSpin(
         result,
@@ -86,7 +86,7 @@ export class GameController {
         triggeringBetCents,
         spinDuration,
         evaluationDelay,
-        hasNaturalTriggerSound(result.bonusTrigger),
+        hasFeatureTriggerSound(result.bonusTrigger),
       );
 
       this.state.freeSpins = null;
@@ -474,9 +474,8 @@ export class GameController {
     if (activation === null) {
       return;
     }
-    const source = activation.source === "natural" ? "naturally" : "by chance";
     const mode = activation.symbol === "BEER" ? "beer" : "cigarette";
-    this.view.addLog(`${featureLabel(mode)} triggered ${source} with ${activation.symbolCount} symbol${activation.symbolCount === 1 ? "" : "s"}.`);
+    this.view.addLog(`${featureLabel(mode)} triggered with ${activation.symbolCount} symbols.`);
   }
 
   private awardWin(amountCents: number): void {
@@ -604,7 +603,6 @@ export class GameController {
   private createBonusEngine(): BonusEngine {
     return new BonusEngine(
       this.random,
-      GAME_CONFIG.belowThresholdTriggerChances,
       GAME_CONFIG.beerFreeSpins,
       GAME_CONFIG.cigaretteFreeSpins,
       GAME_CONFIG.freeSpinBaseMultiplier,
@@ -640,13 +638,6 @@ function featureBuyLabel(feature: FeatureBuyId): string {
   return feature === "sword" ? "Sword" : featureLabel(feature);
 }
 
-function hasNaturalTriggerSound(trigger: BonusTrigger): boolean {
-  if (trigger.kind === "sword") {
-    return true;
-  }
-  if (trigger.kind === "none") {
-    return false;
-  }
-
-  return trigger.beer?.source === "natural" || trigger.cigarette?.source === "natural";
+function hasFeatureTriggerSound(trigger: BonusTrigger): boolean {
+  return trigger.kind !== "none";
 }

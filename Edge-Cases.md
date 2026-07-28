@@ -118,9 +118,12 @@ COIN and SKULL can now land on valid Sword boards and use the dedicated Sword pa
 - If a 5x3 through 5x5 feature exhausts its remaining spins without expanding, it ends without a Final Strike and awards its unmodified Sword accumulator.
 - During free spins, a natural SWORD trigger consumes the current spin and suppresses same-grid BEER and CIGARETTE retriggers. That triggering spin pays its ordinary ways at the multiplier active when it began; Sword Cleave then completes before the interrupted free-spin state resumes.
 
-## Quick Spin and Deterministic Seeds
+## Spin Controls and Deterministic Seeds
 
-- Complete outcomes are fixed before visual animation. Quick Spin changes timing only and cannot change symbols, triggers, multipliers, or payouts.
+- Complete outcomes are fixed before visual animation. Turbo changes timing only and cannot change symbols, triggers, multipliers, or payouts.
+- During a base, free, or Sword spin animation, clicking the Spin button settles only the current already-resolved spin. It does not place another wager, reroll the outcome, enable Turbo, or skip evaluation and feature sequencing.
+- Turbo can be enabled or disabled during an active spin or bonus game. Enabling it accelerates the current animation and applies to future spins until disabled.
+- Turbo is disabled automatically when a BEER, CIGARETTE, combined, or SWORD bonus begins. The player can enable it again during that feature.
 - Transient scrolling symbols traverse each column's configured reel strip from a presentation-only random offset. They preserve that reel's symbol frequency and ordering but do not select or alter the predetermined final stop.
 - The Beer x5 reveal and Cigarette multiplier roll are cosmetic. The displayed Cigarette or combined roll always stops on the multiplier resolved before the bonus-intro animation begins.
 - Sword Cleave highlights the evaluated ways on each stopped board. On expansion, it shows the larger populated board and a cosmetic roll through the resolved destination multiplier band before the additional Cleave spins begin; neither animation rerolls the outcome.

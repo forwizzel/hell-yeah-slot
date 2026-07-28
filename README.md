@@ -52,9 +52,9 @@ The report uses US-dollar amounts and separately reports total, base-game, free-
 
 ## Playing
 
-- **Spin** places the selected US-dollar wager and plays one complete paid round.
+- **Spin** places the selected US-dollar wager and plays one complete paid round. While a base, free, or Sword spin is animating, the button becomes **Settle** and immediately shows that already-resolved spin.
 - **- / +** moves through the configured bets: `$0.20`, `$0.40`, `$0.60`, `$0.80`, `$1.00`, `$1.20`, `$1.40`, `$1.60`, `$1.80`, `$2.00`, `$2.50`, `$3.00`, `$5.00`, `$10.00`, `$25.00`, `$50.00`, `$75.00`, `$100.00`, `$150.00`, `$200.00`, `$250.00`, `$300.00`, `$400.00`, and `$500.00`.
-- **Turbo** enables Quick Spin, shortening animation without changing the result.
+- **Turbo** shortens the current and future spin animations without changing results. It can be toggled during spins and bonus games, and turns off automatically when a bonus feature begins.
 - **Music On / Music Off** and **SFX On / SFX Off** control the soundtrack and sound effects independently. Both are enabled by default.
 - **Reset** restores a `$450,000.00` balance and a `$500.00` bet, restarts an active deterministic sequence, and clears prior Spin Ledger entries.
 - **Engage** starts a deterministic random sequence from a non-empty seed in the Machine Room.
@@ -63,7 +63,7 @@ The report uses US-dollar amounts and separately reports total, base-game, free-
 - **Feature Buy** first plays a qualifying spin showing the purchased bonus symbols, awards any ordinary ways win from that spin, and then waits for `Press to Start ... Feature`. BEER costs 23.5x bet, CIGARETTE costs 58.5x, BEER + CIGARETTE costs 58.6x, and SWORD costs 900x. The in-game balance must cover the displayed price. These prototype prices are independent of the current math balance.
 - Ways wins and completed feature payouts of at least 5x their triggering bet show a large payout count-up: `BIG WIN!` at 5x-9.99x, `HUGE WIN!` at 10x-24.99x, `SUPER WIN!` at 25x-49.99x, and `HELL YEAH!` at 50x or more. The final payout holds for five seconds, or click/tap the machine window once it finishes counting to continue immediately.
 
-Controls that can mutate the game are disabled while a round or feature is running.
+Bet, wager, reset, seed, and feature-buy controls are disabled while a round or feature is running; Settle and Turbo remain available where described above.
 
 ## Accessibility and Motion
 

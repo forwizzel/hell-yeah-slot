@@ -78,11 +78,11 @@ export class GameView {
 
   animateBaseSpin(
     result: Grid,
-    durationMs: number,
+    turboEnabled: boolean,
     bonusSoundGroups: ReadonlyArray<ReadonlyArray<Position>> = [],
   ): Promise<void> {
     const revealedCounts = bonusSoundGroups.map(() => 0);
-    return this.reels.animateBaseSpin(result, durationMs, (column) => {
+    return this.reels.animateBaseSpin(result, turboEnabled, (column) => {
       this.audio.play("click");
       bonusSoundGroups.forEach((positions, groupIndex) => {
         const positionsInColumn = positions
@@ -120,6 +120,17 @@ export class GameView {
     return this.controls.isQuickSpinEnabled();
   }
 
+  setQuickSpinEnabled(enabled: boolean): void {
+    this.controls.setQuickSpinEnabled(enabled);
+    this.reels.setTurboEnabled(enabled);
+    this.swordBoard.setTurboEnabled(enabled);
+  }
+
+  settleActiveSpin(): void {
+    this.reels.settleActiveSpin();
+    this.swordBoard.settleActiveSpin();
+  }
+
   toggleMusic(): void {
     this.controls.setMusicEnabled(this.audio.toggleMusic());
   }
@@ -140,15 +151,15 @@ export class GameView {
     this.log.clear();
   }
 
-  animateSwordSpin(result: WaysGrid, durationMs: number, swordPosition: Position | null = null): Promise<void> {
+  animateSwordSpin(result: WaysGrid, turboEnabled: boolean, swordPosition: Position | null = null): Promise<void> {
     this.reelHost.hidden = true;
     this.swordHost.hidden = false;
     this.audio.play("spin");
-    const reducedMotion = durationMs <= 0 || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     if (reducedMotion && swordPosition !== null) {
       this.audio.play("symbol-winner");
     }
-    return this.swordBoard.animateSpin(result, durationMs, (column) => {
+    return this.swordBoard.animateSpin(result, turboEnabled, (column) => {
       this.audio.play("click");
       if (swordPosition?.column === column) {
         this.audio.play("symbol-winner");

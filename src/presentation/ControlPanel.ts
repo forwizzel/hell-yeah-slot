@@ -6,6 +6,7 @@ export type DevelopmentBonusId = FeatureBuyId;
 
 export interface ControlActions {
   readonly spin: () => void;
+  readonly setQuickSpinEnabled: (enabled: boolean) => void;
   readonly decreaseBet: () => void;
   readonly increaseBet: () => void;
   readonly toggleMusic: () => void;
@@ -49,6 +50,7 @@ export class ControlPanel {
 
   bind(actions: ControlActions): void {
     this.spinButton.addEventListener("click", actions.spin);
+    this.quickSpinInput.addEventListener("change", () => actions.setQuickSpinEnabled(this.quickSpinInput.checked));
     this.decreaseButton.addEventListener("click", actions.decreaseBet);
     this.increaseButton.addEventListener("click", actions.increaseBet);
     this.musicToggleButton.addEventListener("click", actions.toggleMusic);
@@ -76,17 +78,22 @@ export class ControlPanel {
 
   update(model: GameViewModel, activeSeed: string | null): void {
     const interactive = model.phase === "idle";
+    const spinning = model.phase === "base-spinning"
+      || model.phase === "free-spin-spinning"
+      || model.phase === "sword-spinning";
     this.balanceValue.textContent = formatUsd(model.balanceCents);
     this.betValue.textContent = formatUsd(model.betCents);
     this.lastWinValue.textContent = formatUsd(model.lastWinCents);
     this.phaseValue.textContent = formatPhase(model.phase);
 
-    this.spinButton.disabled = !interactive || model.balanceCents < model.betCents;
+    this.spinButton.disabled = spinning ? false : !interactive || model.balanceCents < model.betCents;
+    this.spinButton.textContent = spinning ? "Settle" : "Spin";
+    this.spinButton.setAttribute("aria-label", spinning ? "Settle current spin" : "Start spin");
     this.decreaseButton.disabled = !interactive || model.betCents === GAME_CONFIG.betOptionsCents[0];
     this.increaseButton.disabled = !interactive
       || model.betCents === GAME_CONFIG.betOptionsCents[GAME_CONFIG.betOptionsCents.length - 1];
     this.resetButton.disabled = !interactive;
-    this.quickSpinInput.disabled = !interactive;
+    this.quickSpinInput.disabled = model.phase === "large-win";
     this.seedInput.disabled = !interactive;
     this.applySeedButton.disabled = !interactive;
     this.clearSeedButton.disabled = !interactive || activeSeed === null;
@@ -106,6 +113,10 @@ export class ControlPanel {
 
   isQuickSpinEnabled(): boolean {
     return this.quickSpinInput.checked;
+  }
+
+  setQuickSpinEnabled(enabled: boolean): void {
+    this.quickSpinInput.checked = enabled;
   }
 
   setMusicEnabled(enabled: boolean): void {

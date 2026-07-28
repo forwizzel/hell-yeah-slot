@@ -50,6 +50,11 @@ interface ReelSpinState {
   readonly stripCycle: ReelStripCycle;
 }
 
+interface ActiveAnimation {
+  readonly settle: () => void;
+  readonly setTurbo: (enabled: boolean) => void;
+}
+
 type CellStyle = "card" | "wild" | "beer" | "cigarette" | "sword";
 
 interface CellAppearance {
@@ -76,6 +81,7 @@ const CELL_APPEARANCES: Record<CellStyle, CellAppearance> = {
 
 export class ReelGridView {
   private readonly reels: ReelVisual[] = [];
+  private activeAnimation: ActiveAnimation | null = null;
 
   private constructor(
     private readonly application: Application,
@@ -120,6 +126,12 @@ export class ReelGridView {
 
   renderGrid(grid: Grid, winningPositions: ReadonlyArray<Position> = []): void {
     validateGrid(grid);
+    for (const reel of this.reels) {
+      reel.track.y = 0;
+      for (const cell of reel.cells) {
+        cell.container.alpha = 1;
+      }
+    }
     const winningKeys = new Set(winningPositions.map((position) => `${position.row}:${position.column}`));
     for (let row = 0; row < GAME_CONFIG.rows; row += 1) {
       for (let column = 0; column < GAME_CONFIG.columns; column += 1) {
@@ -130,18 +142,24 @@ export class ReelGridView {
     this.application.canvas.setAttribute("aria-label", gridAriaLabel(grid));
   }
 
-  animateBaseSpin(result: Grid, durationMs: number, onColumnLocked?: (column: number) => void): Promise<void> {
+  setTurboEnabled(enabled: boolean): void {
+    this.activeAnimation?.setTurbo(enabled);
+  }
+
+  settleActiveSpin(): void {
+    this.activeAnimation?.settle();
+  }
+
+  animateBaseSpin(result: Grid, turboEnabled: boolean, onColumnLocked?: (column: number) => void): Promise<void> {
     validateGrid(result);
-    if (durationMs <= 0 || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
       this.renderGrid(result);
       return Promise.resolve();
     }
 
-    const startTime = performance.now();
-    const quickSpin = durationMs <= GAME_CONFIG.quickSpinDurationMs;
-    const stepDuration = quickSpin
-      ? GAME_CONFIG.quickReelStepDurationMs
-      : GAME_CONFIG.normalReelStepDurationMs;
+    const normalDuration = GAME_CONFIG.normalSpinDurationMs;
+    const quickDuration = GAME_CONFIG.quickSpinDurationMs;
+    const stepDuration = GAME_CONFIG.normalReelStepDurationMs;
     const spinStates: ReelSpinState[] = this.reels.map((_reel, column) => ({
       stepStartedAt: 0,
       stepDuration,
@@ -160,11 +178,40 @@ export class ReelGridView {
     }));
 
     return new Promise((resolve) => {
+      let turbo = turboEnabled;
+      let virtualElapsed = 0;
+      let lastFrameTime = performance.now();
+      let animationFrame = 0;
+      let complete = false;
+      const finish = (): void => {
+        if (complete) {
+          return;
+        }
+        complete = true;
+        cancelAnimationFrame(animationFrame);
+        for (let column = 0; column < GAME_CONFIG.columns; column += 1) {
+          const state = spinStates[column];
+          if (state !== undefined && !state.locked) {
+            state.locked = true;
+            onColumnLocked?.(column);
+          }
+        }
+        this.renderGrid(result);
+        this.activeAnimation = null;
+        resolve();
+      };
+      this.activeAnimation = {
+        settle: finish,
+        setTurbo: (enabled) => { turbo = enabled; },
+      };
       const frame = (now: number): void => {
-        const elapsed = now - startTime;
+        const realDelta = now - lastFrameTime;
+        lastFrameTime = now;
+        virtualElapsed += realDelta * (turbo ? normalDuration / quickDuration : 1);
+        const elapsed = Math.min(virtualElapsed, normalDuration);
 
         for (let column = 0; column < GAME_CONFIG.columns; column += 1) {
-          const stopTime = durationMs * (0.55 + ((column + 1) / GAME_CONFIG.columns) * 0.45);
+          const stopTime = normalDuration * (0.55 + ((column + 1) / GAME_CONFIG.columns) * 0.45);
           const reel = this.reels[column];
           const state = spinStates[column];
           if (reel === undefined) {
@@ -193,7 +240,7 @@ export class ReelGridView {
 
             if (!state.finalSequenceStarted) {
               const decelerationProgress = clamp(
-                (state.stepStartedAt - durationMs * 0.3) / Math.max(settleStart - durationMs * 0.3, 1),
+                (state.stepStartedAt - normalDuration * 0.3) / Math.max(settleStart - normalDuration * 0.3, 1),
                 0,
                 1,
               );
@@ -223,7 +270,7 @@ export class ReelGridView {
               state.settling = true;
               state.settleStartY = reel.track.y;
               state.settleStartVelocity = (CELL_HEIGHT + GAP) / state.stepDuration;
-              if (quickSpin && !state.finalSequenceComplete) {
+               if (turbo && !state.finalSequenceComplete) {
                 for (let row = 0; row < GAME_CONFIG.rows; row += 1) {
                   this.drawCell(row, column, result[row]![column]!, false, true);
                 }
@@ -247,14 +294,13 @@ export class ReelGridView {
           }
         }
 
-        if (elapsed < durationMs) {
-          requestAnimationFrame(frame);
+        if (elapsed < normalDuration) {
+          animationFrame = requestAnimationFrame(frame);
         } else {
-          this.renderGrid(result);
-          resolve();
+          finish();
         }
       };
-      requestAnimationFrame(frame);
+      animationFrame = requestAnimationFrame(frame);
     });
   }
 

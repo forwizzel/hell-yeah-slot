@@ -1,4 +1,5 @@
 import { Application, Assets, Container, Graphics, Sprite, Texture } from "pixi.js";
+import { GAME_CONFIG } from "../config/gameConfig";
 import type { BonusSymbolId, CardSymbolId, Position, WaysCell, WaysGrid } from "../core/types";
 
 const WIDTH = 750;
@@ -57,8 +58,14 @@ interface SpinState {
   cycleIndex: number;
 }
 
+interface ActiveAnimation {
+  readonly settle: () => void;
+  readonly setTurbo: (enabled: boolean) => void;
+}
+
 export class SwordBoardView {
   private readonly columns: ColumnVisual[] = [];
+  private activeAnimation: ActiveAnimation | null = null;
   private rows = 0;
   private cellWidth = 0;
   private cellHeight = 0;
@@ -85,6 +92,9 @@ export class SwordBoardView {
   render(grid: WaysGrid, winningPositions: ReadonlyArray<Position> = []): void {
     validateGrid(grid);
     this.buildGrid(grid.length, false);
+    for (const column of this.columns) {
+      column.track.y = 0;
+    }
     const winningKeys = new Set(winningPositions.map((position) => `${position.row}:${position.column}`));
     for (let row = 0; row < grid.length; row += 1) {
       for (let column = 0; column < COLUMNS; column += 1) {
@@ -94,15 +104,25 @@ export class SwordBoardView {
     this.application.canvas.setAttribute("aria-label", swordBoardAriaLabel(grid));
   }
 
-  animateSpin(result: WaysGrid, durationMs: number, onColumnLocked?: (column: number) => void): Promise<void> {
+  setTurboEnabled(enabled: boolean): void {
+    this.activeAnimation?.setTurbo(enabled);
+  }
+
+  settleActiveSpin(): void {
+    this.activeAnimation?.settle();
+  }
+
+  animateSpin(result: WaysGrid, turboEnabled: boolean, onColumnLocked?: (column: number) => void): Promise<void> {
     validateGrid(result);
-    if (durationMs <= 0 || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
       this.render(result);
       return Promise.resolve();
     }
 
     this.buildGrid(result.length, true);
     const pitch = this.cellHeight + GAP;
+    const normalDuration = GAME_CONFIG.normalSpinDurationMs;
+    const quickDuration = GAME_CONFIG.quickSpinDurationMs;
     this.columns.forEach((column, columnIndex) => {
       column.cells.forEach((cell, row) => {
         this.drawCellVisual(cell, CYCLE_CELLS[(columnIndex + row) % CYCLE_CELLS.length]!);
@@ -110,7 +130,7 @@ export class SwordBoardView {
     });
     const states: SpinState[] = this.columns.map((_column, index) => ({
       stepStartedAt: 0,
-      stepDuration: durationMs <= 180 ? 52 : 92,
+      stepDuration: 92,
       settling: false,
       settleStartY: 0,
       settleStartVelocity: 0,
@@ -122,9 +142,37 @@ export class SwordBoardView {
     }));
 
     return new Promise((resolve) => {
-      const startedAt = performance.now();
+      let turbo = turboEnabled;
+      let virtualElapsed = 0;
+      let lastFrameTime = performance.now();
+      let animationFrame = 0;
+      let complete = false;
+      const finish = (): void => {
+        if (complete) {
+          return;
+        }
+        complete = true;
+        cancelAnimationFrame(animationFrame);
+        for (let column = 0; column < COLUMNS; column += 1) {
+          const state = states[column];
+          if (state !== undefined && !state.locked) {
+            state.locked = true;
+            onColumnLocked?.(column);
+          }
+        }
+        this.render(result);
+        this.activeAnimation = null;
+        resolve();
+      };
+      this.activeAnimation = {
+        settle: finish,
+        setTurbo: (enabled) => { turbo = enabled; },
+      };
       const frame = (now: number): void => {
-        const elapsed = now - startedAt;
+        const realDelta = now - lastFrameTime;
+        lastFrameTime = now;
+        virtualElapsed += realDelta * (turbo ? normalDuration / quickDuration : 1);
+        const elapsed = Math.min(virtualElapsed, normalDuration);
         for (let column = 0; column < COLUMNS; column += 1) {
           const visual = this.columns[column];
           const state = states[column];
@@ -132,7 +180,7 @@ export class SwordBoardView {
             throw new Error("Sword animation column was not initialized");
           }
 
-          const stopTime = durationMs * (0.55 + ((column + 1) / COLUMNS) * 0.45);
+           const stopTime = normalDuration * (0.55 + ((column + 1) / COLUMNS) * 0.45);
           const settleDuration = Math.min(320, stopTime * 0.35);
           const settleStart = stopTime - settleDuration;
           if (state.stepStartedAt === 0) {
@@ -153,7 +201,7 @@ export class SwordBoardView {
                 state.finalSequenceStarted = true;
                 state.stepDuration = Math.max(remainingSpinTime / result.length, 1);
               } else {
-                state.stepDuration = Math.min(state.stepDuration * 1.22, durationMs <= 180 ? 86 : 220);
+                 state.stepDuration = Math.min(state.stepDuration * 1.22, turbo ? 86 : 220);
               }
             }
             this.recycleCell(visual, state, (cell, symbol) => this.drawCellVisual(cell, symbol));
@@ -181,14 +229,13 @@ export class SwordBoardView {
           }
         }
 
-        if (elapsed < durationMs) {
-          requestAnimationFrame(frame);
+        if (elapsed < normalDuration) {
+          animationFrame = requestAnimationFrame(frame);
         } else {
-          this.render(result);
-          resolve();
+          finish();
         }
       };
-      requestAnimationFrame(frame);
+      animationFrame = requestAnimationFrame(frame);
     });
   }
 

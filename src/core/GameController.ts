@@ -19,6 +19,7 @@ import type {
   BonusActivation,
   BonusSymbolId,
   BonusTrigger,
+  GamePhase,
   SpinResult,
   SwordFeatureState,
 } from "./types";
@@ -34,6 +35,7 @@ export class GameController {
   constructor(private readonly view: GameView) {
     view.bindControls({
       spin: () => { void this.spin(); },
+      setQuickSpinEnabled: (enabled) => this.view.setQuickSpinEnabled(enabled),
       decreaseBet: () => this.adjustBet(-1),
       increaseBet: () => this.adjustBet(1),
       toggleMusic: () => this.view.toggleMusic(),
@@ -52,13 +54,14 @@ export class GameController {
   }
 
   private async spin(): Promise<void> {
+    if (isActiveSpinPhase(this.state.phase)) {
+      this.view.settleActiveSpin();
+      return;
+    }
     if (this.state.phase !== "idle" || this.state.balanceCents < this.state.betCents) {
       return;
     }
 
-    const quickSpin = this.view.isQuickSpinEnabled();
-    const spinDuration = quickSpin ? GAME_CONFIG.quickSpinDurationMs : GAME_CONFIG.normalSpinDurationMs;
-    const evaluationDelay = quickSpin ? GAME_CONFIG.quickEvaluationDelayMs : GAME_CONFIG.normalEvaluationDelayMs;
     const triggeringBetCents = this.state.betCents;
 
     try {
@@ -73,19 +76,15 @@ export class GameController {
 
       // The complete paid-spin outcome, including any feature trigger, is fixed before animation.
       const result = this.createPaidSpinResult(triggeringBetCents);
+      this.disableTurboForFeature(result.bonusTrigger);
       await this.playTriggeringSpin(
         result,
         triggeringBetCents,
-        spinDuration,
-        evaluationDelay,
-        quickSpin,
         "Base spin started.",
       );
       await this.playResolvedFeature(
         result.bonusTrigger,
         triggeringBetCents,
-        spinDuration,
-        evaluationDelay,
         hasFeatureTriggerSound(result.bonusTrigger),
       );
 
@@ -102,9 +101,7 @@ export class GameController {
       return;
     }
 
-    const quickSpin = this.view.isQuickSpinEnabled();
-    const spinDuration = quickSpin ? GAME_CONFIG.quickSpinDurationMs : GAME_CONFIG.normalSpinDurationMs;
-    const evaluationDelay = quickSpin ? GAME_CONFIG.quickEvaluationDelayMs : GAME_CONFIG.normalEvaluationDelayMs;
+    this.view.setQuickSpinEnabled(false);
     this.state.lastWinCents = 0;
     this.state.winningPositions = [];
     this.state.freeSpins = null;
@@ -114,7 +111,7 @@ export class GameController {
     this.view.addLog(`[DEV] Forced ${developmentBonusLabel(bonus)} at bet ${formatUsd(this.state.betCents)}; no wager charged.`);
 
     try {
-      await this.playDirectFeature(bonus, this.state.betCents, spinDuration, evaluationDelay);
+      await this.playDirectFeature(bonus, this.state.betCents);
 
       this.state.freeSpins = null;
       this.state.phase = "idle";
@@ -135,9 +132,6 @@ export class GameController {
       return;
     }
 
-    const quickSpin = this.view.isQuickSpinEnabled();
-    const spinDuration = quickSpin ? GAME_CONFIG.quickSpinDurationMs : GAME_CONFIG.normalSpinDurationMs;
-    const evaluationDelay = quickSpin ? GAME_CONFIG.quickEvaluationDelayMs : GAME_CONFIG.normalEvaluationDelayMs;
     this.state.balanceCents -= costCents;
     this.state.lastWinCents = 0;
     this.state.winningPositions = [];
@@ -149,19 +143,15 @@ export class GameController {
 
     try {
       const result = this.createPurchasedSpinResult(feature, triggeringBetCents);
+      this.disableTurboForFeature(result.bonusTrigger);
       await this.playTriggeringSpin(
         result,
         triggeringBetCents,
-        spinDuration,
-        evaluationDelay,
-        quickSpin,
         `${featureBuyLabel(feature)} purchase spin started.`,
       );
       await this.playResolvedFeature(
         result.bonusTrigger,
         triggeringBetCents,
-        spinDuration,
-        evaluationDelay,
         true,
       );
       this.state.freeSpins = null;
@@ -175,11 +165,10 @@ export class GameController {
   private async playDirectFeature(
     feature: FeatureBuyId,
     triggeringBetCents: number,
-    spinDuration: number,
-    evaluationDelay: number,
   ): Promise<void> {
+    this.view.setQuickSpinEnabled(false);
     if (feature === "sword") {
-      await this.playSwordFeature(triggeringBetCents, false, false, spinDuration, evaluationDelay);
+      await this.playSwordFeature(triggeringBetCents, false, false);
       return;
     }
 
@@ -192,41 +181,25 @@ export class GameController {
       beer: null,
       cigarette: null,
     };
-    await this.playFreeSpins(trigger, triggeringBetCents, spinDuration, evaluationDelay, false);
+    await this.playFreeSpins(trigger, triggeringBetCents, false);
   }
 
   private async playResolvedFeature(
     trigger: BonusTrigger,
     triggeringBetCents: number,
-    spinDuration: number,
-    evaluationDelay: number,
     playWinnerSound: boolean,
   ): Promise<void> {
+    this.disableTurboForFeature(trigger);
     if (trigger.kind === "sword") {
-      await this.playSwordFeature(
-        triggeringBetCents,
-        false,
-        playWinnerSound,
-        spinDuration,
-        evaluationDelay,
-      );
+      await this.playSwordFeature(triggeringBetCents, false, playWinnerSound);
     } else if (trigger.kind === "free-spins") {
-      await this.playFreeSpins(
-        trigger,
-        triggeringBetCents,
-        spinDuration,
-        evaluationDelay,
-        playWinnerSound,
-      );
+      await this.playFreeSpins(trigger, triggeringBetCents, playWinnerSound);
     }
   }
 
   private async playTriggeringSpin(
     result: SpinResult,
     triggeringBetCents: number,
-    spinDuration: number,
-    evaluationDelay: number,
-    quickSpin: boolean,
     startLog: string,
   ): Promise<void> {
     const bonusSoundGroups = bonusLandingSoundGroups(result.grid);
@@ -237,7 +210,7 @@ export class GameController {
     this.view.addLog(startLog);
     this.render();
     this.view.playSound("spin");
-    await this.view.animateBaseSpin(result.grid, spinDuration, bonusSoundGroups);
+    await this.view.animateBaseSpin(result.grid, this.view.isQuickSpinEnabled(), bonusSoundGroups);
 
     this.state.grid = result.grid;
     this.state.phase = "base-evaluation";
@@ -245,8 +218,23 @@ export class GameController {
     this.awardWin(result.regularWinCents);
     this.view.addLog(result.regularWinCents > 0 ? `Base win: ${formatUsd(result.regularWinCents)}.` : "No base win.");
     this.render();
-    await this.view.wait(evaluationDelay);
-    await this.playLargeWin(result.regularWinCents, triggeringBetCents, "base-evaluation", quickSpin);
+    const timing = this.getSpinTiming();
+    await this.view.wait(timing.evaluationDelay);
+    await this.playLargeWin(result.regularWinCents, triggeringBetCents, "base-evaluation", timing.quickSpin);
+  }
+
+  private getSpinTiming(): { readonly quickSpin: boolean; readonly evaluationDelay: number } {
+    const quickSpin = this.view.isQuickSpinEnabled();
+    return {
+      quickSpin,
+      evaluationDelay: quickSpin ? GAME_CONFIG.quickEvaluationDelayMs : GAME_CONFIG.normalEvaluationDelayMs,
+    };
+  }
+
+  private disableTurboForFeature(trigger: BonusTrigger): void {
+    if (trigger.kind !== "none") {
+      this.view.setQuickSpinEnabled(false);
+    }
   }
 
   private createPaidSpinResult(betCents: number): SpinResult {
@@ -281,10 +269,9 @@ export class GameController {
   private async playFreeSpins(
     trigger: Extract<BonusTrigger, { kind: "free-spins" }>,
     triggeringBetCents: number,
-    spinDuration: number,
-    evaluationDelay: number,
     playWinnerSound: boolean,
   ): Promise<void> {
+    this.view.setQuickSpinEnabled(false);
     this.state.winningPositions = [];
     this.state.bonusSummary = null;
     this.state.largeWin = null;
@@ -303,9 +290,10 @@ export class GameController {
     if (playWinnerSound) {
       this.view.playSound("symbol-winner");
     }
+    const introTiming = this.getSpinTiming();
     const multiplierRevealDuration = trigger.mode === "beer"
-      ? evaluationDelay * 2
-      : spinDuration <= GAME_CONFIG.quickSpinDurationMs
+      ? introTiming.evaluationDelay * 2
+      : introTiming.quickSpin
         ? GAME_CONFIG.quickMultiplierRevealDurationMs
         : GAME_CONFIG.normalMultiplierRevealDurationMs;
     await this.view.playBonusIntroReveal(this.state.freeSpins, multiplierRevealDuration);
@@ -322,7 +310,7 @@ export class GameController {
       const result = this.bonusEngine.applyFreeSpin(previousState, grid, evaluation.totalWinCents);
       const bonusSoundGroups = bonusLandingSoundGroups(grid);
       this.view.playSound("spin");
-      await this.view.animateBaseSpin(grid, spinDuration, bonusSoundGroups);
+      await this.view.animateBaseSpin(grid, this.view.isQuickSpinEnabled(), bonusSoundGroups);
 
       this.state.grid = grid;
       this.state.winningPositions = evaluation.winningPositions;
@@ -347,16 +335,11 @@ export class GameController {
       if (result.beerRetriggered || result.cigaretteRetriggered) {
         this.view.playSound("symbol-winner");
       }
-      await this.view.wait(evaluationDelay);
+      const evaluationTiming = this.getSpinTiming();
+      await this.view.wait(evaluationTiming.evaluationDelay);
 
       if (result.swordTriggered) {
-        await this.playSwordFeature(
-          previousState.triggeringBetCents,
-          true,
-          true,
-          spinDuration,
-          evaluationDelay,
-        );
+        await this.playSwordFeature(previousState.triggeringBetCents, true, true);
       }
     }
 
@@ -368,12 +351,13 @@ export class GameController {
       `${featureLabel(summary.mode)} complete after ${summary.spinsPlayed} spins. Awarded ${formatUsd(summary.payoutCents)}.`,
     );
     this.render();
-    await this.view.wait(evaluationDelay * 2);
+    const completionTiming = this.getSpinTiming();
+    await this.view.wait(completionTiming.evaluationDelay * 2);
     await this.playLargeWin(
       summary.payoutCents,
       triggeringBetCents,
       "bonus-complete",
-      spinDuration <= GAME_CONFIG.quickSpinDurationMs,
+      completionTiming.quickSpin,
     );
   }
 
@@ -381,9 +365,8 @@ export class GameController {
     triggeringBetCents: number,
     duringFreeSpins: boolean,
     playWinnerSound: boolean,
-    spinDuration: number,
-    evaluationDelay: number,
   ): Promise<void> {
+    this.view.setQuickSpinEnabled(false);
     this.state.sword = this.swordEngine.start(triggeringBetCents);
     this.state.winningPositions = [];
     this.state.bonusSummary = null;
@@ -400,7 +383,8 @@ export class GameController {
     if (playWinnerSound) {
       this.view.playSound("symbol-winner");
     }
-    await this.view.wait(evaluationDelay * 2);
+    const introTiming = this.getSpinTiming();
+    await this.view.wait(introTiming.evaluationDelay * 2);
 
     while (this.state.sword.remainingSpins > 0) {
       const previousSwordState: SwordFeatureState = this.state.sword;
@@ -408,7 +392,11 @@ export class GameController {
       this.state.phase = "sword-spinning";
       this.state.winningPositions = [];
       this.render();
-      await this.view.animateSwordSpin(result.spinBoard, spinDuration, result.expansion?.position ?? null);
+      await this.view.animateSwordSpin(
+        result.spinBoard,
+        this.view.isQuickSpinEnabled(),
+        result.expansion?.position ?? null,
+      );
 
       // Keep the evaluated board visible before an expansion replaces it with the taller next-spin board.
       this.state.sword = result.expansion === null
@@ -430,14 +418,15 @@ export class GameController {
         );
       }
       this.render();
-      await this.view.wait(evaluationDelay);
+      const evaluationTiming = this.getSpinTiming();
+      await this.view.wait(evaluationTiming.evaluationDelay);
 
       if (result.expansion !== null) {
         this.state.sword = result.state;
         this.state.winningPositions = [];
         this.render();
-        await this.view.wait(evaluationDelay);
-        const multiplierRevealDuration = spinDuration <= GAME_CONFIG.quickSpinDurationMs
+        await this.view.wait(evaluationTiming.evaluationDelay);
+        const multiplierRevealDuration = evaluationTiming.quickSpin
           ? GAME_CONFIG.quickMultiplierRevealDurationMs
           : GAME_CONFIG.normalMultiplierRevealDurationMs;
         await this.view.playSwordExpansionReveal(result.expansion, multiplierRevealDuration);
@@ -447,7 +436,7 @@ export class GameController {
         this.state.phase = "sword-final-strike";
         this.view.addLog(`Final Strike x${result.finalStrikeMultiplier}: ${formatUsd(result.finalPayoutCents)} total Sword payout.`);
         this.render();
-        await this.view.wait(evaluationDelay * 2);
+        await this.view.wait(evaluationTiming.evaluationDelay * 2);
       }
     }
 
@@ -460,12 +449,13 @@ export class GameController {
     this.state.phase = "sword-complete";
     this.view.addLog(`Sword Cleave complete after ${summary.spinsPlayed} spins. Awarded ${formatUsd(summary.payoutCents)}.`);
     this.render();
-    await this.view.wait(evaluationDelay * 2);
+    const completionTiming = this.getSpinTiming();
+    await this.view.wait(completionTiming.evaluationDelay * 2);
     await this.playLargeWin(
       summary.payoutCents,
       triggeringBetCents,
       "sword-complete",
-      spinDuration <= GAME_CONFIG.quickSpinDurationMs,
+      completionTiming.quickSpin,
     );
     this.state.sword = null;
   }
@@ -640,4 +630,8 @@ function featureBuyLabel(feature: FeatureBuyId): string {
 
 function hasFeatureTriggerSound(trigger: BonusTrigger): boolean {
   return trigger.kind !== "none";
+}
+
+function isActiveSpinPhase(phase: GamePhase): boolean {
+  return phase === "base-spinning" || phase === "free-spin-spinning" || phase === "sword-spinning";
 }

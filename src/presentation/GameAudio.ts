@@ -31,8 +31,9 @@ const EFFECT_PATHS: Record<GameSoundEffect, string> = {
 
 export class GameAudio {
   private readonly soundtrack = createAudio(SOUNDTRACK_PATH);
-  private readonly effects = new Map<GameSoundEffect, HTMLAudioElement>();
-  private readonly activeEffects = new Set<HTMLAudioElement>();
+  private readonly audioContext = new AudioContext();
+  private readonly effects = new Map<GameSoundEffect, AudioBuffer>();
+  private readonly activeEffects = new Set<AudioBufferSourceNode>();
   private musicEnabled = true;
   private sfxEnabled = true;
 
@@ -41,7 +42,7 @@ export class GameAudio {
     this.soundtrack.autoplay = true;
     this.soundtrack.addEventListener("canplay", this.handleMusicReady);
     for (const [effect, path] of Object.entries(EFFECT_PATHS)) {
-      this.effects.set(effect as GameSoundEffect, createAudio(path));
+      void this.loadEffect(effect as GameSoundEffect, path);
     }
     this.soundtrack.load();
     document.addEventListener("pointerdown", this.handleUserInteraction);
@@ -63,7 +64,7 @@ export class GameAudio {
     this.sfxEnabled = !this.sfxEnabled;
     if (!this.sfxEnabled) {
       for (const effect of this.activeEffects) {
-        effect.pause();
+        effect.stop();
       }
       this.activeEffects.clear();
     }
@@ -77,21 +78,21 @@ export class GameAudio {
     if (!this.sfxEnabled) {
       return;
     }
-    const source = this.effects.get(effect);
-    if (source === undefined) {
+    const buffer = this.effects.get(effect);
+    if (buffer === undefined) {
       return;
     }
 
-    const playback = source.cloneNode(true) as HTMLAudioElement;
+    const playback = this.audioContext.createBufferSource();
+    playback.buffer = buffer;
+    playback.connect(this.audioContext.destination);
     const finish = (): void => {
-      playback.removeEventListener("ended", finish);
-      playback.removeEventListener("error", finish);
       this.activeEffects.delete(playback);
+      playback.disconnect();
     };
-    playback.addEventListener("ended", finish);
-    playback.addEventListener("error", finish);
+    playback.addEventListener("ended", finish, { once: true });
     this.activeEffects.add(playback);
-    void playback.play().catch(finish);
+    playback.start();
   }
 
   private startMusic(): void {
@@ -104,12 +105,28 @@ export class GameAudio {
   }
 
   private readonly handleUserInteraction = (): void => {
+    void this.audioContext.resume().catch(() => {
+      // SFX remain unavailable until a browser allows the audio context to resume.
+    });
     this.startMusic();
   };
 
   private readonly handleMusicReady = (): void => {
     this.startMusic();
   };
+
+  private async loadEffect(effect: GameSoundEffect, path: string): Promise<void> {
+    try {
+      const response = await fetch(path);
+      if (!response.ok) {
+        return;
+      }
+      const data = await response.arrayBuffer();
+      this.effects.set(effect, await this.audioContext.decodeAudioData(data));
+    } catch {
+      // Audio failures must not interrupt the game.
+    }
+  }
 }
 
 function createAudio(path: string): HTMLAudioElement {

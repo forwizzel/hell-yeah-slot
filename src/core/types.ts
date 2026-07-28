@@ -2,6 +2,7 @@ export type GamePhase =
   | "idle"
   | "base-spinning"
   | "base-evaluation"
+  | "bonus-start"
   | "bonus-intro"
   | "free-spin-spinning"
   | "free-spin-evaluation"

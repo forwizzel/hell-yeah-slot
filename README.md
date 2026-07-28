@@ -60,7 +60,7 @@ The report uses US-dollar amounts and separately reports total, base-game, free-
 - **Engage** starts a deterministic random sequence from a non-empty seed in the Machine Room.
 - **Release** restores browser Web Crypto randomness.
 - **Spin Ledger** displays the 30 most recent game events. Reset removes its prior history and records the reset.
-- **Feature Buy** starts only the selected bonus at the current bet: BEER costs 20x bet, CIGARETTE costs 50x, BEER + CIGARETTE costs 100x, and SWORD costs 250x. The in-game balance must cover the displayed price. These temporary prices do not account for RTP.
+- **Feature Buy** first plays a qualifying spin showing the purchased bonus symbols, awards any ordinary ways win from that spin, and then waits for `Press to Start ... Feature`. BEER costs 20x bet, CIGARETTE costs 50x, BEER + CIGARETTE costs 100x, and SWORD costs 250x. The in-game balance must cover the displayed price. These temporary prices do not account for RTP.
 - Ways wins and completed feature payouts of at least 5x their triggering bet show a large payout count-up: `BIG WIN!` at 5x-9.99x, `HUGE WIN!` at 10x-24.99x, `SUPER WIN!` at 25x-49.99x, and `HELL YEAH!` at 50x or more. The final payout holds for five seconds, or click/tap the machine window once it finishes counting to continue immediately.
 
 Controls that can mutate the game are disabled while a round or feature is running.
@@ -95,9 +95,9 @@ Regular symbols `10`, `J`, `Q`, `K`, `A`, `COIN`, and `SKULL` pay left to right 
 
 BEER and CIGARETTE can activate naturally or through configured below-threshold chances on paid spins. Free-spin retriggers are natural-only: BEER adds spins, while CIGARETTE compounds the active multiplier by another uniform x2 through x10 selection. The x5 baseline is applied once at feature initialization and is included in the displayed multiplier. SWORD takes priority when outcomes overlap.
 
-Sword Cleave begins at 5x3 with three spins and has no blank cells. Its boards use only `10`, `J`, `Q`, `K`, `A`, WILD, and at most one SWORD; COIN and SKULL do not appear. Sword ways use a dedicated feature paytable documented in [Game Rules and Edge Cases](Edge-Cases.md). Before 5x3, 5x4, and 5x5 spins, a Sword expansion has a 40%, 25%, and 10% chance respectively; it replaces a card or WILD, then reveals a populated bottom row after the Sword lands. The board caps at 5x6. Each expansion resets the counter to three and replaces the active multiplier with the destination band: 5x4 x5-x10, 5x5 x14-x18, or 5x6 x25-x30. Reaching 5x6 awards three final spins and applies one weighted x5-x100 Final Strike to the accumulated Sword payout.
+Sword Cleave begins at 5x3 with three spins and has no blank cells. Its boards use only `10`, `J`, `Q`, `K`, `A`, WILD, and at most one SWORD; COIN and SKULL do not appear. Sword ways use a dedicated feature paytable documented in [Game Rules and Edge Cases](Edge-Cases.md). Before 5x3, 5x4, and 5x5 spins, a Sword expansion has a 40%, 25%, and 10% chance respectively; it replaces a card or WILD, then reveals a populated bottom row after the Sword lands. The board caps at 5x6. Each expansion adds three spins and replaces the active multiplier with the destination band: 5x4 x5-x10, 5x5 x14-x18, or 5x6 x25-x30. Sword Cleave payouts are capped at 2,000x the triggering bet.
 
-The configured math targets approximately 98% RTP, allocating roughly 81 points to paid/free-spin ways and roughly 17 points to Sword Cleave. The rare Final Strike paths create substantial short-run variance, so this design target is not a statistical or regulatory certification.
+The configured math targets approximately 98% RTP, allocating roughly 81 points to paid/free-spin ways and roughly 17 points to Sword Cleave. The additional Sword spins and payout cap preserve substantial feature variance, so this design target is not a statistical or regulatory certification.
 
 See [Game Rules and Edge Cases](Edge-Cases.md) for the authoritative paytable, trigger probabilities, retrigger order, WILD treatment, SWORD priority, and round-accounting rules.
 
@@ -111,7 +111,7 @@ The seeded generator is intended for repeatability, not cryptographic security.
 
 ## Development Controls
 
-`npm run dev` exposes a separate service panel for forcing BEER, CIGARETTE, combined, and SWORD features. Production startup removes that panel from the UI, and the controller independently rejects forced triggers outside Vite development mode. Forced features place no wager, use the selected bet for payouts, and consume the active random sequence normally. Production Feature Buy controls always charge the displayed in-game balance price.
+`npm run dev` exposes a separate service panel for forcing BEER, CIGARETTE, combined, and SWORD features. Production startup removes that panel from the UI, and the controller independently rejects forced triggers outside Vite development mode. Forced features place no wager, use the selected bet for payouts, consume the active random sequence normally, and wait for the same manual start prompt. Production Feature Buy controls always charge the displayed in-game balance price.
 
 ## Project Layout
 

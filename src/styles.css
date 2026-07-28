@@ -473,6 +473,29 @@ input::placeholder {
   background: rgba(84, 23, 20, 0.96);
 }
 
+.feature-overlay--start {
+  pointer-events: auto;
+}
+
+.feature-start-button {
+  margin-top: 1.1rem;
+  padding: 0.8rem 1rem;
+  border: 2px solid currentColor;
+  color: var(--ivory-bright);
+  background: var(--signal-red);
+  font-family: var(--stamp);
+  font-size: clamp(0.7rem, 2.5vw, 1rem);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.feature-start-button:hover,
+.feature-start-button:focus-visible {
+  color: #170b09;
+  background: var(--ivory-bright);
+}
+
 .feature-overlay--jackpot {
   color: var(--ivory-bright);
   background: rgba(169, 52, 39, 0.97);

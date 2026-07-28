@@ -50,6 +50,21 @@ describe("ReelEngine", () => {
     ]);
   });
 
+  it("creates purchased spins with exactly the requested bonus symbols", () => {
+    const grid = new ReelEngine(REEL_STRIPS, new ControlledRandomSource([], [0, 0, 0, 0, 0, 14, 13, 12, 11, 10, 9]))
+      .spinWithGuaranteedBonusSymbols([
+        "BEER", "BEER", "BEER", "CIGARETTE", "CIGARETTE", "CIGARETTE",
+      ]);
+    const bonusCells = grid.flat().flatMap((cell, index) => cell.kind === "bonus" ? [{ cell, index }] : []);
+    const bonusSymbols = bonusCells.map(({ cell }) => cell.symbol);
+
+    expect(bonusSymbols).toHaveLength(6);
+    expect(bonusSymbols.filter((symbol) => symbol === "BEER")).toHaveLength(3);
+    expect(bonusSymbols.filter((symbol) => symbol === "CIGARETTE")).toHaveLength(3);
+    expect(bonusSymbols).not.toContain("SWORD");
+    expect(bonusCells.map(({ index }) => index)).toEqual([9, 10, 11, 12, 13, 14]);
+  });
+
   it("is deterministic with a seeded source", () => {
     const first = new ReelEngine(REEL_STRIPS, new SeededRandomSource("reels"));
     const second = new ReelEngine(REEL_STRIPS, new SeededRandomSource("reels"));

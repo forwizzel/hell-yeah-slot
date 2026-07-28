@@ -53,6 +53,7 @@ interface SpinState {
   finalQueue: WaysCell[];
   finalSequenceStarted: boolean;
   finalSequenceComplete: boolean;
+  locked: boolean;
   cycleIndex: number;
 }
 
@@ -93,7 +94,7 @@ export class SwordBoardView {
     this.application.canvas.setAttribute("aria-label", swordBoardAriaLabel(grid));
   }
 
-  animateSpin(result: WaysGrid, durationMs: number): Promise<void> {
+  animateSpin(result: WaysGrid, durationMs: number, onColumnLocked?: (column: number) => void): Promise<void> {
     validateGrid(result);
     if (durationMs <= 0 || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
       this.render(result);
@@ -116,6 +117,7 @@ export class SwordBoardView {
       finalQueue: Array.from({ length: result.length }, (_, row) => result[result.length - row - 1]![index]!),
       finalSequenceStarted: false,
       finalSequenceComplete: false,
+      locked: false,
       cycleIndex: index,
     }));
 
@@ -172,6 +174,10 @@ export class SwordBoardView {
             }
             const progress = clamp((elapsed - settleStart) / settleDuration, 0, 1);
             visual.track.y = settlePosition(state.settleStartY, state.settleStartVelocity, settleDuration, progress);
+            if (elapsed >= stopTime && !state.locked) {
+              state.locked = true;
+              onColumnLocked?.(column);
+            }
           }
         }
 

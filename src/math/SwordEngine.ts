@@ -75,19 +75,32 @@ export class SwordEngine {
     );
 
     const expansion = expands ? this.createExpansion(state.rows, expansionTarget!) : null;
-    const remainingSpins = expansion === null ? state.remainingSpins - 1 : this.config.startingSpins;
+    const remainingSpins = expansion === null
+      ? state.remainingSpins - 1
+      : safeAdd(
+          state.remainingSpins - 1,
+          this.config.startingSpins,
+          "Remaining Sword spins exceed the safe integer range",
+        );
     const complete = remainingSpins === 0;
     const finalStrikeMultiplier = complete && state.rows === this.config.maximumRows
       ? this.pickFinalStrikeMultiplier()
       : null;
     const finalPayoutCents = complete
-      ? finalStrikeMultiplier === null
-        ? accumulatedWinCents
-        : safeMultiply(
-            accumulatedWinCents,
-            finalStrikeMultiplier,
-            "Sword final strike payout exceeds the safe integer range",
-          )
+      ? Math.min(
+          finalStrikeMultiplier === null
+            ? accumulatedWinCents
+            : safeMultiply(
+                accumulatedWinCents,
+                finalStrikeMultiplier,
+                "Sword final strike payout exceeds the safe integer range",
+              ),
+          safeMultiply(
+            state.triggeringBetCents,
+            this.config.maximumPayoutMultiplier,
+            "Maximum Sword payout exceeds the safe integer range",
+          ),
+        )
       : null;
     const nextBoard = expansion === null
       ? board
@@ -221,6 +234,9 @@ function validateConfig(config: SwordConfig): void {
     || config.startingSpins !== 3) {
     throw new RangeError("Sword dimensions, spins, and initial multiplier are invalid");
   }
+  if (!Number.isSafeInteger(config.maximumPayoutMultiplier) || config.maximumPayoutMultiplier <= 0) {
+    throw new RangeError("Sword maximum payout multiplier is invalid");
+  }
   if (config.expansionChances[3] !== 0.4
     || config.expansionChances[4] !== 0.25
     || config.expansionChances[5] !== 0.1) {
@@ -265,7 +281,7 @@ function validateState(state: SwordFeatureState, config: SwordConfig): void {
     || state.rows < config.startingRows
     || state.rows > config.maximumRows
     || state.remainingSpins < 0
-    || state.remainingSpins > config.startingSpins
+    || state.remainingSpins > config.startingSpins * 3
     || state.totalSpinsPlayed < 0
     || state.activeMultiplier < 1
     || state.accumulatedWinCents < 0

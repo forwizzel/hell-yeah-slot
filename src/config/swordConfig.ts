@@ -25,6 +25,7 @@ export interface SwordConfig {
   readonly maximumRows: number;
   readonly startingSpins: number;
   readonly initialMultiplier: number;
+  readonly maximumPayoutMultiplier: number;
   readonly expansionChances: Readonly<Record<SwordExpansionRows, number>>;
   readonly boardSymbols: ReadonlyArray<WeightedSwordBoardSymbol>;
   readonly multiplierBands: Readonly<Record<SwordStageRows, SwordMultiplierBand>>;
@@ -37,6 +38,7 @@ export const SWORD_CONFIG: SwordConfig = Object.freeze({
   maximumRows: 6,
   startingSpins: 3,
   initialMultiplier: 1,
+  maximumPayoutMultiplier: 2_000,
   expansionChances: Object.freeze({
     3: 0.4,
     4: 0.25,

@@ -1,5 +1,5 @@
 import type { ReelSymbol } from "../config/reelStrips";
-import type { Cell, Grid } from "../core/types";
+import type { BonusSymbolId, Cell, Grid } from "../core/types";
 import type { RandomSource } from "./RandomSource";
 
 export class ReelEngine {
@@ -32,6 +32,36 @@ export class ReelEngine {
         }
         targetRow.push(createCell(symbol));
       }
+    }
+
+    return grid;
+  }
+
+  spinWithGuaranteedBonusSymbols(symbols: ReadonlyArray<BonusSymbolId>): Grid {
+    if (symbols.length > this.rows * this.reelStrips.length) {
+      throw new RangeError("Guaranteed bonus symbols exceed the grid size");
+    }
+
+    const grid: Grid = this.spin().map((row) => row.map((cell) =>
+      cell.kind === "bonus" ? { kind: "card" as const, symbol: "10" as const } : cell,
+    ));
+    const availablePositions = Array.from(
+      { length: this.rows * this.reelStrips.length },
+      (_, index) => index,
+    );
+    for (const symbol of symbols) {
+      const positionIndex = this.random.nextInt(availablePositions.length);
+      const flatIndex = availablePositions.splice(positionIndex, 1)[0];
+      if (flatIndex === undefined) {
+        throw new Error("Guaranteed bonus position lookup failed");
+      }
+      const row = Math.floor(flatIndex / this.reelStrips.length);
+      const column = flatIndex % this.reelStrips.length;
+      const targetRow = grid[row];
+      if (targetRow === undefined) {
+        throw new Error("Grid row lookup failed");
+      }
+      targetRow[column] = { kind: "bonus", symbol };
     }
 
     return grid;

@@ -26,7 +26,9 @@ export class GameView {
   private readonly featureTitle = requiredElement<HTMLElement>("feature-title");
   private readonly featureMultiplier = requiredElement<HTMLElement>("feature-multiplier");
   private readonly featureMessage = requiredElement<HTMLElement>("feature-message");
+  private readonly featureStartButton = requiredElement<HTMLButtonElement>("feature-start");
   private largeWinSkip: (() => void) | null = null;
+  private featureStartResolver: (() => void) | null = null;
 
   private constructor(
     private readonly reels: ReelGridView,
@@ -35,6 +37,11 @@ export class GameView {
     private readonly swordHost: HTMLElement,
   ) {
     this.featureOverlay.addEventListener("click", () => this.largeWinSkip?.());
+    this.featureStartButton.addEventListener("click", () => {
+      const resolve = this.featureStartResolver;
+      this.featureStartResolver = null;
+      resolve?.();
+    });
   }
 
   static async create(): Promise<GameView> {
@@ -100,6 +107,15 @@ export class GameView {
     return this.reels.wait(durationMs);
   }
 
+  waitForFeatureStart(): Promise<void> {
+    if (this.featureStartResolver !== null) {
+      throw new Error("A feature start prompt is already active");
+    }
+    return new Promise((resolve) => {
+      this.featureStartResolver = resolve;
+    });
+  }
+
   isQuickSpinEnabled(): boolean {
     return this.controls.isQuickSpinEnabled();
   }
@@ -120,10 +136,20 @@ export class GameView {
     this.log.clear();
   }
 
-  animateSwordSpin(result: WaysGrid, durationMs: number): Promise<void> {
+  animateSwordSpin(result: WaysGrid, durationMs: number, swordPosition: Position | null = null): Promise<void> {
     this.reelHost.hidden = true;
     this.swordHost.hidden = false;
-    return this.swordBoard.animateSpin(result, durationMs);
+    this.audio.play("spin");
+    const reducedMotion = durationMs <= 0 || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reducedMotion && swordPosition !== null) {
+      this.audio.play("symbol-winner");
+    }
+    return this.swordBoard.animateSpin(result, durationMs, (column) => {
+      this.audio.play("click");
+      if (swordPosition?.column === column) {
+        this.audio.play("symbol-winner");
+      }
+    });
   }
 
   async playSwordExpansionReveal(expansion: SwordExpansion, durationMs: number): Promise<void> {
@@ -282,6 +308,24 @@ export class GameView {
       return;
     }
 
+    if (model.phase === "bonus-start") {
+      const label = model.sword !== null
+        ? "Sword"
+        : model.freeSpins === null
+          ? "Bonus"
+          : startFeatureLabel(model.freeSpins.mode);
+      this.showFeatureOverlay(
+        "Feature ready",
+        "PRESS TO START",
+        `${label} feature is locked in. Click the button to begin.`,
+        "intro",
+        "feature-overlay--start",
+      );
+      this.featureStartButton.hidden = false;
+      this.featureStartButton.textContent = `Press to Start ${label} Feature`;
+      return;
+    }
+
     if (model.phase === "sword-intro") {
       this.showFeatureOverlay("Sword feature", "CLEAVE SPINS", "Three spins. Each Sword adds a row and resets the counter.", "intro", "feature-overlay--sword");
       return;
@@ -335,6 +379,7 @@ export class GameView {
     this.featureMultiplier.hidden = true;
     this.featureMultiplier.className = "feature-overlay__multiplier";
     this.featureMessage.textContent = message;
+    this.featureStartButton.hidden = true;
     this.featureOverlay.className = `feature-overlay feature-overlay--${variant}${modifier.length > 0 ? ` ${modifier}` : ""}`;
     this.featureOverlay.setAttribute("aria-live", variant === "jackpot" ? "assertive" : "polite");
     this.featureOverlay.hidden = false;
@@ -352,6 +397,15 @@ function statusText(model: GameViewModel): string {
 
   if (model.phase === "bonus-intro") {
     return "Feature mechanism engaged";
+  }
+
+  if (model.phase === "bonus-start") {
+    const label = model.sword !== null
+      ? "Sword"
+      : model.freeSpins === null
+        ? "Bonus"
+        : startFeatureLabel(model.freeSpins.mode);
+    return `Press to start ${label} feature`;
   }
 
   if (model.phase === "bonus-complete") {
@@ -404,6 +458,17 @@ function modeLabel(mode: FreeSpinMode): string {
       return "Cigarette free spins";
     case "combined":
       return "Combined free spins";
+  }
+}
+
+function startFeatureLabel(mode: FreeSpinMode): string {
+  switch (mode) {
+    case "beer":
+      return "Beer";
+    case "cigarette":
+      return "Cigarette";
+    case "combined":
+      return "Beer + Cigarette";
   }
 }
 

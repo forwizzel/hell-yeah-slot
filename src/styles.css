@@ -444,6 +444,10 @@ input::placeholder {
   text-shadow: 5px 5px 0 #090b0a, 0 0 16px rgba(209, 75, 55, 0.34);
 }
 
+.feature-overlay__multiplier[hidden] {
+  display: none;
+}
+
 .feature-overlay--beer,
 .feature-overlay--cigarette,
 .feature-overlay--combined,

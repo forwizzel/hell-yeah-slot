@@ -378,6 +378,7 @@ export class GameView {
     this.featureTitle.textContent = title;
     this.featureMultiplier.hidden = true;
     this.featureMultiplier.className = "feature-overlay__multiplier";
+    this.featureMultiplier.textContent = "";
     this.featureMessage.textContent = message;
     this.featureStartButton.hidden = true;
     this.featureOverlay.className = `feature-overlay feature-overlay--${variant}${modifier.length > 0 ? ` ${modifier}` : ""}`;

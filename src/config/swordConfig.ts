@@ -38,7 +38,7 @@ export const SWORD_CONFIG: SwordConfig = Object.freeze({
   maximumRows: 6,
   startingSpins: 3,
   initialMultiplier: 1,
-  maximumPayoutMultiplier: 2_000,
+  maximumPayoutMultiplier: 3_750,
   expansionChances: Object.freeze({
     3: 0.4,
     4: 0.25,

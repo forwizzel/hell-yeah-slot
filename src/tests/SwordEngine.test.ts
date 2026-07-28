@@ -29,7 +29,7 @@ describe("SwordEngine", () => {
   it("does not include COIN or SKULL in its board symbol weights", () => {
     expect(SWORD_CONFIG.boardSymbols.map(({ symbol }) => symbol)).not.toContain("COIN");
     expect(SWORD_CONFIG.boardSymbols.map(({ symbol }) => symbol)).not.toContain("SKULL");
-    expect(SWORD_CONFIG.maximumPayoutMultiplier).toBe(2_000);
+    expect(SWORD_CONFIG.maximumPayoutMultiplier).toBe(3_750);
   });
 
   it("starts at three rows, three spins, and a x1 active multiplier", () => {
@@ -103,14 +103,14 @@ describe("SwordEngine", () => {
     state = engine(random).playSpin(state).state;
     const result = engine(random).playSpin(state);
 
-    expect(result).toMatchObject({ complete: true, finalStrikeMultiplier: 100, finalPayoutCents: 40_000 });
-    expect(result.state).toMatchObject({ remainingSpins: 0, accumulatedWinCents: 93_412, finalPayoutCents: 40_000 });
+    expect(result).toMatchObject({ complete: true, finalStrikeMultiplier: 100, finalPayoutCents: 75_000 });
+    expect(result.state).toMatchObject({ remainingSpins: 0, accumulatedWinCents: 93_412, finalPayoutCents: 75_000 });
     expect(random.floatCalls).toBe(0);
     expect(random.integerCalls).toBe(91);
     expect(engine().summarize(result.state)).toEqual({
       kind: "sword",
       spinsPlayed: 3,
-      payoutCents: 40_000,
+      payoutCents: 75_000,
       reachedFinalStage: true,
       finalStrikeMultiplier: 100,
     });

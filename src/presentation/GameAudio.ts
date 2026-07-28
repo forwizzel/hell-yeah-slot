@@ -9,6 +9,8 @@ export type GameSoundEffect =
   | `win-${SymbolSoundName}`;
 
 const SOUNDTRACK_PATH = new URL("../../audio/soundtrack-1.mp3", import.meta.url).href;
+const SOUNDTRACK_VOLUME = 0.7;
+const SYMBOL_EFFECT_GAIN = 2;
 
 const EFFECT_PATHS: Record<GameSoundEffect, string> = {
   spin: new URL("../../audio/spin-button.mp3", import.meta.url).href,
@@ -39,6 +41,7 @@ export class GameAudio {
 
   constructor() {
     this.soundtrack.loop = true;
+    this.soundtrack.volume = SOUNDTRACK_VOLUME;
     this.soundtrack.autoplay = true;
     this.soundtrack.addEventListener("canplay", this.handleMusicReady);
     for (const [effect, path] of Object.entries(EFFECT_PATHS)) {
@@ -85,10 +88,18 @@ export class GameAudio {
 
     const playback = this.audioContext.createBufferSource();
     playback.buffer = buffer;
-    playback.connect(this.audioContext.destination);
+    const symbolGain = isSymbolSoundEffect(effect) ? this.audioContext.createGain() : null;
+    if (symbolGain === null) {
+      playback.connect(this.audioContext.destination);
+    } else {
+      symbolGain.gain.value = SYMBOL_EFFECT_GAIN;
+      playback.connect(symbolGain);
+      symbolGain.connect(this.audioContext.destination);
+    }
     const finish = (): void => {
       this.activeEffects.delete(playback);
       playback.disconnect();
+      symbolGain?.disconnect();
     };
     playback.addEventListener("ended", finish, { once: true });
     this.activeEffects.add(playback);
@@ -133,4 +144,8 @@ function createAudio(path: string): HTMLAudioElement {
   const audio = new Audio(path);
   audio.preload = "auto";
   return audio;
+}
+
+function isSymbolSoundEffect(effect: GameSoundEffect): boolean {
+  return effect.startsWith("symbol-");
 }

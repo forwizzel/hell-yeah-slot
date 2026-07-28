@@ -152,11 +152,6 @@ export class ReelGridView {
 
   animateBaseSpin(result: Grid, turboEnabled: boolean, onColumnLocked?: (column: number) => void): Promise<void> {
     validateGrid(result);
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-      this.renderGrid(result);
-      return Promise.resolve();
-    }
-
     const normalDuration = GAME_CONFIG.normalSpinDurationMs;
     const quickDuration = GAME_CONFIG.quickSpinDurationMs;
     const stepDuration = GAME_CONFIG.normalReelStepDurationMs;

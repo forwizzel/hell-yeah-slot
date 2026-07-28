@@ -1,7 +1,8 @@
 import { GAME_CONFIG } from "../config/gameConfig";
 import { SWORD_CONFIG, type SwordStageRows } from "../config/swordConfig";
 import { formatUsd } from "../core/formatUsd";
-import type { BonusSummary, FreeSpinMode, FreeSpinState, GameViewModel, Grid, Position, SwordExpansion, WaysGrid } from "../core/types";
+import type { BonusSummary, BonusSymbolId, FreeSpinMode, FreeSpinState, GameViewModel, Grid, Position, SwordExpansion, WaysGrid } from "../core/types";
+import { createBonusLandingAudioPlan, swordColumnAudioEffect } from "./BonusLandingAudio";
 import { ControlPanel, type ControlActions } from "./ControlPanel";
 import { createBandMultiplierRollValues, createMultiplierRollValues } from "./BonusMultiplierReveal";
 import { EventLogView } from "./EventLogView";
@@ -9,12 +10,6 @@ import { GameAudio, type GameSoundEffect } from "./GameAudio";
 import { formatLargeWinMultiplier, getLargeWinTier } from "./LargeWin";
 import { ReelGridView } from "./ReelGridView";
 import { SwordBoardView } from "./SwordBoardView";
-
-const SYMBOL_REVEAL_EFFECTS = [
-  "symbol-first",
-  "symbol-second",
-  "symbol-third",
-] as const satisfies readonly GameSoundEffect[];
 
 export class GameView {
   private readonly controls = new ControlPanel();
@@ -79,27 +74,13 @@ export class GameView {
   animateBaseSpin(
     result: Grid,
     turboEnabled: boolean,
-    bonusSoundGroups: ReadonlyArray<ReadonlyArray<Position>> = [],
+    winSymbols: ReadonlyArray<BonusSymbolId> = [],
   ): Promise<void> {
-    const revealedCounts = bonusSoundGroups.map(() => 0);
+    const audioPlan = createBonusLandingAudioPlan(result, winSymbols);
     return this.reels.animateBaseSpin(result, turboEnabled, (column) => {
-      this.audio.play("click");
-      bonusSoundGroups.forEach((positions, groupIndex) => {
-        const positionsInColumn = positions
-          .filter((position) => position.column === column)
-          .sort((left, right) => left.row - right.row);
-        for (const _position of positionsInColumn) {
-          const revealedCount = revealedCounts[groupIndex];
-          if (revealedCount === undefined) {
-            throw new Error("Bonus sound group was not initialized");
-          }
-          const effect = SYMBOL_REVEAL_EFFECTS[revealedCount];
-          if (effect !== undefined) {
-            this.audio.play(effect);
-          }
-          revealedCounts[groupIndex] = revealedCount + 1;
-        }
-      });
+      for (const effect of audioPlan[column] ?? []) {
+        this.audio.play(effect);
+      }
     });
   }
 
@@ -151,19 +132,16 @@ export class GameView {
     this.log.clear();
   }
 
-  animateSwordSpin(result: WaysGrid, turboEnabled: boolean, swordPosition: Position | null = null): Promise<void> {
+  animateSwordSpin(
+    result: WaysGrid,
+    turboEnabled: boolean,
+    expansionPosition: Position | null,
+  ): Promise<void> {
     this.reelHost.hidden = true;
     this.swordHost.hidden = false;
     this.audio.play("spin");
-    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reducedMotion && swordPosition !== null) {
-      this.audio.play("symbol-winner");
-    }
     return this.swordBoard.animateSpin(result, turboEnabled, (column) => {
-      this.audio.play("click");
-      if (swordPosition?.column === column) {
-        this.audio.play("symbol-winner");
-      }
+      this.audio.play(swordColumnAudioEffect(column, expansionPosition));
     });
   }
 
@@ -172,8 +150,7 @@ export class GameView {
     if (band === undefined) {
       throw new Error("Sword expansion multiplier band is missing");
     }
-    const skipRoll = durationMs <= GAME_CONFIG.quickMultiplierRevealDurationMs
-      || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const skipRoll = durationMs <= GAME_CONFIG.quickMultiplierRevealDurationMs;
     this.showFeatureOverlay(
       "Sword Cleave",
       `BOARD EXPANDS TO 5X${expansion.destinationRows}`,
@@ -208,8 +185,7 @@ export class GameView {
 
   async playBonusIntroReveal(state: FreeSpinState, durationMs: number): Promise<void> {
     const isBeer = state.mode === "beer";
-    const skipRoll = durationMs <= GAME_CONFIG.quickMultiplierRevealDurationMs
-      || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const skipRoll = durationMs <= GAME_CONFIG.quickMultiplierRevealDurationMs;
     const title = `${state.remainingSpins} FREE SPINS`;
     const message = isBeer
       ? `Beer free spins start at an X${state.multiplier} multiplier.`
@@ -250,11 +226,6 @@ export class GameView {
   }
 
   playLargeWinCount(payoutCents: number, durationMs: number): Promise<void> {
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-      this.featureMultiplier.textContent = formatUsd(payoutCents);
-      return this.holdLargeWinFinalPayout();
-    }
-
     return new Promise((resolve) => {
       let animationFrame = 0;
       let complete = false;

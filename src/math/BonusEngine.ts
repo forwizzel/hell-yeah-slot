@@ -36,26 +36,47 @@ export class BonusEngine {
   }
 
   resolveBaseTrigger(grid: Grid): BonusTrigger {
-    const swordPositions = findPositions(grid, "SWORD");
+    const swordPositions = findDistinctColumnPositions(grid, "SWORD");
     if (swordPositions.length >= 3) {
       return { kind: "sword", positions: swordPositions };
     }
 
-    const beer = this.resolveActivation(grid, "BEER");
-    const cigarette = this.resolveActivation(grid, "CIGARETTE");
-    if (beer === null && cigarette === null) {
-      return { kind: "none" };
+    const beerPositions = findDistinctColumnPositions(grid, "BEER");
+    const cigarettePositions = findDistinctColumnPositions(grid, "CIGARETTE");
+    const combined = (beerPositions.length === 3 && cigarettePositions.length === 2)
+      || (beerPositions.length === 2 && cigarettePositions.length === 3);
+    if (combined) {
+      return {
+        kind: "free-spins",
+        mode: "combined",
+        startingSpins: this.beerFreeSpins,
+        multiplier: this.pickMultiplier(),
+        beer: activation("BEER", beerPositions),
+        cigarette: activation("CIGARETTE", cigarettePositions),
+      };
     }
 
-    const mode = featureMode(beer !== null, cigarette !== null);
-    return {
-      kind: "free-spins",
-      mode,
-      startingSpins: beer === null ? this.cigaretteFreeSpins : this.beerFreeSpins,
-      multiplier: cigarette === null ? 1 : this.pickMultiplier(),
-      beer,
-      cigarette,
-    };
+    if (beerPositions.length >= 3) {
+      return {
+        kind: "free-spins",
+        mode: "beer",
+        startingSpins: this.beerFreeSpins,
+        multiplier: 1,
+        beer: activation("BEER", beerPositions),
+        cigarette: null,
+      };
+    }
+    if (cigarettePositions.length >= 3) {
+      return {
+        kind: "free-spins",
+        mode: "cigarette",
+        startingSpins: this.cigaretteFreeSpins,
+        multiplier: this.pickMultiplier(),
+        beer: null,
+        cigarette: activation("CIGARETTE", cigarettePositions),
+      };
+    }
+    return { kind: "none" };
   }
 
   startFreeSpins(trigger: Extract<BonusTrigger, { kind: "free-spins" }>, triggeringBetCents: number): FreeSpinState {
@@ -92,9 +113,9 @@ export class BonusEngine {
       spinWinCents,
       "Accumulated free-spin win exceeds the safe integer range",
     );
-    const swordTriggered = findPositions(grid, "SWORD").length >= 3;
-    const beerRetriggered = !swordTriggered && findPositions(grid, "BEER").length >= 3;
-    const cigaretteRetriggered = !swordTriggered && findPositions(grid, "CIGARETTE").length >= 3;
+    const swordTriggered = findDistinctColumnPositions(grid, "SWORD").length >= 3;
+    const beerRetriggered = !swordTriggered && findDistinctColumnPositions(grid, "BEER").length >= 3;
+    const cigaretteRetriggered = !swordTriggered && findDistinctColumnPositions(grid, "CIGARETTE").length >= 3;
     const addedSpins = beerRetriggered ? this.beerFreeSpins : 0;
     const awardedMultiplier = cigaretteRetriggered ? this.pickMultiplier() : null;
     const multiplier = awardedMultiplier === null
@@ -141,14 +162,6 @@ export class BonusEngine {
     };
   }
 
-  private resolveActivation(grid: Grid, symbol: "BEER" | "CIGARETTE"): BonusActivation | null {
-    const positions = findPositions(grid, symbol);
-    if (positions.length < 3) {
-      return null;
-    }
-    return { symbol, symbolCount: positions.length, positions };
-  }
-
   private pickMultiplier(): number {
     const totalWeight = multiplierWeightsTotal(this.multiplierWeights);
     let selection = this.random.nextInt(totalWeight);
@@ -162,12 +175,14 @@ export class BonusEngine {
   }
 }
 
-function findPositions(grid: Grid, symbol: BonusSymbolId): Position[] {
+function findDistinctColumnPositions(grid: Grid, symbol: BonusSymbolId): Position[] {
   const positions: Position[] = [];
+  const occupiedColumns = new Set<number>();
   for (let row = 0; row < grid.length; row += 1) {
     for (let column = 0; column < (grid[row]?.length ?? 0); column += 1) {
       const cell = grid[row]?.[column];
-      if (cell?.kind === "bonus" && cell.symbol === symbol) {
+      if (cell?.kind === "bonus" && cell.symbol === symbol && !occupiedColumns.has(column)) {
+        occupiedColumns.add(column);
         positions.push({ row, column });
       }
     }
@@ -175,11 +190,8 @@ function findPositions(grid: Grid, symbol: BonusSymbolId): Position[] {
   return positions;
 }
 
-function featureMode(beer: boolean, cigarette: boolean): FreeSpinMode {
-  if (beer && cigarette) {
-    return "combined";
-  }
-  return beer ? "beer" : "cigarette";
+function activation(symbol: "BEER" | "CIGARETTE", positions: Position[]): BonusActivation {
+  return { symbol, symbolCount: positions.length, positions };
 }
 
 function nextMode(mode: FreeSpinMode, beer: boolean, cigarette: boolean): FreeSpinMode {

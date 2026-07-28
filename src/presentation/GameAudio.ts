@@ -1,24 +1,32 @@
+type SymbolSoundName = "beer" | "cig" | "sword";
+
 export type GameSoundEffect =
   | "spin"
   | "bet-up"
   | "bet-down"
   | "click"
-  | "symbol-first"
-  | "symbol-second"
-  | "symbol-third"
-  | "symbol-winner";
+  | `symbol-${SymbolSoundName}-${1 | 2 | 3}`
+  | `win-${SymbolSoundName}`;
 
-const SOUNDTRACK_PATH = new URL("../../sfx/sfx/soundtrack.mp3", import.meta.url).href;
+const SOUNDTRACK_PATH = new URL("../../audio/soundtrack-1.mp3", import.meta.url).href;
 
 const EFFECT_PATHS: Record<GameSoundEffect, string> = {
-  spin: new URL("../../sfx/sfx/spin.mp3", import.meta.url).href,
-  "bet-up": new URL("../../sfx/sfx/bet-up.mp3", import.meta.url).href,
-  "bet-down": new URL("../../sfx/sfx/bet-down.mp3", import.meta.url).href,
-  click: new URL("../../sfx/sfx/click.mp3", import.meta.url).href,
-  "symbol-first": new URL("../../sfx/sfx/symbol-first.mp3", import.meta.url).href,
-  "symbol-second": new URL("../../sfx/sfx/symbol-second.mp3", import.meta.url).href,
-  "symbol-third": new URL("../../sfx/sfx/symbol-third.mp3", import.meta.url).href,
-  "symbol-winner": new URL("../../sfx/sfx/symbol-winner.mp3", import.meta.url).href,
+  spin: new URL("../../audio/spin-button.mp3", import.meta.url).href,
+  "bet-up": new URL("../../audio/bet-up-button.mp3", import.meta.url).href,
+  "bet-down": new URL("../../audio/bet-down-button.mp3", import.meta.url).href,
+  click: new URL("../../audio/cells-click.mp3", import.meta.url).href,
+  "symbol-beer-1": new URL("../../audio/symbol-beer-1.mp3", import.meta.url).href,
+  "symbol-beer-2": new URL("../../audio/symbol-beer-2.mp3", import.meta.url).href,
+  "symbol-beer-3": new URL("../../audio/symbol-beer-3.mp3", import.meta.url).href,
+  "symbol-cig-1": new URL("../../audio/symbol-cig-1.mp3", import.meta.url).href,
+  "symbol-cig-2": new URL("../../audio/symbol-cig-2.mp3", import.meta.url).href,
+  "symbol-cig-3": new URL("../../audio/symbol-cig-3.mp3", import.meta.url).href,
+  "symbol-sword-1": new URL("../../audio/symbol-sword-1.mp3", import.meta.url).href,
+  "symbol-sword-2": new URL("../../audio/symbol-sword-2.mp3", import.meta.url).href,
+  "symbol-sword-3": new URL("../../audio/symbol-sword-3.mp3", import.meta.url).href,
+  "win-beer": new URL("../../audio/win-beer.mp3", import.meta.url).href,
+  "win-cig": new URL("../../audio/win-cig.mp3", import.meta.url).href,
+  "win-sword": new URL("../../audio/win-sword.mp3", import.meta.url).href,
 };
 
 export class GameAudio {

@@ -23,7 +23,7 @@
 - `ReelEngine` and `BonusEngine` must share one injected `RandomSource`. Seed reproducibility depends on preserving random-call order across reel stops, chance checks, multiplier picks, free spins, and retriggers.
 - Balances, bets, and payouts are stored as integer cents; counters, bonus multipliers, and paytable multiplier tenths are also integer-only. Every configured bet must be divisible by the paytable scale. All values must remain JavaScript safe integers. Use the checks in `src/math/safeInteger.ts`; do not silently round or cap overflow.
 - Development bonus buttons are Vite-development-only, charge no wager, and still consume the active random sequence. Preserve both the UI removal and the controller's `import.meta.env.DEV` guard.
-- Browser assets live outside `src/`: graphics under `graphics/`, audio under the intentionally nested `sfx/sfx/`. They are bundled through `new URL(..., import.meta.url)` references; do not treat those paths as public-folder URLs.
+- Browser assets live outside `src/`: graphics under `graphics/`, audio under `audio/`. They are bundled through `new URL(..., import.meta.url)` references; do not treat those paths as public-folder URLs.
 - Presentation changes must preserve usability around 320px width and a text or ARIA equivalent for visual symbol content.
 
 ## Testing Notes

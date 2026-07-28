@@ -114,11 +114,6 @@ export class SwordBoardView {
 
   animateSpin(result: WaysGrid, turboEnabled: boolean, onColumnLocked?: (column: number) => void): Promise<void> {
     validateGrid(result);
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-      this.render(result);
-      return Promise.resolve();
-    }
-
     this.buildGrid(result.length, true);
     const pitch = this.cellHeight + GAP;
     const normalDuration = GAME_CONFIG.normalSpinDurationMs;

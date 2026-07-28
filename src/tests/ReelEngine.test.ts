@@ -51,18 +51,30 @@ describe("ReelEngine", () => {
   });
 
   it("creates purchased spins with exactly the requested bonus symbols", () => {
-    const grid = new ReelEngine(REEL_STRIPS, new ControlledRandomSource([], [0, 0, 0, 0, 0, 14, 13, 12, 11, 10, 9]))
+    const grid = new ReelEngine(REEL_STRIPS, new ControlledRandomSource([], [0, 0, 0, 0, 0, 14, 11, 8, 5, 2]))
       .spinWithGuaranteedBonusSymbols([
-        "BEER", "BEER", "BEER", "CIGARETTE", "CIGARETTE", "CIGARETTE",
+        "BEER", "BEER", "BEER", "CIGARETTE", "CIGARETTE",
       ]);
     const bonusCells = grid.flat().flatMap((cell, index) => cell.kind === "bonus" ? [{ cell, index }] : []);
     const bonusSymbols = bonusCells.map(({ cell }) => cell.symbol);
 
-    expect(bonusSymbols).toHaveLength(6);
+    expect(bonusSymbols).toHaveLength(5);
     expect(bonusSymbols.filter((symbol) => symbol === "BEER")).toHaveLength(3);
-    expect(bonusSymbols.filter((symbol) => symbol === "CIGARETTE")).toHaveLength(3);
+    expect(bonusSymbols.filter((symbol) => symbol === "CIGARETTE")).toHaveLength(2);
     expect(bonusSymbols).not.toContain("SWORD");
-    expect(bonusCells.map(({ index }) => index)).toEqual([9, 10, 11, 12, 13, 14]);
+    expect(new Set(bonusCells.map(({ index }) => index % 5)).size).toBe(5);
+    expect(bonusCells.map(({ index }) => index)).toEqual([10, 11, 12, 13, 14]);
+  });
+
+  it("rejects guaranteed spins that violate symbol limits", () => {
+    const reelEngine = new ReelEngine(REEL_STRIPS, new ControlledRandomSource());
+
+    expect(() => reelEngine.spinWithGuaranteedBonusSymbols([
+      "BEER", "BEER", "BEER", "CIGARETTE", "CIGARETTE", "CIGARETTE",
+    ])).toThrow("Guaranteed bonus symbols exceed the column count");
+    expect(() => reelEngine.spinWithGuaranteedBonusSymbols([
+      "BEER", "BEER", "BEER", "BEER",
+    ])).toThrow("Guaranteed BEER symbols exceed the matching-symbol limit");
   });
 
   it("is deterministic with a seeded source", () => {
@@ -90,15 +102,18 @@ describe("ReelEngine", () => {
   });
 
   it("configures the requested relative bonus rarity", () => {
-    expect(REEL_STRIPS.map((strip) => count(strip, "BEER"))).toEqual([3, 3, 3, 4, 3]);
-    expect(REEL_STRIPS.map((strip) => count(strip, "CIGARETTE"))).toEqual([3, 3, 3, 0, 3]);
-    expect(REEL_STRIPS.map((strip) => count(strip, "SWORD"))).toEqual([1, 2, 2, 0, 6]);
+    expect(REEL_STRIPS.map((strip) => count(strip, "BEER"))).toEqual([4, 7, 9, 0, 0]);
+    expect(REEL_STRIPS.map((strip) => count(strip, "CIGARETTE"))).toEqual([0, 0, 3, 3, 9]);
+    expect(REEL_STRIPS.map((strip) => count(strip, "SWORD"))).toEqual([3, 4, 0, 4, 0]);
   });
 
   it("targets the configured natural feature trigger rates", () => {
-    expect(featureTriggerRate("BEER")).toBeCloseTo(2.6381, 3);
-    expect(featureTriggerRate("CIGARETTE")).toBeCloseTo(0.9950, 3);
-    expect(featureTriggerRate("SWORD")).toBeCloseTo(0.5008, 3);
+    const rates = featureTriggerRates();
+
+    expect(rates.beer + rates.combined).toBeCloseTo(2.64684744, 7);
+    expect(rates.cigarette + rates.combined).toBeCloseTo(0.98825656, 7);
+    expect(rates.sword).toBeCloseTo(0.49438477, 7);
+    expect(rates.combined).toBeCloseTo(0.20530969, 7);
   });
 
   it("includes visible COIN and SKULL symbols on every base and free-spin reel", () => {
@@ -110,38 +125,27 @@ describe("ReelEngine", () => {
     }
   });
 
-  it("makes a Sword trigger structurally exclusive", () => {
-    const swordReels = REEL_STRIPS.filter((strip) => strip.includes("SWORD"));
-    expect(swordReels).toHaveLength(4);
-
+  it("allows at most one bonus symbol per column and three matching symbols per grid", () => {
     for (const strip of REEL_STRIPS) {
       for (let stop = 0; stop < strip.length; stop += 1) {
         const window = visibleWindow(strip, stop);
-        expect(count(window, "BEER")).toBeLessThanOrEqual(1);
-        expect(count(window, "CIGARETTE")).toBeLessThanOrEqual(1);
-        if (window.includes("SWORD")) {
-          expect(window).not.toContain("BEER");
-          expect(window).not.toContain("CIGARETTE");
-        }
+        expect(window.filter(isBonusSymbol)).toHaveLength(window.some(isBonusSymbol) ? 1 : 0);
       }
+    }
+    for (const symbol of ["BEER", "CIGARETTE", "SWORD"] as const) {
+      expect(REEL_STRIPS.filter((strip) => strip.includes(symbol))).toHaveLength(3);
     }
   });
 
-  it("keeps a natural Beer and Cigarette combination reachable", () => {
-    const combinationStops = REEL_STRIPS.map((strip) => {
-      const stop = Array.from({ length: strip.length }, (_, index) => index)
-        .find((index) => visibleWindow(strip, index).includes("BEER")
-          && visibleWindow(strip, index).includes("CIGARETTE"))
-        ?? Array.from({ length: strip.length }, (_, index) => index)
-          .find((index) => visibleWindow(strip, index).includes("BEER"));
-      expect(stop).toBeDefined();
-      return stop!;
-    });
-    const grid = new ReelEngine(REEL_STRIPS, new ControlledRandomSource([], combinationStops)).spin();
+  it.each([
+    [[4, 2, 2, 5, 4], 3, 2],
+    [[4, 2, 12, 5, 4], 2, 3],
+  ] as const)("keeps both natural 3+2 combinations reachable", (combinationStops, beerCount, cigaretteCount) => {
+    const grid = new ReelEngine(REEL_STRIPS, new ControlledRandomSource([], [...combinationStops])).spin();
     const cells = grid.flat();
 
-    expect(cells.filter((cell) => cell.kind === "bonus" && cell.symbol === "BEER").length).toBeGreaterThanOrEqual(3);
-    expect(cells.filter((cell) => cell.kind === "bonus" && cell.symbol === "CIGARETTE").length).toBeGreaterThanOrEqual(3);
+    expect(cells.filter((cell) => cell.kind === "bonus" && cell.symbol === "BEER")).toHaveLength(beerCount);
+    expect(cells.filter((cell) => cell.kind === "bonus" && cell.symbol === "CIGARETTE")).toHaveLength(cigaretteCount);
   });
 });
 
@@ -153,27 +157,50 @@ function count(symbols: ReadonlyArray<ReelSymbol>, symbol: ReelSymbol): number {
   return symbols.filter((candidate) => candidate === symbol).length;
 }
 
-function featureTriggerRate(symbol: ReelSymbol): number {
-  let distributions = new Map<number, number>([[0, 1]]);
+function isBonusSymbol(symbol: ReelSymbol): boolean {
+  return symbol === "BEER" || symbol === "CIGARETTE" || symbol === "SWORD";
+}
+
+function featureTriggerRates(): Record<"beer" | "cigarette" | "combined" | "sword", number> {
+  let distributions = new Map<string, number>([["0:0:0", 1]]);
   for (const strip of REEL_STRIPS) {
-    const windows = new Map<number, number>();
+    const windows = new Map<ReelSymbol | "NONE", number>();
     for (let stop = 0; stop < strip.length; stop += 1) {
-      const visibleCount = Math.min(3, visibleWindow(strip, stop).filter((candidate) => candidate === symbol).length);
-      windows.set(visibleCount, (windows.get(visibleCount) ?? 0) + 1);
+      const symbol = visibleWindow(strip, stop).find(isBonusSymbol) ?? "NONE";
+      windows.set(symbol, (windows.get(symbol) ?? 0) + 1);
     }
 
-    const next = new Map<number, number>();
-    for (const [currentCount, currentWays] of distributions) {
-      for (const [windowCount, windowWays] of windows) {
-        const totalCount = Math.min(3, currentCount + windowCount);
-        next.set(totalCount, (next.get(totalCount) ?? 0) + currentWays * windowWays);
+    const next = new Map<string, number>();
+    for (const [key, currentWays] of distributions) {
+      const [beer = 0, cigarette = 0, sword = 0] = key.split(":").map(Number);
+      for (const [symbol, windowWays] of windows) {
+        const nextKey = [
+          beer + Number(symbol === "BEER"),
+          cigarette + Number(symbol === "CIGARETTE"),
+          sword + Number(symbol === "SWORD"),
+        ].join(":");
+        next.set(nextKey, (next.get(nextKey) ?? 0) + currentWays * windowWays);
       }
     }
     distributions = next;
   }
 
-  const triggeringStops = [...distributions]
-    .filter(([countValue]) => countValue >= 3)
-    .reduce((total, [, ways]) => total + ways, 0);
-  return triggeringStops / (REEL_STRIPS[0]!.length ** REEL_STRIPS.length) * 100;
+  const outcomes = { beer: 0, cigarette: 0, combined: 0, sword: 0 };
+  for (const [key, ways] of distributions) {
+    const [beer = 0, cigarette = 0, sword = 0] = key.split(":").map(Number);
+    if (sword >= 3) {
+      outcomes.sword += ways;
+    } else if ((beer === 3 && cigarette === 2) || (beer === 2 && cigarette === 3)) {
+      outcomes.combined += ways;
+    } else if (beer >= 3) {
+      outcomes.beer += ways;
+    } else if (cigarette >= 3) {
+      outcomes.cigarette += ways;
+    }
+  }
+
+  const totalStops = REEL_STRIPS.reduce((total, strip) => total * strip.length, 1);
+  return Object.fromEntries(
+    Object.entries(outcomes).map(([outcome, ways]) => [outcome, ways / totalStops * 100]),
+  ) as Record<"beer" | "cigarette" | "combined" | "sword", number>;
 }

@@ -9,12 +9,12 @@ import { ReelEngine } from "../math/ReelEngine";
 import { safeAdd } from "../math/safeInteger";
 import { SeededRandomSource } from "../math/SeededRandomSource";
 import { SwordEngine } from "../math/SwordEngine";
-import { bonusLandingSoundGroups } from "../presentation/BonusLandingSoundGroups";
 import type { GameView } from "../presentation/GameView";
 import type { DevelopmentBonusId } from "../presentation/ControlPanel";
 import { getLargeWinTier } from "../presentation/LargeWin";
 import { formatUsd } from "./formatUsd";
 import { GameState } from "./GameState";
+import { createGuaranteedFeatureSymbols } from "./GuaranteedFeatureSymbols";
 import type {
   BonusActivation,
   BonusSymbolId,
@@ -85,7 +85,6 @@ export class GameController {
       await this.playResolvedFeature(
         result.bonusTrigger,
         triggeringBetCents,
-        hasFeatureTriggerSound(result.bonusTrigger),
       );
 
       this.state.freeSpins = null;
@@ -111,7 +110,14 @@ export class GameController {
     this.view.addLog(`[DEV] Forced ${developmentBonusLabel(bonus)} at bet ${formatUsd(this.state.betCents)}; no wager charged.`);
 
     try {
-      await this.playDirectFeature(bonus, this.state.betCents);
+      const result = this.createGuaranteedSpinResult(bonus, this.state.betCents);
+      this.disableTurboForFeature(result.bonusTrigger);
+      await this.playTriggeringSpin(
+        result,
+        this.state.betCents,
+        `[DEV] ${developmentBonusLabel(bonus)} qualifying spin started.`,
+      );
+      await this.playResolvedFeature(result.bonusTrigger, this.state.betCents);
 
       this.state.freeSpins = null;
       this.state.phase = "idle";
@@ -142,7 +148,7 @@ export class GameController {
     this.view.addLog(`Feature buy: ${featureBuyLabel(feature)} for ${formatUsd(costCents)} at bet ${formatUsd(triggeringBetCents)}.`);
 
     try {
-      const result = this.createPurchasedSpinResult(feature, triggeringBetCents);
+      const result = this.createGuaranteedSpinResult(feature, triggeringBetCents);
       this.disableTurboForFeature(result.bonusTrigger);
       await this.playTriggeringSpin(
         result,
@@ -152,7 +158,6 @@ export class GameController {
       await this.playResolvedFeature(
         result.bonusTrigger,
         triggeringBetCents,
-        true,
       );
       this.state.freeSpins = null;
       this.state.phase = "idle";
@@ -162,38 +167,15 @@ export class GameController {
     }
   }
 
-  private async playDirectFeature(
-    feature: FeatureBuyId,
-    triggeringBetCents: number,
-  ): Promise<void> {
-    this.view.setQuickSpinEnabled(false);
-    if (feature === "sword") {
-      await this.playSwordFeature(triggeringBetCents, false, false);
-      return;
-    }
-
-    const includesCigarette = feature === "cigarette" || feature === "combined";
-    const trigger: Extract<BonusTrigger, { kind: "free-spins" }> = {
-      kind: "free-spins",
-      mode: feature,
-      startingSpins: feature === "cigarette" ? GAME_CONFIG.cigaretteFreeSpins : GAME_CONFIG.beerFreeSpins,
-      multiplier: includesCigarette ? this.pickFeatureMultiplier() : 1,
-      beer: null,
-      cigarette: null,
-    };
-    await this.playFreeSpins(trigger, triggeringBetCents, false);
-  }
-
   private async playResolvedFeature(
     trigger: BonusTrigger,
     triggeringBetCents: number,
-    playWinnerSound: boolean,
   ): Promise<void> {
     this.disableTurboForFeature(trigger);
     if (trigger.kind === "sword") {
-      await this.playSwordFeature(triggeringBetCents, false, playWinnerSound);
+      await this.playSwordFeature(triggeringBetCents, false);
     } else if (trigger.kind === "free-spins") {
-      await this.playFreeSpins(trigger, triggeringBetCents, playWinnerSound);
+      await this.playFreeSpins(trigger, triggeringBetCents);
     }
   }
 
@@ -202,7 +184,6 @@ export class GameController {
     triggeringBetCents: number,
     startLog: string,
   ): Promise<void> {
-    const bonusSoundGroups = bonusLandingSoundGroups(result.grid);
     this.state.winningPositions = [];
     this.state.bonusSummary = null;
     this.state.largeWin = null;
@@ -210,7 +191,11 @@ export class GameController {
     this.view.addLog(startLog);
     this.render();
     this.view.playSound("spin");
-    await this.view.animateBaseSpin(result.grid, this.view.isQuickSpinEnabled(), bonusSoundGroups);
+    await this.view.animateBaseSpin(
+      result.grid,
+      this.view.isQuickSpinEnabled(),
+      triggerWinSymbols(result.bonusTrigger),
+    );
 
     this.state.grid = result.grid;
     this.state.phase = "base-evaluation";
@@ -248,14 +233,8 @@ export class GameController {
     };
   }
 
-  private createPurchasedSpinResult(feature: FeatureBuyId, betCents: number): SpinResult {
-    const symbols: ReadonlyArray<BonusSymbolId> = feature === "combined"
-      ? ["BEER", "BEER", "BEER", "CIGARETTE", "CIGARETTE", "CIGARETTE"]
-      : feature === "sword"
-        ? ["SWORD", "SWORD", "SWORD"]
-        : feature === "beer"
-          ? ["BEER", "BEER", "BEER"]
-          : ["CIGARETTE", "CIGARETTE", "CIGARETTE"];
+  private createGuaranteedSpinResult(feature: FeatureBuyId, betCents: number): SpinResult {
+    const symbols = createGuaranteedFeatureSymbols(feature, this.random);
     const grid = this.reelEngine.spinWithGuaranteedBonusSymbols(symbols);
     const evaluation = evaluateWays(grid, PAYTABLE, betCents);
     return {
@@ -269,7 +248,6 @@ export class GameController {
   private async playFreeSpins(
     trigger: Extract<BonusTrigger, { kind: "free-spins" }>,
     triggeringBetCents: number,
-    playWinnerSound: boolean,
   ): Promise<void> {
     this.view.setQuickSpinEnabled(false);
     this.state.winningPositions = [];
@@ -287,9 +265,6 @@ export class GameController {
     await featureStart;
     this.state.phase = "bonus-intro";
     this.render();
-    if (playWinnerSound) {
-      this.view.playSound("symbol-winner");
-    }
     const introTiming = this.getSpinTiming();
     const multiplierRevealDuration = trigger.mode === "beer"
       ? introTiming.evaluationDelay * 2
@@ -308,9 +283,12 @@ export class GameController {
       const grid = this.reelEngine.spin();
       const evaluation = evaluateWays(grid, PAYTABLE, previousState.triggeringBetCents);
       const result = this.bonusEngine.applyFreeSpin(previousState, grid, evaluation.totalWinCents);
-      const bonusSoundGroups = bonusLandingSoundGroups(grid);
       this.view.playSound("spin");
-      await this.view.animateBaseSpin(grid, this.view.isQuickSpinEnabled(), bonusSoundGroups);
+      await this.view.animateBaseSpin(
+        grid,
+        this.view.isQuickSpinEnabled(),
+        freeSpinWinSymbols(result),
+      );
 
       this.state.grid = grid;
       this.state.winningPositions = evaluation.winningPositions;
@@ -332,14 +310,11 @@ export class GameController {
         this.view.addLog(`Cigarette retrigger: x${previousState.multiplier} multiplied by x${result.awardedMultiplier} to x${result.state.multiplier}.`);
       }
       this.render();
-      if (result.beerRetriggered || result.cigaretteRetriggered) {
-        this.view.playSound("symbol-winner");
-      }
       const evaluationTiming = this.getSpinTiming();
       await this.view.wait(evaluationTiming.evaluationDelay);
 
       if (result.swordTriggered) {
-        await this.playSwordFeature(previousState.triggeringBetCents, true, true);
+        await this.playSwordFeature(previousState.triggeringBetCents, true);
       }
     }
 
@@ -364,7 +339,6 @@ export class GameController {
   private async playSwordFeature(
     triggeringBetCents: number,
     duringFreeSpins: boolean,
-    playWinnerSound: boolean,
   ): Promise<void> {
     this.view.setQuickSpinEnabled(false);
     this.state.sword = this.swordEngine.start(triggeringBetCents);
@@ -380,9 +354,6 @@ export class GameController {
     await featureStart;
     this.state.phase = "sword-intro";
     this.render();
-    if (playWinnerSound) {
-      this.view.playSound("symbol-winner");
-    }
     const introTiming = this.getSpinTiming();
     await this.view.wait(introTiming.evaluationDelay * 2);
 
@@ -505,19 +476,6 @@ export class GameController {
     this.render();
   }
 
-  private pickFeatureMultiplier(): number {
-    let selection = this.random.nextInt(
-      GAME_CONFIG.cigaretteMultiplierWeights.reduce((total, entry) => total + entry.weight, 0),
-    );
-    for (const entry of GAME_CONFIG.cigaretteMultiplierWeights) {
-      if (selection < entry.weight) {
-        return entry.multiplier;
-      }
-      selection -= entry.weight;
-    }
-    throw new Error("Cigarette multiplier weight selection failed");
-  }
-
   private handleGameError(error: unknown): void {
     const message = error instanceof Error ? error.message : "Unknown game error";
     this.view.addLog(`Game error: ${message}`);
@@ -628,8 +586,28 @@ function featureBuyLabel(feature: FeatureBuyId): string {
   return feature === "sword" ? "Sword" : featureLabel(feature);
 }
 
-function hasFeatureTriggerSound(trigger: BonusTrigger): boolean {
-  return trigger.kind !== "none";
+function triggerWinSymbols(trigger: BonusTrigger): ReadonlyArray<BonusSymbolId> {
+  if (trigger.kind === "sword") {
+    return ["SWORD"];
+  }
+  if (trigger.kind !== "free-spins" || trigger.mode === "combined") {
+    return [];
+  }
+  return [trigger.mode === "beer" ? "BEER" : "CIGARETTE"];
+}
+
+function freeSpinWinSymbols(result: ReturnType<BonusEngine["applyFreeSpin"]>): ReadonlyArray<BonusSymbolId> {
+  if (result.swordTriggered) {
+    return ["SWORD"];
+  }
+  const symbols: BonusSymbolId[] = [];
+  if (result.beerRetriggered) {
+    symbols.push("BEER");
+  }
+  if (result.cigaretteRetriggered) {
+    symbols.push("CIGARETTE");
+  }
+  return symbols;
 }
 
 function isActiveSpinPhase(phase: GamePhase): boolean {

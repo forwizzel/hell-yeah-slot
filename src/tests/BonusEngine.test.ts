@@ -57,12 +57,20 @@ describe("BonusEngine", () => {
     expect(trigger).toMatchObject({ kind: "free-spins", mode: "cigarette", startingSpins: 10, multiplier: 10 });
   });
 
-  it("starts a natural combination with Beer spins and a Cigarette multiplier", () => {
+  it.each([
+    [["BEER", "BEER", "BEER", "CIGARETTE", "CIGARETTE"], 3, 2],
+    [["BEER", "BEER", "CIGARETTE", "CIGARETTE", "CIGARETTE"], 2, 3],
+  ] as const)("starts a 3+2 natural combination with Beer spins and a Cigarette multiplier", (symbols, beerCount, cigaretteCount) => {
     const trigger = engine(new ControlledRandomSource([], [94])).resolveBaseTrigger(
-      gridWith(["BEER", "BEER", "BEER", "CIGARETTE", "CIGARETTE", "CIGARETTE"]),
+      gridWith(symbols),
     );
 
     expect(trigger).toMatchObject({ kind: "free-spins", mode: "combined", startingSpins: 10, multiplier: 5 });
+    if (trigger.kind !== "free-spins") {
+      throw new Error("Expected free spins");
+    }
+    expect(trigger.beer?.symbolCount).toBe(beerCount);
+    expect(trigger.cigarette?.symbolCount).toBe(cigaretteCount);
   });
 
   it("requires at least three matching Beer or Cigarette symbols", () => {
@@ -70,6 +78,15 @@ describe("BonusEngine", () => {
     expect(engine(random).resolveBaseTrigger(gridWith(["BEER", "BEER", "CIGARETTE", "CIGARETTE"]))).toEqual({ kind: "none" });
     expect(random.floatCalls).toBe(0);
     expect(random.integerCalls).toBe(0);
+  });
+
+  it("requires matching symbols to occupy distinct columns", () => {
+    const grid = gridWith([]);
+    grid[0]![0] = bonus("BEER");
+    grid[1]![0] = bonus("BEER");
+    grid[2]![0] = bonus("BEER");
+
+    expect(engine().resolveBaseTrigger(grid)).toEqual({ kind: "none" });
   });
 
   it("gives Sword priority over every other base trigger", () => {
@@ -128,21 +145,38 @@ describe("BonusEngine", () => {
     expect(result.state.remainingSpins).toBe(13);
   });
 
-  it("stacks Beer and Cigarette retriggers and enters combined mode", () => {
-    const result = engine(new ControlledRandomSource([], [1])).applyFreeSpin(
-      activeState({ remainingSpins: 2, multiplier: 1 }),
-      gridWith(["BEER", "BEER", "BEER", "CIGARETTE", "CIGARETTE", "CIGARETTE"]),
+  it("applies only the matching side of a 3+2 free-spin grid", () => {
+    const result = engine().applyFreeSpin(
+      activeState({ mode: "cigarette", remainingSpins: 2, multiplier: 4 }),
+      gridWith(["BEER", "BEER", "BEER", "CIGARETTE", "CIGARETTE"]),
       1_000,
     );
 
     expect(result).toMatchObject({
-      spinWinCents: 1_000,
+      spinWinCents: 4_000,
       beerRetriggered: true,
-      cigaretteRetriggered: true,
+      cigaretteRetriggered: false,
       addedSpins: 10,
+      awardedMultiplier: null,
+    });
+    expect(result.state).toMatchObject({ mode: "combined", remainingSpins: 11, multiplier: 4 });
+  });
+
+  it("applies a Cigarette retrigger but not Beer on a 2+3 free-spin grid", () => {
+    const result = engine(new ControlledRandomSource([], [1])).applyFreeSpin(
+      activeState({ remainingSpins: 2, multiplier: 4 }),
+      gridWith(["BEER", "BEER", "CIGARETTE", "CIGARETTE", "CIGARETTE"]),
+      1_000,
+    );
+
+    expect(result).toMatchObject({
+      spinWinCents: 4_000,
+      beerRetriggered: false,
+      cigaretteRetriggered: true,
+      addedSpins: 0,
       awardedMultiplier: 2,
     });
-    expect(result.state).toMatchObject({ mode: "combined", remainingSpins: 11, multiplier: 2 });
+    expect(result.state).toMatchObject({ mode: "combined", remainingSpins: 1, multiplier: 8 });
   });
 
   it("suppresses malformed same-grid retriggers when Sword launches", () => {

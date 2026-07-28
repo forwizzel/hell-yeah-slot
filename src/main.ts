@@ -26,22 +26,10 @@ function initializeBackgroundVideo(): void {
     throw new Error("Required background video was not found");
   }
 
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const updatePlayback = (): void => {
-    if (reducedMotion.matches) {
-      video.pause();
-      return;
-    }
-    if (video.src === "") {
-      video.src = backgroundVideoUrl;
-    }
-    void video.play().catch(() => {
-      // Muted autoplay can still be blocked by browser or device policy.
-    });
-  };
-
-  reducedMotion.addEventListener("change", updatePlayback);
-  updatePlayback();
+  video.src = backgroundVideoUrl;
+  void video.play().catch(() => {
+    // Muted autoplay can still be blocked by browser or device policy.
+  });
 }
 
 void start().catch((error: unknown) => {

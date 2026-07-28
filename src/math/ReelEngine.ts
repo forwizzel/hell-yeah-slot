@@ -38,28 +38,27 @@ export class ReelEngine {
   }
 
   spinWithGuaranteedBonusSymbols(symbols: ReadonlyArray<BonusSymbolId>): Grid {
-    if (symbols.length > this.rows * this.reelStrips.length) {
-      throw new RangeError("Guaranteed bonus symbols exceed the grid size");
+    if (symbols.length > this.reelStrips.length) {
+      throw new RangeError("Guaranteed bonus symbols exceed the column count");
+    }
+    for (const symbol of ["BEER", "CIGARETTE", "SWORD"] as const) {
+      if (symbols.filter((candidate) => candidate === symbol).length > 3) {
+        throw new RangeError(`Guaranteed ${symbol} symbols exceed the matching-symbol limit`);
+      }
     }
 
     const grid: Grid = this.spin().map((row) => row.map((cell) =>
       cell.kind === "bonus" ? { kind: "card" as const, symbol: "10" as const } : cell,
     ));
-    const availablePositions = Array.from(
-      { length: this.rows * this.reelStrips.length },
-      (_, index) => index,
-    );
+    const availableColumns = Array.from({ length: this.reelStrips.length }, (_, column) => column);
     for (const symbol of symbols) {
-      const positionIndex = this.random.nextInt(availablePositions.length);
-      const flatIndex = availablePositions.splice(positionIndex, 1)[0];
-      if (flatIndex === undefined) {
-        throw new Error("Guaranteed bonus position lookup failed");
-      }
-      const row = Math.floor(flatIndex / this.reelStrips.length);
-      const column = flatIndex % this.reelStrips.length;
+      const positionIndex = this.random.nextInt(this.rows * availableColumns.length);
+      const row = Math.floor(positionIndex / availableColumns.length);
+      const columnIndex = positionIndex % availableColumns.length;
+      const column = availableColumns.splice(columnIndex, 1)[0];
       const targetRow = grid[row];
-      if (targetRow === undefined) {
-        throw new Error("Grid row lookup failed");
+      if (column === undefined || targetRow === undefined) {
+        throw new Error("Guaranteed bonus position lookup failed");
       }
       targetRow[column] = { kind: "bonus", symbol };
     }

@@ -22,12 +22,12 @@ function createReel(offset: number, specials: ReadonlyArray<readonly [number, Re
   return reel;
 }
 
-// Sword entries isolate SWORD by two stops in either direction. This keeps a
-// Sword trigger structurally exclusive from the other bonus symbols.
+// Bonus entries are separated by at least two stops, so a visible reel window
+// contains at most one bonus symbol. Each type appears on only three reels.
 export const REEL_STRIPS: ReadonlyArray<ReadonlyArray<ReelSymbol>> = [
-  createReel(0, [[0, "SWORD"], [3, "CIGARETTE"], [10, "BEER"], [11, "CIGARETTE"], [14, "CIGARETTE"], [22, "WILD"], [31, "BEER"], [50, "BEER"]]),
-  createReel(3, [[0, "SWORD"], [3, "SWORD"], [8, "BEER"], [9, "CIGARETTE"], [12, "CIGARETTE"], [15, "CIGARETTE"], [29, "BEER"], [47, "BEER"], [60, "WILD"]]),
-  createReel(6, [[0, "SWORD"], [3, "BEER"], [4, "CIGARETTE"], [7, "CIGARETTE"], [10, "CIGARETTE"], [16, "SWORD"], [23, "WILD"], [31, "BEER"], [50, "BEER"]]),
-  createReel(9, [[0, "BEER"], [12, "BEER"], [26, "WILD"], [35, "BEER"], [53, "BEER"]]),
-  createReel(12, [[3, "SWORD"], [7, "BEER"], [8, "CIGARETTE"], [11, "SWORD"], [14, "SWORD"], [17, "SWORD"], [20, "WILD"], [21, "SKULL"], [22, "CIGARETTE"], [27, "SWORD"], [32, "SWORD"], [37, "CIGARETTE"], [44, "BEER"], [57, "BEER"]]),
+  createReel(0, [[4, "BEER"], [5, "WILD"], [13, "SWORD"], [24, "BEER"], [32, "SWORD"], [43, "BEER"], [50, "SWORD"], [57, "BEER"]]),
+  createReel(3, [[2, "BEER"], [3, "WILD"], [7, "SWORD"], [14, "BEER"], [19, "BEER"], [26, "SWORD"], [33, "BEER"], [37, "BEER"], [42, "SWORD"], [48, "BEER"], [53, "SWORD"], [58, "BEER"]]),
+  createReel(6, [[2, "BEER"], [5, "BEER"], [12, "CIGARETTE"], [19, "BEER"], [24, "WILD"], [25, "BEER"], [28, "BEER"], [32, "CIGARETTE"], [40, "BEER"], [48, "BEER"], [54, "CIGARETTE"], [57, "BEER"], [62, "BEER"]]),
+  createReel(9, [[5, "CIGARETTE"], [11, "SWORD"], [20, "SWORD"], [25, "WILD"], [26, "CIGARETTE"], [33, "SWORD"], [43, "CIGARETTE"], [58, "SWORD"]]),
+  createReel(12, [[4, "CIGARETTE"], [15, "CIGARETTE"], [19, "WILD"], [22, "CIGARETTE"], [31, "CIGARETTE"], [41, "CIGARETTE"], [49, "CIGARETTE"], [52, "CIGARETTE"], [58, "CIGARETTE"], [63, "CIGARETTE"]]),
 ];

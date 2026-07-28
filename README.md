@@ -78,26 +78,26 @@ Regular symbols `10`, `J`, `Q`, `K`, `A`, `COIN`, and `SKULL` pay left to right 
 
 | Symbol | 3 columns | 4 columns | 5 columns |
 | --- | ---: | ---: | ---: |
-| `10` | x0.1 | x0.1 | x0.1 |
-| `J` | x0.1 | x0.1 | x0.2 |
-| `Q` | x0.2 | x0.2 | x0.4 |
+| `10` | x0.1 | x0.1 | x0.2 |
+| `J` | x0.1 | x0.2 | x0.3 |
+| `Q` | x0.2 | x0.3 | x0.5 |
 | `K` | x0.2 | x0.4 | x0.5 |
 | `A` | No award | x0.7 | x5.2 |
-| `COIN` | x4 | x12 | x80 |
-| `SKULL` | x8 | x24 | x160 |
+| `COIN` | x0.8 | x2.3 | x15 |
+| `SKULL` | x1.5 | x4.5 | x30 |
 
 | Feature | Initial award |
 | --- | --- |
 | BEER | 10 free spins at x5 |
-| CIGARETTE | 3 free spins at x10 through x50: the x5 baseline times a uniform x2 through x10 selection |
-| BEER + CIGARETTE | 10 free spins at x10 through x50: the x5 baseline times a uniform x2 through x10 selection |
+| CIGARETTE | 10 free spins at x10 through x50: the x5 baseline times a weighted x2 through x10 selection |
+| BEER + CIGARETTE | 10 free spins at x10 through x50: the x5 baseline times a weighted x2 through x10 selection |
 | SWORD | Sword Cleave: expanding 5-column respins, stage multipliers, and a possible Final Strike |
 
-BEER and CIGARETTE can activate naturally or through configured below-threshold chances on paid spins. Free-spin retriggers are natural-only: BEER adds spins, while CIGARETTE compounds the active multiplier by another uniform x2 through x10 selection. The x5 baseline is applied once at feature initialization and is included in the displayed multiplier. SWORD takes priority when outcomes overlap.
+BEER and CIGARETTE can activate naturally or through configured below-threshold chances on paid spins. Free-spin retriggers are natural-only: BEER adds spins, while CIGARETTE compounds the active multiplier by another weighted x2 through x10 selection. The x5 baseline is applied once at feature initialization and is included in the displayed multiplier. SWORD takes priority when outcomes overlap.
 
-Sword Cleave begins at 5x3 with three spins and has no blank cells. Its boards use only `10`, `J`, `Q`, `K`, `A`, WILD, and at most one SWORD; COIN and SKULL do not appear. Sword ways use a dedicated feature paytable documented in [Game Rules and Edge Cases](Edge-Cases.md). Before 5x3, 5x4, and 5x5 spins, a Sword expansion has a 40%, 25%, and 10% chance respectively; it replaces a card or WILD, then reveals a populated bottom row after the Sword lands. The board caps at 5x6. Each expansion adds three spins and replaces the active multiplier with the destination band: 5x4 x5-x10, 5x5 x14-x18, or 5x6 x25-x30. Sword Cleave payouts are capped at 3,750x the triggering bet.
+Sword Cleave begins at 5x3 with three spins and has no blank cells. Its boards use `10`, `J`, `Q`, `K`, `A`, COIN, SKULL, WILD, and at most one SWORD. Sword ways use a dedicated feature paytable documented in [Game Rules and Edge Cases](Edge-Cases.md). Before 5x3, 5x4, and 5x5 spins, a Sword expansion has a 40%, 25%, and 10% chance respectively; it replaces a card or WILD, then reveals a populated bottom row after the Sword lands. The board caps at 5x6. Each expansion adds three spins and replaces the active multiplier with the destination band: 5x4 x5-x10, 5x5 x14-x18, or 5x6 x25-x30. Sword Cleave payouts are capped at 3,750x the triggering bet.
 
-The configured math targets approximately 98% RTP, allocating roughly 81 points to paid/free-spin ways and roughly 17 points to Sword Cleave. The additional Sword spins and payout cap preserve substantial feature variance, so this design target is not a statistical or regulatory certification.
+The configured math targets approximately 98% RTP, with more return moved into visible ordinary line pays while preserving lower-symbol frequency and rare Cigarette and Sword outcomes. The additional Sword spins and payout cap preserve substantial feature variance, so this design target is not a statistical or regulatory certification.
 
 See [Game Rules and Edge Cases](Edge-Cases.md) for the authoritative paytable, trigger probabilities, retrigger order, WILD treatment, SWORD priority, and round-accounting rules.
 

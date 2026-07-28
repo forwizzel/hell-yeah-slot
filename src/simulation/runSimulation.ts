@@ -80,12 +80,11 @@ function simulate(options: SimulationOptions): SimulationStats {
   const bonusEngine = new BonusEngine(
     random,
     GAME_CONFIG.belowThresholdTriggerChances,
-    GAME_CONFIG.beerFreeSpins,
-    GAME_CONFIG.cigaretteFreeSpins,
-    GAME_CONFIG.freeSpinBaseMultiplier,
-    GAME_CONFIG.cigaretteMultiplierMinimum,
-    GAME_CONFIG.cigaretteMultiplierMaximum,
-  );
+      GAME_CONFIG.beerFreeSpins,
+      GAME_CONFIG.cigaretteFreeSpins,
+      GAME_CONFIG.freeSpinBaseMultiplier,
+      GAME_CONFIG.cigaretteMultiplierWeights,
+    );
   const swordEngine = new SwordEngine(random);
   const betCents = GAME_CONFIG.defaultBetCents;
   const stats: SimulationStats = {

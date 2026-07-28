@@ -517,9 +517,16 @@ export class GameController {
   }
 
   private pickFeatureMultiplier(): number {
-    const minimum = GAME_CONFIG.cigaretteMultiplierMinimum;
-    const maximum = GAME_CONFIG.cigaretteMultiplierMaximum;
-    return this.random.nextInt(maximum - minimum + 1) + minimum;
+    let selection = this.random.nextInt(
+      GAME_CONFIG.cigaretteMultiplierWeights.reduce((total, entry) => total + entry.weight, 0),
+    );
+    for (const entry of GAME_CONFIG.cigaretteMultiplierWeights) {
+      if (selection < entry.weight) {
+        return entry.multiplier;
+      }
+      selection -= entry.weight;
+    }
+    throw new Error("Cigarette multiplier weight selection failed");
   }
 
   private handleGameError(error: unknown): void {
@@ -601,8 +608,7 @@ export class GameController {
       GAME_CONFIG.beerFreeSpins,
       GAME_CONFIG.cigaretteFreeSpins,
       GAME_CONFIG.freeSpinBaseMultiplier,
-      GAME_CONFIG.cigaretteMultiplierMinimum,
-      GAME_CONFIG.cigaretteMultiplierMaximum,
+      GAME_CONFIG.cigaretteMultiplierWeights,
     );
   }
 

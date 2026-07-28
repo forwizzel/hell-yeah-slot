@@ -88,8 +88,8 @@ describe("evaluateWays", () => {
     const evaluation = evaluateWays(grid, PAYTABLE, 20);
 
     expect(evaluation).toMatchObject({
-      totalWinCents: 160,
-      wins: [{ symbol: "SKULL", columns: 3, ways: 1, multiplierTenths: 80 }],
+      totalWinCents: 30,
+      wins: [{ symbol: "SKULL", columns: 3, ways: 1, multiplierTenths: 15 }],
     });
   });
 
@@ -101,8 +101,8 @@ describe("evaluateWays", () => {
       [card("SKULL")], [card("SKULL")], [card("SKULL")], [bonus()], [bonus()],
     ]);
 
-    expect(evaluateWays(coinGrid, PAYTABLE, 20).totalWinCents).toBe(80);
-    expect(evaluateWays(skullGrid, PAYTABLE, 20).totalWinCents).toBe(160);
+    expect(evaluateWays(coinGrid, PAYTABLE, 20).totalWinCents).toBe(16);
+    expect(evaluateWays(skullGrid, PAYTABLE, 20).totalWinCents).toBe(30);
   });
 
   it("ignores all bonus symbols in card wins", () => {

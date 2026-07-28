@@ -26,9 +26,9 @@ function activeState(overrides: Partial<SwordFeatureState> = {}): SwordFeatureSt
 }
 
 describe("SwordEngine", () => {
-  it("does not include COIN or SKULL in its board symbol weights", () => {
-    expect(SWORD_CONFIG.boardSymbols.map(({ symbol }) => symbol)).not.toContain("COIN");
-    expect(SWORD_CONFIG.boardSymbols.map(({ symbol }) => symbol)).not.toContain("SKULL");
+  it("includes COIN and SKULL in its board symbol weights", () => {
+    expect(SWORD_CONFIG.boardSymbols.map(({ symbol }) => symbol)).toContain("COIN");
+    expect(SWORD_CONFIG.boardSymbols.map(({ symbol }) => symbol)).toContain("SKULL");
     expect(SWORD_CONFIG.maximumPayoutMultiplier).toBe(3_750);
   });
 

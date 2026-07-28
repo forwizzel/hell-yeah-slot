@@ -17,6 +17,11 @@ export interface TriggerChances {
   readonly CIGARETTE: Readonly<Record<1 | 2, number>>;
 }
 
+export interface MultiplierWeight {
+  readonly multiplier: number;
+  readonly weight: number;
+}
+
 export class BonusEngine {
   constructor(
     private readonly random: RandomSource,
@@ -24,8 +29,7 @@ export class BonusEngine {
     private readonly beerFreeSpins: number,
     private readonly cigaretteFreeSpins: number,
     private readonly freeSpinBaseMultiplier: number,
-    private readonly multiplierMinimum: number,
-    private readonly multiplierMaximum: number,
+    private readonly multiplierWeights: ReadonlyArray<MultiplierWeight>,
   ) {
     const configuredChances = [
       triggerChances.BEER[1],
@@ -42,13 +46,10 @@ export class BonusEngine {
       || !Number.isSafeInteger(cigaretteFreeSpins) || cigaretteFreeSpins <= 0) {
       throw new RangeError("Free-spin awards must be positive integers");
     }
-    if (!Number.isSafeInteger(multiplierMinimum) || !Number.isSafeInteger(multiplierMaximum)
-      || multiplierMinimum < 1 || multiplierMaximum < multiplierMinimum) {
-      throw new RangeError("Multiplier range is invalid");
-    }
     if (!Number.isSafeInteger(freeSpinBaseMultiplier) || freeSpinBaseMultiplier < 1) {
       throw new RangeError("Free-spin base multiplier must be a positive integer");
     }
+    validateMultiplierWeights(multiplierWeights);
   }
 
   resolveBaseTrigger(grid: Grid): BonusTrigger {
@@ -172,7 +173,15 @@ export class BonusEngine {
   }
 
   private pickMultiplier(): number {
-    return this.random.nextInt(this.multiplierMaximum - this.multiplierMinimum + 1) + this.multiplierMinimum;
+    const totalWeight = multiplierWeightsTotal(this.multiplierWeights);
+    let selection = this.random.nextInt(totalWeight);
+    for (const entry of this.multiplierWeights) {
+      if (selection < entry.weight) {
+        return entry.multiplier;
+      }
+      selection -= entry.weight;
+    }
+    throw new Error("Cigarette multiplier weight selection failed");
   }
 }
 
@@ -219,4 +228,32 @@ function validateFreeSpinState(state: FreeSpinState): void {
     || state.accumulatedWinCents < 0) {
     throw new Error("Free-spin state is invalid");
   }
+}
+
+function validateMultiplierWeights(weights: ReadonlyArray<MultiplierWeight>): void {
+  if (weights.length !== 9) {
+    throw new RangeError("Cigarette multiplier weights must include x2 through x10");
+  }
+  const multipliers = new Set<number>();
+  for (const entry of weights) {
+    if (!Number.isSafeInteger(entry.multiplier) || entry.multiplier < 2 || entry.multiplier > 10
+      || multipliers.has(entry.multiplier)
+      || !Number.isSafeInteger(entry.weight) || entry.weight <= 0) {
+      throw new RangeError("Cigarette multiplier weights are invalid");
+    }
+    multipliers.add(entry.multiplier);
+  }
+  for (let multiplier = 2; multiplier <= 10; multiplier += 1) {
+    if (!multipliers.has(multiplier)) {
+      throw new RangeError("Cigarette multiplier weights must include x2 through x10");
+    }
+  }
+  multiplierWeightsTotal(weights);
+}
+
+function multiplierWeightsTotal(weights: ReadonlyArray<MultiplierWeight>): number {
+  return weights.reduce(
+    (total, entry) => safeAdd(total, entry.weight, "Cigarette multiplier weight total exceeds the safe integer range"),
+    0,
+  );
 }

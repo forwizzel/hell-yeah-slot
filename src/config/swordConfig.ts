@@ -45,11 +45,13 @@ export const SWORD_CONFIG: SwordConfig = Object.freeze({
     5: 0.1,
   }),
   boardSymbols: Object.freeze([
-    Object.freeze({ symbol: "10" as const, weight: 30 }),
-    Object.freeze({ symbol: "J" as const, weight: 25 }),
-    Object.freeze({ symbol: "Q" as const, weight: 20 }),
-    Object.freeze({ symbol: "K" as const, weight: 18 }),
-    Object.freeze({ symbol: "A" as const, weight: 6 }),
+    Object.freeze({ symbol: "10" as const, weight: 28 }),
+    Object.freeze({ symbol: "J" as const, weight: 23 }),
+    Object.freeze({ symbol: "Q" as const, weight: 18 }),
+    Object.freeze({ symbol: "K" as const, weight: 16 }),
+    Object.freeze({ symbol: "A" as const, weight: 8 }),
+    Object.freeze({ symbol: "COIN" as const, weight: 5 }),
+    Object.freeze({ symbol: "SKULL" as const, weight: 1 }),
     Object.freeze({ symbol: "WILD" as const, weight: 1 }),
   ]),
   multiplierBands: Object.freeze({

@@ -7,6 +7,17 @@ const CHANCES: TriggerChances = {
   BEER: { 1: 0.002, 2: 0.008 },
   CIGARETTE: { 1: 0.005, 2: 0.01 },
 };
+const MULTIPLIER_WEIGHTS = [
+  { multiplier: 2, weight: 77 },
+  { multiplier: 3, weight: 10 },
+  { multiplier: 4, weight: 5 },
+  { multiplier: 5, weight: 3 },
+  { multiplier: 6, weight: 1 },
+  { multiplier: 7, weight: 1 },
+  { multiplier: 8, weight: 1 },
+  { multiplier: 9, weight: 1 },
+  { multiplier: 10, weight: 1 },
+] as const;
 const regular: Cell = { kind: "card", symbol: "10" };
 
 function bonus(symbol: BonusSymbolId): Cell {
@@ -20,7 +31,7 @@ function gridWith(symbols: ReadonlyArray<BonusSymbolId>): Grid {
 }
 
 function engine(random = new ControlledRandomSource()): BonusEngine {
-  return new BonusEngine(random, CHANCES, 10, 3, 5, 2, 10);
+  return new BonusEngine(random, CHANCES, 10, 10, 5, MULTIPLIER_WEIGHTS);
 }
 
 function activeState(overrides: Partial<FreeSpinState> = {}): FreeSpinState {
@@ -42,16 +53,16 @@ describe("BonusEngine", () => {
     expect(trigger).toMatchObject({ kind: "free-spins", mode: "beer", startingSpins: 10, multiplier: 1 });
   });
 
-  it("starts Cigarette Bonus with 3 free spins and one uniform 2-10 multiplier", () => {
-    const trigger = engine(new ControlledRandomSource([], [8])).resolveBaseTrigger(
+  it("starts Cigarette Bonus with 10 free spins and a weighted 2-10 multiplier", () => {
+    const trigger = engine(new ControlledRandomSource([], [99])).resolveBaseTrigger(
       gridWith(["CIGARETTE", "CIGARETTE", "CIGARETTE"]),
     );
 
-    expect(trigger).toMatchObject({ kind: "free-spins", mode: "cigarette", startingSpins: 3, multiplier: 10 });
+    expect(trigger).toMatchObject({ kind: "free-spins", mode: "cigarette", startingSpins: 10, multiplier: 10 });
   });
 
   it("starts a natural combination with Beer spins and a Cigarette multiplier", () => {
-    const trigger = engine(new ControlledRandomSource([], [3])).resolveBaseTrigger(
+    const trigger = engine(new ControlledRandomSource([], [94])).resolveBaseTrigger(
       gridWith(["BEER", "BEER", "BEER", "CIGARETTE", "CIGARETTE", "CIGARETTE"]),
     );
 
@@ -66,7 +77,7 @@ describe("BonusEngine", () => {
     expect(trigger).toMatchObject({
       kind: "free-spins",
       mode: "combined",
-      multiplier: 6,
+      multiplier: 2,
       beer: { source: "chance", symbolCount: 1 },
       cigarette: { source: "chance", symbolCount: 1 },
     });
@@ -104,7 +115,7 @@ describe("BonusEngine", () => {
   });
 
   it("combines the x5 free-spin baseline with the initial Cigarette multiplier", () => {
-    const bonusEngine = engine(new ControlledRandomSource([], [8]));
+    const bonusEngine = engine(new ControlledRandomSource([], [99]));
     const trigger = bonusEngine.resolveBaseTrigger(gridWith(["CIGARETTE", "CIGARETTE", "CIGARETTE"]));
     if (trigger.kind !== "free-spins") {
       throw new Error("Expected free spins");
@@ -114,7 +125,7 @@ describe("BonusEngine", () => {
   });
 
   it("pays with the multiplier active before retrigger changes", () => {
-    const result = engine(new ControlledRandomSource([], [3])).applyFreeSpin(
+    const result = engine(new ControlledRandomSource([], [94])).applyFreeSpin(
       activeState({ mode: "cigarette", remainingSpins: 3, multiplier: 4 }),
       gridWith(["CIGARETTE", "CIGARETTE", "CIGARETTE"]),
       200,
@@ -147,9 +158,9 @@ describe("BonusEngine", () => {
       beerRetriggered: true,
       cigaretteRetriggered: true,
       addedSpins: 10,
-      awardedMultiplier: 3,
+      awardedMultiplier: 2,
     });
-    expect(result.state).toMatchObject({ mode: "combined", remainingSpins: 11, multiplier: 3 });
+    expect(result.state).toMatchObject({ mode: "combined", remainingSpins: 11, multiplier: 2 });
   });
 
   it("suppresses malformed same-grid retriggers when Sword launches", () => {
@@ -195,7 +206,7 @@ describe("BonusEngine", () => {
   });
 
   it("validates the free-spin baseline multiplier", () => {
-    expect(() => new BonusEngine(new ControlledRandomSource(), CHANCES, 10, 3, 0, 2, 10)).toThrow(
+    expect(() => new BonusEngine(new ControlledRandomSource(), CHANCES, 10, 10, 0, MULTIPLIER_WEIGHTS)).toThrow(
       "Free-spin base multiplier must be a positive integer",
     );
   });

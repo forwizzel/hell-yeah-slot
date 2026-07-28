@@ -22,10 +22,10 @@ This document is the authoritative public contract for current game behavior, in
 ## Reels and Symbols
 
 - The game has five separate 64-stop reel strips. One stop is selected on each reel, then three consecutive entries are read with wraparound; the 15 visible cells are not generated independently.
-- Every reel currently contains three BEER entries, one CIGARETTE entry, and one WILD entry.
+- Every reel currently contains three BEER entries and one WILD entry. CIGARETTE appears once on reels 1, 2, 3, and 5; reel 4 has no CIGARETTE entry, making the feature rarer while preserving natural three-symbol reachability.
 - SWORD appears once on reels 1, 3, and 5 and does not appear on reels 2 or 4.
 - SWORD entries are isolated from other special symbols in their visible windows. This makes a natural SWORD trigger structurally incompatible with a natural BEER or CIGARETTE trigger on the current strips.
-- The regular symbols are `10`, `J`, `Q`, `K`, `A`, `COIN`, and `SKULL`. `COIN` ranks directly above `A`, and `SKULL` is the highest-paying regular symbol. `WILD` substitutes for regular symbols. `BEER`, `CIGARETTE`, and `SWORD` neither pay as ways symbols nor substitute for regular symbols.
+- The regular symbols are `10`, `J`, `Q`, `K`, `A`, `COIN`, and `SKULL`. `COIN` ranks directly above `A`, and `SKULL` is the highest-paying regular symbol. COIN and SKULL are more common than before but remain substantially rarer than the lower symbols. `WILD` substitutes for regular symbols. `BEER`, `CIGARETTE`, and `SWORD` neither pay as ways symbols nor substitute for regular symbols.
 
 ## Ways Evaluation
 
@@ -39,13 +39,13 @@ Paytable values are stored as integer tenths so all configured wagers produce ex
 
 | Symbol | 3 columns | 4 columns | 5 columns |
 | --- | ---: | ---: | ---: |
-| `10` | x0.1 | x0.1 | x0.1 |
-| `J` | x0.1 | x0.1 | x0.2 |
-| `Q` | x0.2 | x0.2 | x0.4 |
+| `10` | x0.1 | x0.1 | x0.2 |
+| `J` | x0.1 | x0.2 | x0.3 |
+| `Q` | x0.2 | x0.3 | x0.5 |
 | `K` | x0.2 | x0.4 | x0.5 |
 | `A` | No award | x0.7 | x5.2 |
-| `COIN` | x4 | x12 | x80 |
-| `SKULL` | x8 | x24 | x160 |
+| `COIN` | x0.8 | x2.3 | x15 |
+| `SKULL` | x1.5 | x4.5 | x30 |
 
 - Multiple regular symbols can win on one result.
 - WILD can support each applicable regular symbol, but an award must contain at least one natural instance of that symbol in its qualifying columns.
@@ -61,8 +61,8 @@ BEER and CIGARETTE can also activate by chance on paid spins when exactly one or
 | Visible symbols | BEER chance | CIGARETTE chance |
 | ---: | ---: | ---: |
 | 0 | No roll | No roll |
-| 1 | 0.2% | 0.5% |
-| 2 | 0.8% | 1.0% |
+| 1 | 0.2% | 0.05% |
+| 2 | 0.8% | 0.1% |
 | 3 or more | Natural trigger | Natural trigger |
 
 - BEER and CIGARETTE chance rolls are independent. Both can activate on the same paid spin, including a mixture of natural and chance activation, and create the combined feature.
@@ -73,8 +73,8 @@ BEER and CIGARETTE can also activate by chance on paid spins when exactly one or
 ## Initial Feature Awards
 
 - **BEER:** 10 free spins at the x5 free-spin baseline.
-- **CIGARETTE:** 3 free spins with the x5 baseline multiplied by one uniformly selected integer from x2 through x10, producing an initial x10 through x50 multiplier.
-- **Combined:** 10 free spins, not 13, with the same x5 baseline and uniformly selected CIGARETTE factor, producing an initial x10 through x50 multiplier.
+- **CIGARETTE:** 10 free spins with the x5 baseline multiplied by one weighted-selected integer from x2 through x10, producing an initial x10 through x50 multiplier. Lower factors are substantially more likely than higher factors.
+- **Combined:** 10 free spins with the same x5 baseline and weighted-selected CIGARETTE factor, producing an initial x10 through x50 multiplier.
 - **SWORD:** Sword Cleave, described below.
 
 The x5 baseline is applied once when a feature starts and is included in the displayed active multiplier. The active multiplier applies separately to each spin's ordinary ways payout; it is not a one-time award and pays nothing by itself.
@@ -97,7 +97,7 @@ The x5 baseline is applied once when a feature starts and is included in the dis
 - The multiplier active at the start of a free spin determines that spin's payout.
 - The normal one-spin counter consumption and ways payout are resolved before retrigger changes take effect.
 - A natural BEER retrigger adds 10 to the remaining spins. It does not reset or replace the counter.
-- A natural CIGARETTE retrigger uniformly selects a new integer from x2 through x10 and multiplies it into the current effective multiplier. The x5 baseline is not applied again.
+- A natural CIGARETTE retrigger weighted-selects a new integer from x2 through x10, with lower factors favored, and multiplies it into the current effective multiplier. The x5 baseline is not applied again.
 - Natural BEER and CIGARETTE retriggers on the same spin both apply: 10 spins are added and the multiplier compounds.
 - A BEER feature becomes combined after a CIGARETTE retrigger. A CIGARETTE feature becomes combined after a BEER retrigger. Combined mode never returns to a single-symbol mode.
 - There is no arbitrary multiplier cap; only safe-integer limits apply.
@@ -106,7 +106,7 @@ The x5 baseline is applied once when a feature starts and is included in the dis
 
 - At least three SWORD symbols trigger Sword Cleave and take priority over BEER, CIGARETTE, and their chance rolls. The triggering paid grid's independent regular-symbol/WILD ways still pay.
 - Every natural, purchased, or development-triggered bonus pauses after its triggering spin and requires the player to press the on-screen start button before its intro animation and feature spins begin.
-- Sword Cleave starts with a fresh 5x3 dedicated board, three Cleave Spins, and an active x1 Sword multiplier. Its boards contain `10`, `J`, `Q`, `K`, `A`, WILDs, and at most one non-paying SWORD; COIN and SKULL do not appear, and the boards never create BEER or CIGARETTE triggers. Non-Sword cells use weights `10` 30, `J` 25, `Q` 20, `K` 18, `A` 6, and WILD 1.
+- Sword Cleave starts with a fresh 5x3 dedicated board, three Cleave Spins, and an active x1 Sword multiplier. Its boards contain `10`, `J`, `Q`, `K`, `A`, `COIN`, `SKULL`, WILDs, and at most one non-paying SWORD; the boards never create BEER or CIGARETTE triggers. Non-Sword cells use weights `10` 28, `J` 23, `Q` 18, `K` 16, `A` 8, `COIN` 5, `SKULL` 1, and WILD 1.
 - Every Cleave Spin resolves the same left-to-right ways rules and WILD treatment as the base game, but uses the dedicated Sword paytable below. It multiplies that award by the active Sword multiplier and adds it to a Sword-only accumulator. The balance is credited once when Sword Cleave completes.
 
 | Sword symbol | 3 columns | 4 columns | 5 columns |
@@ -116,8 +116,10 @@ The x5 baseline is applied once when a feature starts and is included in the dis
 | `Q` | x0.2 | x0.2 | x0.4 |
 | `K` | x0.2 | x0.4 | x0.8 |
 | `A` | x0.5 | x0.8 | x5.2 |
+| `COIN` | x0.5 | x0.8 | x5.2 |
+| `SKULL` | x0.5 | x0.8 | x5.2 |
 
-COIN and SKULL have internal Sword-paytable entries for evaluator completeness but cannot be drawn on a valid Sword board. A qualifying all-WILD Sword result is paid once through the internal Sword SKULL entry: x0.5 for three columns, x0.8 for four, or x5.2 for five.
+COIN and SKULL can now land on valid Sword boards and use the dedicated Sword paytable above. A qualifying all-WILD Sword result is paid once through the internal Sword SKULL entry: x0.5 for three columns, x0.8 for four, or x5.2 for five.
 
 - Before a 5x3, 5x4, or 5x5 board is drawn, there is a 40%, 25%, or 10% chance respectively for exactly one SWORD expansion. The SWORD replaces a drawn card or WILD and does not contribute to that spin's ways payout. It lands before the board changes; after the spin ends, a fully populated bottom row is revealed and three spins are added to the remaining Cleave counter.
 - The multiplier selected by an expansion replaces, rather than compounds with, the prior Sword multiplier. The destination-row bands are: 5x4 x5-x10, 5x5 x14-x18, and 5x6 x25-x30.
@@ -141,7 +143,7 @@ COIN and SKULL have internal Sword-paytable entries for evaluator completeness b
 
 - Vite development mode exposes forced BEER, CIGARETTE, combined, and SWORD buttons. Production startup removes their panel from the UI, and the controller independently rejects forced triggers outside development mode.
 - A forced feature can start only while the game is idle, charges no wager, and uses the current selected bet for free-spin payouts.
-- Forced CIGARETTE and combined features still select their initial factor uniformly from x2 through x10, then combine it with the x5 baseline for an effective x10 through x50 multiplier.
+- Forced CIGARETTE and combined features use the same weighted x2 through x10 selection, then combine it with the x5 baseline for an effective x10 through x50 multiplier.
 - Forced multipliers, free spins, reel stops, Sword board and feature selections, and retriggers consume the active random sequence normally, so using a development trigger changes subsequent seeded results.
 - Starting a forced feature clears the previous last-win value and bonus summary, then records awards like a naturally triggered feature.
 

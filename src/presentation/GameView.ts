@@ -120,8 +120,12 @@ export class GameView {
     return this.controls.isQuickSpinEnabled();
   }
 
-  toggleSound(): void {
-    this.controls.setSoundEnabled(this.audio.toggle());
+  toggleMusic(): void {
+    this.controls.setMusicEnabled(this.audio.toggleMusic());
+  }
+
+  toggleSfx(): void {
+    this.controls.setSfxEnabled(this.audio.toggleSfx());
   }
 
   playSound(effect: GameSoundEffect): void {

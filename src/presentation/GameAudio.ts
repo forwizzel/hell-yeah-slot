@@ -25,33 +25,48 @@ export class GameAudio {
   private readonly soundtrack = createAudio(SOUNDTRACK_PATH);
   private readonly effects = new Map<GameSoundEffect, HTMLAudioElement>();
   private readonly activeEffects = new Set<HTMLAudioElement>();
-  private enabled = false;
+  private musicEnabled = true;
+  private sfxEnabled = true;
 
   constructor() {
     this.soundtrack.loop = true;
+    this.soundtrack.autoplay = true;
+    this.soundtrack.addEventListener("canplay", this.handleMusicReady);
     for (const [effect, path] of Object.entries(EFFECT_PATHS)) {
       this.effects.set(effect as GameSoundEffect, createAudio(path));
     }
+    this.soundtrack.load();
+    document.addEventListener("pointerdown", this.handleUserInteraction);
+    document.addEventListener("keydown", this.handleUserInteraction);
+    this.startMusic();
   }
 
-  toggle(): boolean {
-    this.enabled = !this.enabled;
-    if (this.enabled) {
-      void this.soundtrack.play().catch(() => {
-        // Audio failures must not interrupt the game.
-      });
+  toggleMusic(): boolean {
+    this.musicEnabled = !this.musicEnabled;
+    if (this.musicEnabled) {
+      this.startMusic();
     } else {
       this.soundtrack.pause();
+    }
+    return this.musicEnabled;
+  }
+
+  toggleSfx(): boolean {
+    this.sfxEnabled = !this.sfxEnabled;
+    if (!this.sfxEnabled) {
       for (const effect of this.activeEffects) {
         effect.pause();
       }
       this.activeEffects.clear();
     }
-    return this.enabled;
+    return this.sfxEnabled;
   }
 
   play(effect: GameSoundEffect): void {
-    if (!this.enabled) {
+    if (this.musicEnabled) {
+      this.startMusic();
+    }
+    if (!this.sfxEnabled) {
       return;
     }
     const source = this.effects.get(effect);
@@ -70,6 +85,23 @@ export class GameAudio {
     this.activeEffects.add(playback);
     void playback.play().catch(finish);
   }
+
+  private startMusic(): void {
+    if (!this.musicEnabled || !this.soundtrack.paused) {
+      return;
+    }
+    void this.soundtrack.play().catch(() => {
+      // Audio failures must not interrupt the game.
+    });
+  }
+
+  private readonly handleUserInteraction = (): void => {
+    this.startMusic();
+  };
+
+  private readonly handleMusicReady = (): void => {
+    this.startMusic();
+  };
 }
 
 function createAudio(path: string): HTMLAudioElement {

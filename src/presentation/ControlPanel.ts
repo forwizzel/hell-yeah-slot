@@ -8,7 +8,8 @@ export interface ControlActions {
   readonly spin: () => void;
   readonly decreaseBet: () => void;
   readonly increaseBet: () => void;
-  readonly toggleSound: () => void;
+  readonly toggleMusic: () => void;
+  readonly toggleSfx: () => void;
   readonly reset: () => void;
   readonly applySeed: (seed: string) => void;
   readonly clearSeed: () => void;
@@ -20,7 +21,8 @@ export class ControlPanel {
   private readonly spinButton = requiredElement<HTMLButtonElement>("spin");
   private readonly decreaseButton = requiredElement<HTMLButtonElement>("bet-down");
   private readonly increaseButton = requiredElement<HTMLButtonElement>("bet-up");
-  private readonly soundToggleButton = requiredElement<HTMLButtonElement>("sound-toggle");
+  private readonly musicToggleButton = requiredElement<HTMLButtonElement>("music-toggle");
+  private readonly sfxToggleButton = requiredElement<HTMLButtonElement>("sfx-toggle");
   private readonly resetButton = requiredElement<HTMLButtonElement>("reset");
   private readonly quickSpinInput = requiredElement<HTMLInputElement>("quick-spin");
   private readonly seedInput = requiredElement<HTMLInputElement>("seed-input");
@@ -49,7 +51,8 @@ export class ControlPanel {
     this.spinButton.addEventListener("click", actions.spin);
     this.decreaseButton.addEventListener("click", actions.decreaseBet);
     this.increaseButton.addEventListener("click", actions.increaseBet);
-    this.soundToggleButton.addEventListener("click", actions.toggleSound);
+    this.musicToggleButton.addEventListener("click", actions.toggleMusic);
+    this.sfxToggleButton.addEventListener("click", actions.toggleSfx);
     this.resetButton.addEventListener("click", actions.reset);
     this.applySeedButton.addEventListener("click", () => actions.applySeed(this.seedInput.value));
     this.clearSeedButton.addEventListener("click", actions.clearSeed);
@@ -105,9 +108,14 @@ export class ControlPanel {
     return this.quickSpinInput.checked;
   }
 
-  setSoundEnabled(enabled: boolean): void {
-    this.soundToggleButton.textContent = enabled ? "Sound On" : "Sound Off";
-    this.soundToggleButton.setAttribute("aria-pressed", String(enabled));
+  setMusicEnabled(enabled: boolean): void {
+    this.musicToggleButton.textContent = enabled ? "Music On" : "Music Off";
+    this.musicToggleButton.setAttribute("aria-pressed", String(enabled));
+  }
+
+  setSfxEnabled(enabled: boolean): void {
+    this.sfxToggleButton.textContent = enabled ? "SFX On" : "SFX Off";
+    this.sfxToggleButton.setAttribute("aria-pressed", String(enabled));
   }
 }
 

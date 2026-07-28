@@ -55,7 +55,7 @@ The report uses US-dollar amounts and separately reports total, base-game, free-
 - **Spin** places the selected US-dollar wager and plays one complete paid round.
 - **- / +** moves through the configured bets: `$0.20`, `$0.40`, `$0.60`, `$0.80`, `$1.00`, `$1.20`, `$1.40`, `$1.60`, `$1.80`, `$2.00`, `$2.50`, `$3.00`, `$5.00`, `$10.00`, `$25.00`, `$50.00`, `$75.00`, `$100.00`, `$150.00`, `$200.00`, `$250.00`, `$300.00`, `$400.00`, and `$500.00`.
 - **Turbo** enables Quick Spin, shortening animation without changing the result.
-- **Sound Off / Sound On** controls all audio; sound begins disabled.
+- **Music On / Music Off** and **SFX On / SFX Off** control the soundtrack and sound effects independently. Both are enabled by default.
 - **Reset** restores a `$125,000.00` balance and a `$500.00` bet, restarts an active deterministic sequence, and clears prior Spin Ledger entries.
 - **Engage** starts a deterministic random sequence from a non-empty seed in the Machine Room.
 - **Release** restores browser Web Crypto randomness.

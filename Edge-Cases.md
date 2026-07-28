@@ -43,7 +43,7 @@ Paytable values are stored as integer tenths so all configured wagers produce ex
 | `J` | x0.1 | x0.2 | x0.3 |
 | `Q` | x0.2 | x0.3 | x0.5 |
 | `K` | x0.2 | x0.4 | x0.5 |
-| `A` | No award | x0.7 | x5.2 |
+| `A` | x0.5 | x0.7 | x5.2 |
 | `COIN` | x0.8 | x2.3 | x15 |
 | `SKULL` | x1.5 | x4.5 | x30 |
 

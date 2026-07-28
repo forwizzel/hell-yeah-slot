@@ -25,7 +25,7 @@ describe("evaluateWays", () => {
   });
 
   it.each([
-    { columns: 3, multiplierTenths: 0 },
+    { columns: 3, multiplierTenths: 5 },
     { columns: 4, multiplierTenths: 7 },
     { columns: 5, multiplierTenths: 52 },
   ] as const)("pays the configured amount for $columns A columns", ({ columns, multiplierTenths }) => {
@@ -72,9 +72,9 @@ describe("evaluateWays", () => {
     const grid = fromColumns([mixedColumn, mixedColumn, mixedColumn, [bonus(), bonus(), bonus()], [bonus(), bonus(), bonus()]]);
     const evaluation = evaluateWays(grid, PAYTABLE, 20);
 
-    expect(evaluation.wins.map((win) => win.symbol)).toEqual(["K"]);
-    expect(evaluation.wins.map((win) => win.ways)).toEqual([8]);
-    expect(evaluation.totalWinCents).toBe(32);
+    expect(evaluation.wins.map((win) => win.symbol)).toEqual(["K", "A"]);
+    expect(evaluation.wins.map((win) => win.ways)).toEqual([8, 8]);
+    expect(evaluation.totalWinCents).toBe(112);
   });
 
   it("awards a pure-WILD result once as the highest-paying SKULL symbol", () => {

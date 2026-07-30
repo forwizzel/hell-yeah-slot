@@ -1,10 +1,10 @@
 import { GAME_CONFIG } from "../config/gameConfig";
 import { SWORD_CONFIG, type SwordStageRows } from "../config/swordConfig";
 import { formatUsd } from "../core/formatUsd";
-import type { BonusSummary, BonusSymbolId, FreeSpinMode, FreeSpinState, GameViewModel, Grid, Position, SwordExpansion, WaysGrid } from "../core/types";
+import type { BonusSummary, BonusSymbolId, CashAwardSymbolId, FreeSpinCashAward, FreeSpinMode, FreeSpinState, GameViewModel, Grid, Position, SwordExpansion, WaysGrid } from "../core/types";
 import { createBonusLandingAudioPlan, swordColumnAudioEffect } from "./BonusLandingAudio";
 import { ControlPanel, type ControlActions } from "./ControlPanel";
-import { createBandMultiplierRollValues, createMultiplierRollValues } from "./BonusMultiplierReveal";
+import { createBandMultiplierRollValues } from "./BonusMultiplierReveal";
 import { EventLogView } from "./EventLogView";
 import { GameAudio, type GameSoundEffect } from "./GameAudio";
 import { formatLargeWinMultiplier, getLargeWinTier } from "./LargeWin";
@@ -59,7 +59,7 @@ export class GameView {
     this.reelHost.hidden = swordActive;
     this.swordHost.hidden = !swordActive;
     if (model.sword === null) {
-      this.reels.renderGrid(model.grid, model.winningPositions);
+      this.reels.renderGrid(model.grid, model.winningPositions, model.cashAwards);
     } else if (model.sword.board.length > 0) {
       this.swordBoard.render(model.sword.board, model.winningPositions);
     }
@@ -75,13 +75,23 @@ export class GameView {
     result: Grid,
     turboEnabled: boolean,
     winSymbols: ReadonlyArray<BonusSymbolId> = [],
+    cashAwards: ReadonlyArray<FreeSpinCashAward> = [],
+    transientCashAwardSymbols: ReadonlyArray<CashAwardSymbolId> = [],
+    triggeringBetCents = 0,
   ): Promise<void> {
     const audioPlan = createBonusLandingAudioPlan(result, winSymbols);
-    return this.reels.animateBaseSpin(result, turboEnabled, (column) => {
+    return this.reels.animateBaseSpin(
+      result,
+      turboEnabled,
+      (column) => {
       for (const effect of audioPlan[column] ?? []) {
         this.audio.play(effect);
       }
-    });
+      },
+      cashAwards,
+      transientCashAwardSymbols,
+      triggeringBetCents,
+    ).then(() => this.reels.animateCashAwardCount(cashAwards, this.isQuickSpinEnabled()));
   }
 
   wait(durationMs: number): Promise<void> {
@@ -185,11 +195,12 @@ export class GameView {
 
   async playBonusIntroReveal(state: FreeSpinState, durationMs: number): Promise<void> {
     const isBeer = state.mode === "beer";
-    const skipRoll = durationMs <= GAME_CONFIG.quickMultiplierRevealDurationMs;
     const title = `${state.remainingSpins} FREE SPINS`;
     const message = isBeer
       ? `Beer free spins start at an X${state.multiplier} multiplier.`
-      : `X${GAME_CONFIG.freeSpinBaseMultiplier} baseline x selected multiplier = X${state.multiplier}.`;
+      : state.mode === "combined"
+        ? "Beer X5 applies to ways and every Beer or Cigarette cash award."
+        : "Cigarette cash awards land from 0.5X to 50X bet.";
     this.showFeatureOverlay(
       isBeer ? "Beer bonus" : state.mode === "cigarette" ? "Cigarette bonus" : "Beer + Cigarette bonus",
       title,
@@ -199,30 +210,15 @@ export class GameView {
     );
     this.featureMultiplier.hidden = false;
 
-    if (isBeer) {
-      this.featureMultiplier.textContent = `X${state.multiplier}`;
-      this.featureMultiplier.className = "feature-overlay__multiplier feature-overlay__multiplier--impact";
+    if (!isBeer) {
+      this.featureMultiplier.hidden = true;
       await this.wait(durationMs);
       return;
     }
 
-    const rollValues = createMultiplierRollValues(state.multiplier);
-    this.featureMultiplier.className = "feature-overlay__multiplier feature-overlay__multiplier--rolling";
-    if (skipRoll) {
-      this.featureMultiplier.textContent = `X${state.multiplier}`;
-      this.featureMultiplier.className = "feature-overlay__multiplier feature-overlay__multiplier--locked";
-      await this.wait(durationMs);
-      return;
-    }
-
-    const rollStepDuration = Math.max(45, Math.floor((durationMs * 0.78) / rollValues.length));
-    for (const multiplier of rollValues) {
-      this.featureMultiplier.textContent = `X${multiplier}`;
-      await this.wait(rollStepDuration);
-    }
-    this.featureMultiplier.className = "feature-overlay__multiplier feature-overlay__multiplier--locked";
-    const remainingDuration = Math.max(durationMs - rollStepDuration * rollValues.length, 0);
-    await this.wait(remainingDuration);
+    this.featureMultiplier.textContent = `X${state.multiplier}`;
+    this.featureMultiplier.className = "feature-overlay__multiplier feature-overlay__multiplier--impact";
+    await this.wait(durationMs);
   }
 
   playLargeWinCount(payoutCents: number, durationMs: number): Promise<void> {
@@ -337,7 +333,7 @@ export class GameView {
     if (model.phase === "bonus-intro") {
       const message = model.freeSpins === null
         ? "The bonus feature is starting."
-        : `${modeLabel(model.freeSpins.mode)} // ${model.freeSpins.remainingSpins} spins // x${model.freeSpins.multiplier} multiplier`;
+        : freeSpinIntroText(model.freeSpins);
       this.showFeatureOverlay("Feature unlocked", "FREE SPINS", message, "intro");
       return;
     }
@@ -415,7 +411,8 @@ function statusText(model: GameViewModel): string {
 }
 
 function freeSpinStatus(state: FreeSpinState): string {
-  return `${modeLabel(state.mode)} // ${state.remainingSpins} spins left // x${state.multiplier} multiplier // ${formatUsd(state.accumulatedWinCents)} banked`;
+  const multiplier = state.mode === "cigarette" ? "cash awards active" : `x${state.multiplier} multiplier`;
+  return `${modeLabel(state.mode)} // ${state.remainingSpins} spins left // ${multiplier} // ${formatUsd(state.accumulatedWinCents)} banked`;
 }
 
 function completionText(summary: BonusSummary | null): string {
@@ -427,7 +424,8 @@ function summaryText(summary: BonusSummary): string {
     return swordSummaryText(summary);
   }
 
-  return `${modeLabel(summary.mode)} // ${summary.spinsPlayed} spins // ${formatUsd(summary.payoutCents)} paid // final x${summary.finalMultiplier}`;
+  const multiplier = summary.mode === "cigarette" ? "cash awards" : `x${summary.finalMultiplier}`;
+  return `${modeLabel(summary.mode)} // ${summary.spinsPlayed} spins // ${formatUsd(summary.payoutCents)} paid // ${multiplier}`;
 }
 
 function swordSummaryText(summary: Extract<BonusSummary, { kind: "sword" }>): string {
@@ -457,6 +455,13 @@ function startFeatureLabel(mode: FreeSpinMode): string {
     case "combined":
       return "Beer + Cigarette";
   }
+}
+
+function freeSpinIntroText(state: FreeSpinState): string {
+  if (state.mode === "cigarette") {
+    return `${modeLabel(state.mode)} // ${state.remainingSpins} spins // cash awards active`;
+  }
+  return `${modeLabel(state.mode)} // ${state.remainingSpins} spins // x${state.multiplier} multiplier`;
 }
 
 function requiredElement<T extends HTMLElement>(id: string): T {

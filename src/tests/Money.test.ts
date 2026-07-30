@@ -70,7 +70,7 @@ describe("calibrated payout configuration", () => {
       COIN: { 3: 8, 4: 23, 5: 150 },
       SKULL: { 3: 15, 4: 45, 5: 300 },
     });
-    expect(GAME_CONFIG.freeSpinBaseMultiplier).toBe(5);
+    expect(GAME_CONFIG.beerFreeSpinMultiplier).toBe(5);
     expect(GAME_CONFIG.normalMultiplierRevealDurationMs).toBe(2_400);
     expect(GAME_CONFIG.quickMultiplierRevealDurationMs).toBe(180);
   });

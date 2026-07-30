@@ -2,6 +2,8 @@ import type {
   BonusActivation,
   BonusSymbolId,
   BonusTrigger,
+  CashAwardSymbolId,
+  FreeSpinCashAward,
   FreeSpinMode,
   FreeSpinResult,
   FreeSpinState,
@@ -12,9 +14,9 @@ import type {
 import type { RandomSource } from "./RandomSource";
 import { safeAdd, safeMultiply } from "./safeInteger";
 
-export interface MultiplierWeight {
-  readonly multiplier: number;
-  readonly weight: number;
+export interface CashAwardRange {
+  readonly minimumTenths: number;
+  readonly maximumTenths: number;
 }
 
 export class BonusEngine {
@@ -22,17 +24,19 @@ export class BonusEngine {
     private readonly random: RandomSource,
     private readonly beerFreeSpins: number,
     private readonly cigaretteFreeSpins: number,
-    private readonly freeSpinBaseMultiplier: number,
-    private readonly multiplierWeights: ReadonlyArray<MultiplierWeight>,
+    private readonly beerFreeSpinMultiplier: number,
+    private readonly cigaretteCashAwardRange: CashAwardRange,
+    private readonly beerCashAwardRange: CashAwardRange,
   ) {
     if (!Number.isSafeInteger(beerFreeSpins) || beerFreeSpins <= 0
       || !Number.isSafeInteger(cigaretteFreeSpins) || cigaretteFreeSpins <= 0) {
       throw new RangeError("Free-spin awards must be positive integers");
     }
-    if (!Number.isSafeInteger(freeSpinBaseMultiplier) || freeSpinBaseMultiplier < 1) {
-      throw new RangeError("Free-spin base multiplier must be a positive integer");
+    if (!Number.isSafeInteger(beerFreeSpinMultiplier) || beerFreeSpinMultiplier < 1) {
+      throw new RangeError("Beer free-spin multiplier must be a positive integer");
     }
-    validateMultiplierWeights(multiplierWeights);
+    validateCashAwardRange(cigaretteCashAwardRange, "Cigarette");
+    validateCashAwardRange(beerCashAwardRange, "Beer");
   }
 
   resolveBaseTrigger(grid: Grid): BonusTrigger {
@@ -50,7 +54,6 @@ export class BonusEngine {
         kind: "free-spins",
         mode: "combined",
         startingSpins: this.beerFreeSpins,
-        multiplier: this.pickMultiplier(),
         beer: activation("BEER", beerPositions),
         cigarette: activation("CIGARETTE", cigarettePositions),
       };
@@ -61,7 +64,6 @@ export class BonusEngine {
         kind: "free-spins",
         mode: "beer",
         startingSpins: this.beerFreeSpins,
-        multiplier: 1,
         beer: activation("BEER", beerPositions),
         cigarette: null,
       };
@@ -71,7 +73,6 @@ export class BonusEngine {
         kind: "free-spins",
         mode: "cigarette",
         startingSpins: this.cigaretteFreeSpins,
-        multiplier: this.pickMultiplier(),
         beer: null,
         cigarette: activation("CIGARETTE", cigarettePositions),
       };
@@ -83,16 +84,11 @@ export class BonusEngine {
     if (!Number.isSafeInteger(triggeringBetCents) || triggeringBetCents <= 0) {
       throw new RangeError("Triggering bet must be a positive integer number of cents");
     }
-    const multiplier = safeMultiply(
-      this.freeSpinBaseMultiplier,
-      trigger.multiplier,
-      "Initial free-spin multiplier exceeds the safe integer range",
-    );
     return {
       mode: trigger.mode,
       remainingSpins: trigger.startingSpins,
       totalSpinsPlayed: 0,
-      multiplier,
+      multiplier: this.multiplierForMode(trigger.mode),
       triggeringBetCents,
       accumulatedWinCents: 0,
     };
@@ -107,26 +103,29 @@ export class BonusEngine {
       throw new RangeError("Base win must be a non-negative integer number of cents");
     }
 
-    const spinWinCents = safeMultiply(baseWinCents, state.multiplier, "Free-spin payout exceeds the safe integer range");
+    const waysWinCents = safeMultiply(baseWinCents, state.multiplier, "Free-spin ways payout exceeds the safe integer range");
+    const swordTriggered = findDistinctColumnPositions(grid, "SWORD").length >= 3;
+    const beerRetriggered = !swordTriggered && findDistinctColumnPositions(grid, "BEER").length >= 3;
+    const cigaretteRetriggered = !swordTriggered && findDistinctColumnPositions(grid, "CIGARETTE").length >= 3;
+    const cashAwards = this.resolveCashAwards(state, grid);
+    const cashAwardWinCents = cashAwards.reduce(
+      (total, award) => safeAdd(total, award.amountCents, "Free-spin cash award exceeds the safe integer range"),
+      0,
+    );
+    const spinWinCents = safeAdd(waysWinCents, cashAwardWinCents, "Free-spin payout exceeds the safe integer range");
     const accumulatedWinCents = safeAdd(
       state.accumulatedWinCents,
       spinWinCents,
       "Accumulated free-spin win exceeds the safe integer range",
     );
-    const swordTriggered = findDistinctColumnPositions(grid, "SWORD").length >= 3;
-    const beerRetriggered = !swordTriggered && findDistinctColumnPositions(grid, "BEER").length >= 3;
-    const cigaretteRetriggered = !swordTriggered && findDistinctColumnPositions(grid, "CIGARETTE").length >= 3;
-    const addedSpins = beerRetriggered ? this.beerFreeSpins : 0;
-    const awardedMultiplier = cigaretteRetriggered ? this.pickMultiplier() : null;
-    const multiplier = awardedMultiplier === null
-      ? state.multiplier
-      : safeMultiply(state.multiplier, awardedMultiplier, "Free-spin multiplier exceeds the safe integer range");
+    const addedSpins = beerRetriggered || cigaretteRetriggered ? this.beerFreeSpins : 0;
     const remainingSpins = safeAdd(
       state.remainingSpins - 1,
       addedSpins,
       "Remaining free spins exceed the safe integer range",
     );
     const mode = nextMode(state.mode, beerRetriggered, cigaretteRetriggered);
+    const multiplier = this.multiplierForMode(mode);
     const nextState: FreeSpinState = {
       mode,
       remainingSpins,
@@ -139,11 +138,13 @@ export class BonusEngine {
     return {
       state: nextState,
       spinWinCents,
+      waysWinCents,
+      cashAwardWinCents,
+      cashAwards,
       beerRetriggered,
       cigaretteRetriggered,
       swordTriggered,
       addedSpins,
-      awardedMultiplier,
       complete: remainingSpins === 0,
     };
   }
@@ -162,16 +163,35 @@ export class BonusEngine {
     };
   }
 
-  private pickMultiplier(): number {
-    const totalWeight = multiplierWeightsTotal(this.multiplierWeights);
-    let selection = this.random.nextInt(totalWeight);
-    for (const entry of this.multiplierWeights) {
-      if (selection < entry.weight) {
-        return entry.multiplier;
+  private multiplierForMode(mode: FreeSpinMode): number {
+    return mode === "cigarette" ? 1 : this.beerFreeSpinMultiplier;
+  }
+
+  private resolveCashAwards(state: FreeSpinState, grid: Grid): FreeSpinCashAward[] {
+    const symbols = cashAwardSymbols(state.mode);
+    const multiplier = state.mode === "combined" ? this.beerFreeSpinMultiplier : 1;
+    const awards: FreeSpinCashAward[] = [];
+    for (let row = 0; row < grid.length; row += 1) {
+      for (let column = 0; column < (grid[row]?.length ?? 0); column += 1) {
+        const cell = grid[row]?.[column];
+        if (cell?.kind !== "bonus" || (cell.symbol !== "BEER" && cell.symbol !== "CIGARETTE") || !symbols.has(cell.symbol)) {
+          continue;
+        }
+        const range = cell.symbol === "CIGARETTE" ? this.cigaretteCashAwardRange : this.beerCashAwardRange;
+        const baseAmountCents = cashAwardAmountCents(
+          state.triggeringBetCents,
+          range.minimumTenths + this.random.nextInt(cashAwardChoices(range)) * 5,
+        );
+        awards.push({
+          position: { row, column },
+          symbol: cell.symbol,
+          baseAmountCents,
+          multiplier,
+          amountCents: safeMultiply(baseAmountCents, multiplier, "Free-spin cash award exceeds the safe integer range"),
+        });
       }
-      selection -= entry.weight;
     }
-    throw new Error("Cigarette multiplier weight selection failed");
+    return awards;
   }
 }
 
@@ -219,30 +239,35 @@ function validateFreeSpinState(state: FreeSpinState): void {
   }
 }
 
-function validateMultiplierWeights(weights: ReadonlyArray<MultiplierWeight>): void {
-  if (weights.length !== 9) {
-    throw new RangeError("Cigarette multiplier weights must include x2 through x10");
+function cashAwardSymbols(mode: FreeSpinMode): ReadonlySet<CashAwardSymbolId> {
+  if (mode === "cigarette") {
+    return new Set(["CIGARETTE"]);
   }
-  const multipliers = new Set<number>();
-  for (const entry of weights) {
-    if (!Number.isSafeInteger(entry.multiplier) || entry.multiplier < 2 || entry.multiplier > 10
-      || multipliers.has(entry.multiplier)
-      || !Number.isSafeInteger(entry.weight) || entry.weight <= 0) {
-      throw new RangeError("Cigarette multiplier weights are invalid");
-    }
-    multipliers.add(entry.multiplier);
+  if (mode === "combined") {
+    return new Set(["BEER", "CIGARETTE"]);
   }
-  for (let multiplier = 2; multiplier <= 10; multiplier += 1) {
-    if (!multipliers.has(multiplier)) {
-      throw new RangeError("Cigarette multiplier weights must include x2 through x10");
-    }
-  }
-  multiplierWeightsTotal(weights);
+  return new Set();
 }
 
-function multiplierWeightsTotal(weights: ReadonlyArray<MultiplierWeight>): number {
-  return weights.reduce(
-    (total, entry) => safeAdd(total, entry.weight, "Cigarette multiplier weight total exceeds the safe integer range"),
-    0,
-  );
+function validateCashAwardRange(range: CashAwardRange, symbol: string): void {
+  if (!Number.isSafeInteger(range.minimumTenths)
+    || !Number.isSafeInteger(range.maximumTenths)
+    || range.minimumTenths < 5
+    || range.minimumTenths % 5 !== 0
+    || range.maximumTenths < range.minimumTenths
+    || range.maximumTenths % 5 !== 0) {
+    throw new RangeError(`${symbol} cash award range is invalid`);
+  }
+}
+
+function cashAwardChoices(range: CashAwardRange): number {
+  return ((range.maximumTenths - range.minimumTenths) / 5) + 1;
+}
+
+function cashAwardAmountCents(betCents: number, multiplierTenths: number): number {
+  const amountTenths = safeMultiply(betCents, multiplierTenths, "Free-spin cash award exceeds the safe integer range");
+  if (amountTenths % 10 !== 0) {
+    throw new RangeError("Cash award cannot be represented as an integer number of cents");
+  }
+  return amountTenths / 10;
 }

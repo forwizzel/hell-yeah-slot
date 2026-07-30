@@ -34,6 +34,10 @@ interface SimulationStats {
   freeSpinsPlayed: number;
   beerRetriggers: number;
   cigaretteRetriggers: number;
+  cigaretteCashAwards: number;
+  cigaretteCashAwardCents: number;
+  beerCashAwards: number;
+  beerCashAwardCents: number;
   freeSpinSwordInterstitials: number;
   swordSpinsPlayed: number;
   swordExpansions: number;
@@ -79,8 +83,15 @@ function simulate(options: SimulationOptions): SimulationStats {
     random,
     GAME_CONFIG.beerFreeSpins,
     GAME_CONFIG.cigaretteFreeSpins,
-    GAME_CONFIG.freeSpinBaseMultiplier,
-    GAME_CONFIG.cigaretteMultiplierWeights,
+    GAME_CONFIG.beerFreeSpinMultiplier,
+    {
+      minimumTenths: GAME_CONFIG.cigaretteCashAwardMinimumTenths,
+      maximumTenths: GAME_CONFIG.cigaretteCashAwardMaximumTenths,
+    },
+    {
+      minimumTenths: GAME_CONFIG.beerCashAwardMinimumTenths,
+      maximumTenths: GAME_CONFIG.beerCashAwardMaximumTenths,
+    },
   );
   const swordEngine = new SwordEngine(random);
   const betCents = GAME_CONFIG.defaultBetCents;
@@ -105,6 +116,10 @@ function simulate(options: SimulationOptions): SimulationStats {
     freeSpinsPlayed: 0,
     beerRetriggers: 0,
     cigaretteRetriggers: 0,
+    cigaretteCashAwards: 0,
+    cigaretteCashAwardCents: 0,
+    beerCashAwards: 0,
+    beerCashAwardCents: 0,
     freeSpinSwordInterstitials: 0,
     swordSpinsPlayed: 0,
     swordExpansions: 0,
@@ -159,6 +174,23 @@ function simulate(options: SimulationOptions): SimulationStats {
         }
         if (freeSpinResult.cigaretteRetriggered) {
           stats.cigaretteRetriggers += 1;
+        }
+        for (const award of freeSpinResult.cashAwards) {
+          if (award.symbol === "CIGARETTE") {
+            stats.cigaretteCashAwards += 1;
+            stats.cigaretteCashAwardCents = safeAdd(
+              stats.cigaretteCashAwardCents,
+              award.amountCents,
+              "Simulation Cigarette cash-award total exceeds the safe integer range",
+            );
+          } else {
+            stats.beerCashAwards += 1;
+            stats.beerCashAwardCents = safeAdd(
+              stats.beerCashAwardCents,
+              award.amountCents,
+              "Simulation Beer cash-award total exceeds the safe integer range",
+            );
+          }
         }
         if (freeSpinResult.swordTriggered) {
           stats.freeSpinSwordInterstitials += 1;
@@ -248,6 +280,8 @@ function printResults(options: SimulationOptions, stats: SimulationStats): void 
   console.log(`Average free spins per feature: ${average(stats.freeSpinsPlayed, stats.freeSpinFeatures)}`);
   console.log(`Beer retriggers: ${stats.beerRetriggers} (${percentage(stats.beerRetriggers, stats.freeSpinsPlayed)} of free spins)`);
   console.log(`Cigarette retriggers: ${stats.cigaretteRetriggers} (${percentage(stats.cigaretteRetriggers, stats.freeSpinsPlayed)} of free spins)`);
+  console.log(`Cigarette cash awards: ${stats.cigaretteCashAwards} for ${formatUsd(stats.cigaretteCashAwardCents)}`);
+  console.log(`Beer cash awards: ${stats.beerCashAwards} for ${formatUsd(stats.beerCashAwardCents)}`);
   console.log(`Sword features during free spins: ${stats.freeSpinSwordInterstitials} (${percentage(stats.freeSpinSwordInterstitials, stats.freeSpinsPlayed)} of free spins)`);
   console.log(`Sword spins played: ${stats.swordSpinsPlayed}`);
   console.log(`Sword expansions: ${stats.swordExpansions}`);

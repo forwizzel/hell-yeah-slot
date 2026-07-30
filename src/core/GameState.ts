@@ -1,6 +1,7 @@
 import { GAME_CONFIG } from "../config/gameConfig";
 import type {
   BonusSummary,
+  FreeSpinCashAward,
   FreeSpinState,
   GamePhase,
   GameViewModel,
@@ -17,6 +18,7 @@ export class GameState {
   phase: GamePhase = "idle";
   grid: Grid = createInitialGrid();
   winningPositions: Position[] = [];
+  cashAwards: FreeSpinCashAward[] = [];
   freeSpins: FreeSpinState | null = null;
   sword: SwordFeatureState | null = null;
   bonusSummary: BonusSummary | null = null;
@@ -29,6 +31,7 @@ export class GameState {
     this.phase = "idle";
     this.grid = createInitialGrid();
     this.winningPositions = [];
+    this.cashAwards = [];
     this.freeSpins = null;
     this.sword = null;
     this.bonusSummary = null;
@@ -43,6 +46,7 @@ export class GameState {
       phase: this.phase,
       grid: this.grid.map((row) => row.map((cell) => ({ ...cell }))),
       winningPositions: this.winningPositions.map((position) => ({ ...position })),
+      cashAwards: this.cashAwards.map((award) => ({ ...award, position: { ...award.position } })),
       freeSpins: this.freeSpins === null ? null : { ...this.freeSpins },
       sword: this.sword === null ? null : {
         ...this.sword,

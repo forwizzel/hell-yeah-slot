@@ -9,7 +9,8 @@ This document is the authoritative public contract for current game behavior, in
 - The available bets are `$0.20`, `$0.40`, `$0.60`, `$0.80`, `$1.00`, `$1.20`, `$1.40`, `$1.60`, `$1.80`, `$2.00`, `$2.50`, `$3.00`, `$5.00`, `$10.00`, `$25.00`, `$50.00`, `$75.00`, `$100.00`, `$150.00`, `$200.00`, `$250.00`, `$300.00`, `$400.00`, and `$500.00`.
 - A paid spin deducts the selected bet. Triggered free spins place no additional wager and use the triggering bet.
 - A paid round awards its ordinary ways win plus every free-spin win from a triggered feature.
-- A free-spin ways win is multiplied by the multiplier active at the start of that spin.
+- A free-spin ways win is multiplied by the multiplier active at the start of that spin. BEER and combined spins use x5; CIGARETTE-only spins use x1.
+- CIGARETTE and, during combined spins, BEER symbols can award separate cash values. These cash awards are added to the spin payout and are not ways wins.
 - A SWORD trigger starts Sword Cleave, which awards a separate accumulated feature payout. Ordinary regular-symbol/WILD ways on the triggering grid still pay first.
 - Values must remain within the JavaScript safe-integer range; values are never silently rounded or capped. A validation or overflow error stops the current operation and returns browser play to idle. Browser play is not transactional, so state changes already applied before the error, including a paid wager deduction or completed earlier feature awards, are not automatically rolled back.
 
@@ -63,12 +64,12 @@ A single-symbol feature requires three matching special symbols in three differe
 
 ## Initial Feature Awards
 
-- **BEER:** 10 free spins at the x5 free-spin baseline.
-- **CIGARETTE:** 10 free spins with the x5 baseline multiplied by one weighted-selected integer from x2 through x10, producing an initial x10 through x50 multiplier. Lower factors are substantially more likely than higher factors.
-- **Combined:** 10 free spins with the same x5 baseline and weighted-selected CIGARETTE factor, producing an initial x10 through x50 multiplier.
+- **BEER:** 10 free spins at x5.
+- **CIGARETTE:** 10 free spins at x1. Each CIGARETTE that lands during these spins awards a separate cash value.
+- **Combined:** 10 free spins at x5. Each BEER and CIGARETTE that lands awards a separate cash value, then receives the combined feature's x5 multiplier.
 - **SWORD:** Sword Cleave, described below.
 
-The x5 baseline is applied once when a feature starts and is included in the displayed active multiplier. The active multiplier applies separately to each spin's ordinary ways payout; it is not a one-time award and pays nothing by itself.
+The x5 Beer multiplier applies separately to each BEER or combined spin's ordinary ways payout. In combined mode it also multiplies each landed BEER/CIGARETTE cash value; it is not a one-time award.
 
 ## Feature Buys
 
@@ -78,7 +79,7 @@ The x5 baseline is applied once when a feature starts and is included in the dis
 - The current selected bet determines both the price and the feature's payout denomination: BEER costs 23.5x bet, CIGARETTE costs 58.5x, BEER + CIGARETTE costs 58.6x, and SWORD costs 900x.
 - The price is deducted once before the feature's multiplier selection or feature play begins. A buy is unavailable when the in-game balance is below its displayed price; it then deducts nothing and consumes no random values.
 - These Feature Buy prices are prototype values independent of the current math balance.
-- Bought CIGARETTE and combined features select their initial x2 through x10 factor in the same way as their naturally triggered equivalents. A buy uses the selected bet for feature payouts and large-win tiers, not its purchase price.
+- Bought CIGARETTE and combined features use the same free-spin and cash-award rules as their naturally triggered equivalents. A buy uses the selected bet for feature payouts and large-win tiers, not its purchase price.
 - The ordinary ways payout from the purchase spin uses the selected bet and is added before the bonus feature payout.
 
 ## Free Spins and Retriggers
@@ -88,10 +89,11 @@ The x5 baseline is applied once when a feature starts and is included in the dis
 - The multiplier active at the start of a free spin determines that spin's payout.
 - The normal one-spin counter consumption and ways payout are resolved before retrigger changes take effect.
 - A natural BEER retrigger adds 10 to the remaining spins. It does not reset or replace the counter.
-- A natural CIGARETTE retrigger weighted-selects a new integer from x2 through x10, with lower factors favored, and multiplies it into the current effective multiplier. The x5 baseline is not applied again.
-- The 3+2 combined rule applies only to initial paid-spin triggers. On a free-spin 3+2 grid, only the symbol appearing three times retriggers; the other two symbols do not add an effect.
+- A natural CIGARETTE retrigger also adds 10 to the remaining spins. It does not select or compound a multiplier.
+- Every CIGARETTE on a CIGARETTE-only spin receives one uniformly selected value from x0.5 through x50 in x0.5 steps. Every BEER and CIGARETTE on a combined spin receives one base value: BEER x0.5 through x25 and CIGARETTE x0.5 through x50, both in uniform x0.5 steps. Combined values are then multiplied by x5.
+- A CIGARETTE retrigger during a BEER feature adds 10 spins and converts the feature to combined, but the triggering Beer-only spin does not award cash values. A BEER retrigger during a CIGARETTE feature adds 10 spins and converts the feature to combined; its x5 ways and cash behavior begins on the following spin.
+- The 3+2 combined rule applies only to initial paid-spin triggers. On a free-spin 3+2 grid, only the symbol appearing three times adds 10 spins; all eligible cash symbols on that spin still award their individual values.
 - A BEER feature becomes combined after a CIGARETTE retrigger. A CIGARETTE feature becomes combined after a BEER retrigger. Combined mode never returns to a single-symbol mode.
-- There is no arbitrary multiplier cap; only safe-integer limits apply.
 
 ## Sword Cleave
 
@@ -121,18 +123,18 @@ COIN and SKULL can now land on valid Sword boards and use the dedicated Sword pa
 
 ## Spin Controls and Deterministic Seeds
 
-- Complete outcomes are fixed before visual animation. Turbo changes timing only and cannot change symbols, triggers, multipliers, or payouts.
+- Complete outcomes are fixed before visual animation. Turbo changes timing only and cannot change symbols, triggers, cash awards, or payouts.
 - Final bonus symbols are counted independently by type as columns lock from left to right. The first, second, and third copy play their matching numbered sound instead of that column's generic lock click. The third copy of a resolved BEER, CIGARETTE, or SWORD trigger/retrigger also starts that symbol's win sound. Combined triggers play all five numbered hit sounds but currently have no combined win stinger.
 - A SWORD that causes a Sword Cleave expansion plays the first SWORD hit sound when its column locks but does not play the SWORD feature-win sound.
 - During a base, free, or Sword spin animation, clicking the Spin button settles only the current already-resolved spin. It does not place another wager, reroll the outcome, enable Turbo, or skip evaluation and feature sequencing.
 - Turbo can be enabled or disabled during an active spin or bonus game. Enabling it accelerates the current animation and applies to future spins until disabled.
 - Turbo is disabled automatically when a BEER, CIGARETTE, combined, or SWORD bonus begins. The player can enable it again during that feature.
 - Transient scrolling symbols traverse each column's configured reel strip from a presentation-only random offset. They preserve that reel's symbol frequency and ordering but do not select or alter the predetermined final stop.
-- The Beer x5 reveal and Cigarette multiplier roll are cosmetic. The displayed Cigarette or combined roll always stops on the multiplier resolved before the bonus-intro animation begins.
+- CIGARETTE cash labels show the resolved award on the landed symbol. In combined spins, BEER/CIGARETTE labels begin at their resolved base value after the board settles and count up to their resolved x5 value. Transient non-landing eligible symbols show presentation-only values that never affect the outcome.
 - Sword Cleave highlights the evaluated ways on each stopped board. On expansion, it shows the larger populated board and a cosmetic roll through the resolved destination multiplier band before the additional Cleave spins begin; neither animation rerolls the outcome.
 - Normal browser play uses Web Crypto randomness. A non-empty applied seed starts a deterministic sequence.
 - The same seed reproduces the same results only with the same code, configuration, starting state, and player actions.
-- Reel stops, combined 3+2 orientation, purchased or development bonus-symbol positions, free spins, bonus multiplier picks, Sword expansion checks and targets, Sword board-cell and added-row draws, Sword stage multipliers, Final Strikes, and retriggers consume one sequence in execution order.
+- Reel stops, combined 3+2 orientation, purchased or development bonus-symbol positions, free spins, landed cash-award picks, Sword expansion checks and targets, Sword board-cell and added-row draws, Sword stage multipliers, Final Strikes, and retriggers consume one sequence in execution order. Presentation-only scrolling cash labels do not consume this sequence.
 - Resetting while a seed is active restores the initial balance and bet and restarts that seed's sequence. Clearing the seed restores Web Crypto randomness.
 
 ## Reel Lock Animation and SFX Sync
@@ -156,11 +158,11 @@ COIN and SKULL can now land on valid Sword boards and use the dedicated Sword pa
 
 - The requested spin count includes paid base spins only. The simulator completes every triggered free-spin feature before starting the next paid spin.
 - Total, base-game, free-spin, and Sword RTP all use paid base-spin wagers as the denominator; free spins and Sword Cleave do not add wager.
-- The configured target is approximately 98% RTP, allocating about 81 points to paid/free-spin ways and about 17 points to Sword Cleave. Sword Cleave, including Final Strike paths, is the highest-return and rarest feature.
+- Cash-symbol awards materially change RTP and should be reviewed through the seeded simulator after any award-range or reel-strip tuning. Sword Cleave, including Final Strike paths, remains the rarest feature.
 - The theoretical target is a design calculation, not a guarantee for a finite session or a regulatory certification. Compounding CIGARETTE multipliers and rare Sword Final Strikes create substantial simulation variance.
 - Paid-round hit frequency counts a round as a hit when its base spin, complete free-spin feature, or any triggered Sword feature awards money.
 - BEER-only, CIGARETTE-only, combined, and SWORD feature rates are exclusive paid-spin outcomes.
 - The report separately counts Sword features triggered during free spins, Sword spins, expansions, features reaching 5x6, and the total payout from features that received a Final Strike.
-- Maximum observed multiplier refers to the effective free-spin multiplier; it does not include Sword stage or Final Strike multipliers.
+- Maximum observed multiplier refers to the active Beer/combined free-spin multiplier; it does not include Sword stage or Final Strike multipliers.
 - Results are repeatable for the same spin count, seed, code, and configuration.
 - Reports are observed single-threaded samples, not confidence intervals, certification, or a mathematical proof.

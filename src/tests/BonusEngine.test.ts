@@ -3,17 +3,8 @@ import type { BonusSymbolId, Cell, FreeSpinState, Grid } from "../core/types";
 import { BonusEngine } from "../math/BonusEngine";
 import { ControlledRandomSource } from "./testUtils";
 
-const MULTIPLIER_WEIGHTS = [
-  { multiplier: 2, weight: 77 },
-  { multiplier: 3, weight: 10 },
-  { multiplier: 4, weight: 5 },
-  { multiplier: 5, weight: 3 },
-  { multiplier: 6, weight: 1 },
-  { multiplier: 7, weight: 1 },
-  { multiplier: 8, weight: 1 },
-  { multiplier: 9, weight: 1 },
-  { multiplier: 10, weight: 1 },
-] as const;
+const CIGARETTE_RANGE = { minimumTenths: 5, maximumTenths: 500 } as const;
+const BEER_RANGE = { minimumTenths: 5, maximumTenths: 250 } as const;
 const regular: Cell = { kind: "card", symbol: "10" };
 
 function bonus(symbol: BonusSymbolId): Cell {
@@ -27,7 +18,7 @@ function gridWith(symbols: ReadonlyArray<BonusSymbolId>): Grid {
 }
 
 function engine(random = new ControlledRandomSource()): BonusEngine {
-  return new BonusEngine(random, 10, 10, 5, MULTIPLIER_WEIGHTS);
+  return new BonusEngine(random, 10, 10, 5, CIGARETTE_RANGE, BEER_RANGE);
 }
 
 function activeState(overrides: Partial<FreeSpinState> = {}): FreeSpinState {
@@ -35,7 +26,7 @@ function activeState(overrides: Partial<FreeSpinState> = {}): FreeSpinState {
     mode: "beer",
     remainingSpins: 10,
     totalSpinsPlayed: 0,
-    multiplier: 1,
+    multiplier: 5,
     triggeringBetCents: 500,
     accumulatedWinCents: 0,
     ...overrides,
@@ -43,202 +34,132 @@ function activeState(overrides: Partial<FreeSpinState> = {}): FreeSpinState {
 }
 
 describe("BonusEngine", () => {
-  it("starts Beer Bonus with 10 free spins and no multiplier", () => {
-    const trigger = engine().resolveBaseTrigger(gridWith(["BEER", "BEER", "BEER"]));
-
-    expect(trigger).toMatchObject({ kind: "free-spins", mode: "beer", startingSpins: 10, multiplier: 1 });
-  });
-
-  it("starts Cigarette Bonus with 10 free spins and a weighted 2-10 multiplier", () => {
-    const trigger = engine(new ControlledRandomSource([], [99])).resolveBaseTrigger(
-      gridWith(["CIGARETTE", "CIGARETTE", "CIGARETTE"]),
-    );
-
-    expect(trigger).toMatchObject({ kind: "free-spins", mode: "cigarette", startingSpins: 10, multiplier: 10 });
-  });
-
-  it.each([
-    [["BEER", "BEER", "BEER", "CIGARETTE", "CIGARETTE"], 3, 2],
-    [["BEER", "BEER", "CIGARETTE", "CIGARETTE", "CIGARETTE"], 2, 3],
-  ] as const)("starts a 3+2 natural combination with Beer spins and a Cigarette multiplier", (symbols, beerCount, cigaretteCount) => {
-    const trigger = engine(new ControlledRandomSource([], [94])).resolveBaseTrigger(
-      gridWith(symbols),
-    );
-
-    expect(trigger).toMatchObject({ kind: "free-spins", mode: "combined", startingSpins: 10, multiplier: 5 });
-    if (trigger.kind !== "free-spins") {
-      throw new Error("Expected free spins");
-    }
-    expect(trigger.beer?.symbolCount).toBe(beerCount);
-    expect(trigger.cigarette?.symbolCount).toBe(cigaretteCount);
-  });
-
-  it("requires at least three matching Beer or Cigarette symbols", () => {
-    const random = new ControlledRandomSource([0.001, 0.004], [4]);
-    expect(engine(random).resolveBaseTrigger(gridWith(["BEER", "BEER", "CIGARETTE", "CIGARETTE"]))).toEqual({ kind: "none" });
-    expect(random.floatCalls).toBe(0);
-    expect(random.integerCalls).toBe(0);
-  });
-
-  it("requires matching symbols to occupy distinct columns", () => {
-    const grid = gridWith([]);
-    grid[0]![0] = bonus("BEER");
-    grid[1]![0] = bonus("BEER");
-    grid[2]![0] = bonus("BEER");
-
-    expect(engine().resolveBaseTrigger(grid)).toEqual({ kind: "none" });
-  });
-
-  it("gives Sword priority over every other base trigger", () => {
-    const random = new ControlledRandomSource([0]);
-    const trigger = engine(random).resolveBaseTrigger(
-      gridWith(["SWORD", "SWORD", "SWORD", "BEER", "CIGARETTE"]),
-    );
-
-    expect(trigger).toMatchObject({ kind: "sword" });
-    expect(random.floatCalls).toBe(0);
-    expect(random.integerCalls).toBe(0);
-  });
-
-  it("uses the triggering bet and resolved awards to initialize free spins", () => {
+  it("starts Beer and combined spins at x5 while Cigarette starts at x1", () => {
     const bonusEngine = engine();
-    const trigger = bonusEngine.resolveBaseTrigger(gridWith(["BEER", "BEER", "BEER"]));
-    if (trigger.kind !== "free-spins") {
-      throw new Error("Expected free spins");
-    }
+    const beer = bonusEngine.resolveBaseTrigger(gridWith(["BEER", "BEER", "BEER"]));
+    const cigarette = bonusEngine.resolveBaseTrigger(gridWith(["CIGARETTE", "CIGARETTE", "CIGARETTE"]));
+    const combined = bonusEngine.resolveBaseTrigger(gridWith(["BEER", "BEER", "BEER", "CIGARETTE", "CIGARETTE"]));
 
-    expect(bonusEngine.startFreeSpins(trigger, 700)).toEqual(activeState({
-      triggeringBetCents: 700,
-      multiplier: 5,
-    }));
+    if (beer.kind !== "free-spins" || cigarette.kind !== "free-spins" || combined.kind !== "free-spins") {
+      throw new Error("Expected free-spin triggers");
+    }
+    expect(bonusEngine.startFreeSpins(beer, 500).multiplier).toBe(5);
+    expect(bonusEngine.startFreeSpins(cigarette, 500).multiplier).toBe(1);
+    expect(bonusEngine.startFreeSpins(combined, 500).multiplier).toBe(5);
   });
 
-  it("combines the x5 free-spin baseline with the initial Cigarette multiplier", () => {
-    const bonusEngine = engine(new ControlledRandomSource([], [99]));
-    const trigger = bonusEngine.resolveBaseTrigger(gridWith(["CIGARETTE", "CIGARETTE", "CIGARETTE"]));
-    if (trigger.kind !== "free-spins") {
-      throw new Error("Expected free spins");
-    }
-
-    expect(bonusEngine.startFreeSpins(trigger, 500).multiplier).toBe(50);
-  });
-
-  it("pays with the multiplier active before retrigger changes", () => {
-    const result = engine(new ControlledRandomSource([], [94])).applyFreeSpin(
-      activeState({ mode: "cigarette", remainingSpins: 3, multiplier: 4 }),
+  it("awards every Cigarette on a Cigarette spin in 0.5x steps and adds 10 spins", () => {
+    const random = new ControlledRandomSource([], [0, 99, 4]);
+    const result = engine(random).applyFreeSpin(
+      activeState({ mode: "cigarette", remainingSpins: 3, multiplier: 1 }),
       gridWith(["CIGARETTE", "CIGARETTE", "CIGARETTE"]),
-      200,
+      100,
     );
 
-    expect(result).toMatchObject({ spinWinCents: 800, cigaretteRetriggered: true, awardedMultiplier: 5 });
-    expect(result.state).toMatchObject({ remainingSpins: 2, multiplier: 20, accumulatedWinCents: 800 });
-  });
-
-  it("adds 10 Beer spins rather than resetting the counter", () => {
-    const result = engine().applyFreeSpin(
-      activeState({ remainingSpins: 4 }),
-      gridWith(["BEER", "BEER", "BEER"]),
-      0,
-    );
-
-    expect(result).toMatchObject({ beerRetriggered: true, addedSpins: 10 });
-    expect(result.state.remainingSpins).toBe(13);
-  });
-
-  it("applies only the matching side of a 3+2 free-spin grid", () => {
-    const result = engine().applyFreeSpin(
-      activeState({ mode: "cigarette", remainingSpins: 2, multiplier: 4 }),
-      gridWith(["BEER", "BEER", "BEER", "CIGARETTE", "CIGARETTE"]),
-      1_000,
-    );
-
+    expect(result.cashAwards.map((award) => award.baseAmountCents)).toEqual([250, 25_000, 1_250]);
+    expect(result.cashAwards.map((award) => award.amountCents)).toEqual([250, 25_000, 1_250]);
     expect(result).toMatchObject({
-      spinWinCents: 4_000,
+      waysWinCents: 100,
+      cashAwardWinCents: 26_500,
+      spinWinCents: 26_600,
+      cigaretteRetriggered: true,
+      addedSpins: 10,
+    });
+    expect(result.state).toMatchObject({ remainingSpins: 12, multiplier: 1, accumulatedWinCents: 26_600 });
+    expect(random.integerCalls).toBe(3);
+  });
+
+  it("applies Beer x5 to both ways and every cash symbol in a combined spin", () => {
+    const result = engine(new ControlledRandomSource([], [0, 49, 0, 99, 0])).applyFreeSpin(
+      activeState({ mode: "combined", remainingSpins: 2, multiplier: 5 }),
+      gridWith(["BEER", "BEER", "BEER", "CIGARETTE", "CIGARETTE"]),
+      100,
+    );
+
+    expect(result.cashAwards.map((award) => [award.symbol, award.baseAmountCents, award.amountCents])).toEqual([
+      ["BEER", 250, 1_250],
+      ["BEER", 12_500, 62_500],
+      ["BEER", 250, 1_250],
+      ["CIGARETTE", 25_000, 125_000],
+      ["CIGARETTE", 250, 1_250],
+    ]);
+    expect(result).toMatchObject({
+      waysWinCents: 500,
+      cashAwardWinCents: 191_250,
+      spinWinCents: 191_750,
       beerRetriggered: true,
       cigaretteRetriggered: false,
       addedSpins: 10,
-      awardedMultiplier: null,
     });
-    expect(result.state).toMatchObject({ mode: "combined", remainingSpins: 11, multiplier: 4 });
   });
 
-  it("applies a Cigarette retrigger but not Beer on a 2+3 free-spin grid", () => {
-    const result = engine(new ControlledRandomSource([], [1])).applyFreeSpin(
-      activeState({ remainingSpins: 2, multiplier: 4 }),
-      gridWith(["BEER", "BEER", "CIGARETTE", "CIGARETTE", "CIGARETTE"]),
-      1_000,
+  it("adds 10 spins for three Cigarettes during a combined feature", () => {
+    const result = engine(new ControlledRandomSource([], [0, 0, 0])).applyFreeSpin(
+      activeState({ mode: "combined", remainingSpins: 2, multiplier: 5 }),
+      gridWith(["CIGARETTE", "CIGARETTE", "CIGARETTE"]),
+      0,
     );
 
-    expect(result).toMatchObject({
-      spinWinCents: 4_000,
-      beerRetriggered: false,
-      cigaretteRetriggered: true,
-      addedSpins: 0,
-      awardedMultiplier: 2,
-    });
-    expect(result.state).toMatchObject({ mode: "combined", remainingSpins: 1, multiplier: 8 });
+    expect(result).toMatchObject({ cigaretteRetriggered: true, addedSpins: 10 });
+    expect(result.state.remainingSpins).toBe(11);
   });
 
-  it("suppresses malformed same-grid retriggers when Sword launches", () => {
+  it("starts x5 on the spin after a Cigarette feature converts through three Beer symbols", () => {
     const result = engine().applyFreeSpin(
-      activeState({ remainingSpins: 2 }),
-      gridWith(["SWORD", "SWORD", "SWORD", "BEER", "BEER", "BEER"]),
-      300,
+      activeState({ mode: "cigarette", remainingSpins: 2, multiplier: 1 }),
+      gridWith(["BEER", "BEER", "BEER"]),
+      100,
     );
 
-    expect(result).toMatchObject({
-      swordTriggered: true,
-      beerRetriggered: false,
-      cigaretteRetriggered: false,
-      spinWinCents: 300,
-    });
-    expect(result.state).toMatchObject({ remainingSpins: 1, multiplier: 1 });
+    expect(result).toMatchObject({ waysWinCents: 100, cashAwardWinCents: 0, beerRetriggered: true, addedSpins: 10 });
+    expect(result.state).toMatchObject({ mode: "combined", multiplier: 5, remainingSpins: 11 });
   });
 
-  it("summarizes only a completed free-spin feature", () => {
-    const summary = engine().summarize(activeState({
+  it("does not award cash on a Beer-to-combined conversion spin", () => {
+    const result = engine().applyFreeSpin(
+      activeState({ mode: "beer", remainingSpins: 2, multiplier: 5 }),
+      gridWith(["CIGARETTE", "CIGARETTE", "CIGARETTE"]),
+      100,
+    );
+
+    expect(result).toMatchObject({ cashAwardWinCents: 0, cigaretteRetriggered: true, addedSpins: 10 });
+    expect(result.state).toMatchObject({ mode: "combined", multiplier: 5, remainingSpins: 11 });
+  });
+
+  it("suppresses retriggers but not resolved Cigarette cash awards when Sword launches", () => {
+    const result = engine(new ControlledRandomSource([], [0, 0, 0])).applyFreeSpin(
+      activeState({ mode: "cigarette", remainingSpins: 2, multiplier: 1 }),
+      gridWith(["SWORD", "SWORD", "SWORD", "CIGARETTE", "CIGARETTE", "CIGARETTE"]),
+      0,
+    );
+
+    expect(result).toMatchObject({ swordTriggered: true, cigaretteRetriggered: false, addedSpins: 0, cashAwardWinCents: 750 });
+  });
+
+  it("validates cash-award ranges and safe integer payouts", () => {
+    expect(() => new BonusEngine(new ControlledRandomSource(), 10, 10, 5, { minimumTenths: 4, maximumTenths: 500 }, BEER_RANGE)).toThrow(
+      "Cigarette cash award range is invalid",
+    );
+    expect(() => engine(new ControlledRandomSource([], [99])).applyFreeSpin(
+      activeState({ mode: "cigarette", multiplier: 1, triggeringBetCents: Number.MAX_SAFE_INTEGER }),
+      gridWith(["CIGARETTE"]),
+      0,
+    )).toThrow("Free-spin cash award exceeds the safe integer range");
+  });
+
+  it("summarizes a completed free-spin feature", () => {
+    expect(engine().summarize(activeState({
       mode: "combined",
       remainingSpins: 0,
       totalSpinsPlayed: 14,
-      multiplier: 12,
+      multiplier: 5,
       accumulatedWinCents: 42_000,
-    }));
-
-    expect(summary).toEqual({
+    }))).toEqual({
       kind: "free-spins",
       mode: "combined",
       spinsPlayed: 14,
       payoutCents: 42_000,
-      finalMultiplier: 12,
+      finalMultiplier: 5,
     });
-  });
-
-  it("rejects a retrigger multiplier outside the safe integer range", () => {
-    expect(() => engine(new ControlledRandomSource([], [1])).applyFreeSpin(
-      activeState({ mode: "cigarette", multiplier: Number.MAX_SAFE_INTEGER }),
-      gridWith(["CIGARETTE", "CIGARETTE", "CIGARETTE"]),
-      0,
-    )).toThrow("Free-spin multiplier exceeds the safe integer range");
-  });
-
-  it("validates the free-spin baseline multiplier", () => {
-    expect(() => new BonusEngine(new ControlledRandomSource(), 10, 10, 0, MULTIPLIER_WEIGHTS)).toThrow(
-      "Free-spin base multiplier must be a positive integer",
-    );
-  });
-
-  it("rejects an initial effective multiplier outside the safe integer range", () => {
-    const trigger = {
-      kind: "free-spins",
-      mode: "cigarette",
-      startingSpins: 3,
-      multiplier: Number.MAX_SAFE_INTEGER,
-      beer: null,
-      cigarette: null,
-    } as const;
-
-    expect(() => engine().startFreeSpins(trigger, 500)).toThrow(
-      "Initial free-spin multiplier exceeds the safe integer range",
-    );
   });
 });

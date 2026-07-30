@@ -68,6 +68,7 @@ export class GameController {
       this.state.balanceCents -= triggeringBetCents;
       this.state.lastWinCents = 0;
       this.state.winningPositions = [];
+      this.state.cashAwards = [];
       this.state.freeSpins = null;
       this.state.sword = null;
       this.state.bonusSummary = null;
@@ -103,6 +104,7 @@ export class GameController {
     this.view.setQuickSpinEnabled(false);
     this.state.lastWinCents = 0;
     this.state.winningPositions = [];
+    this.state.cashAwards = [];
     this.state.freeSpins = null;
     this.state.sword = null;
     this.state.bonusSummary = null;
@@ -141,6 +143,7 @@ export class GameController {
     this.state.balanceCents -= costCents;
     this.state.lastWinCents = 0;
     this.state.winningPositions = [];
+    this.state.cashAwards = [];
     this.state.freeSpins = null;
     this.state.sword = null;
     this.state.bonusSummary = null;
@@ -185,6 +188,7 @@ export class GameController {
     startLog: string,
   ): Promise<void> {
     this.state.winningPositions = [];
+    this.state.cashAwards = [];
     this.state.bonusSummary = null;
     this.state.largeWin = null;
     this.state.phase = "base-spinning";
@@ -200,6 +204,7 @@ export class GameController {
     this.state.grid = result.grid;
     this.state.phase = "base-evaluation";
     this.state.winningPositions = result.winningPositions;
+    this.state.cashAwards = [];
     this.awardWin(result.regularWinCents);
     this.view.addLog(result.regularWinCents > 0 ? `Base win: ${formatUsd(result.regularWinCents)}.` : "No base win.");
     this.render();
@@ -266,17 +271,13 @@ export class GameController {
     this.state.phase = "bonus-intro";
     this.render();
     const introTiming = this.getSpinTiming();
-    const multiplierRevealDuration = trigger.mode === "beer"
-      ? introTiming.evaluationDelay * 2
-      : introTiming.quickSpin
-        ? GAME_CONFIG.quickMultiplierRevealDurationMs
-        : GAME_CONFIG.normalMultiplierRevealDurationMs;
-    await this.view.playBonusIntroReveal(this.state.freeSpins, multiplierRevealDuration);
+    await this.view.playBonusIntroReveal(this.state.freeSpins, introTiming.evaluationDelay * 2);
 
     while (this.state.freeSpins.remainingSpins > 0) {
       const previousState = this.state.freeSpins;
       this.state.phase = "free-spin-spinning";
       this.state.winningPositions = [];
+      this.state.cashAwards = [];
       this.render();
 
       // Free-spin payout and all retrigger effects are fixed before animation.
@@ -288,26 +289,31 @@ export class GameController {
         grid,
         this.view.isQuickSpinEnabled(),
         freeSpinWinSymbols(result),
+        result.cashAwards,
+        cashAwardSymbols(previousState.mode),
+        previousState.triggeringBetCents,
       );
 
       this.state.grid = grid;
       this.state.winningPositions = evaluation.winningPositions;
+      this.state.cashAwards = [...result.cashAwards];
       this.state.freeSpins = result.state;
       this.state.phase = "free-spin-evaluation";
       this.awardWin(result.spinWinCents);
       const spinNumber = result.state.totalSpinsPlayed;
       if (result.spinWinCents > 0) {
         this.view.addLog(
-          `Free spin ${spinNumber}: ${formatUsd(evaluation.totalWinCents)} x${previousState.multiplier} = ${formatUsd(result.spinWinCents)}.`,
+          `Free spin ${spinNumber}: ways ${formatUsd(evaluation.totalWinCents)} x${previousState.multiplier} = ${formatUsd(result.waysWinCents)}; cash symbols ${formatUsd(result.cashAwardWinCents)}; total ${formatUsd(result.spinWinCents)}.`,
         );
       } else {
         this.view.addLog(`Free spin ${spinNumber}: no ways win.`);
       }
-      if (result.beerRetriggered) {
+      if (result.beerRetriggered && result.cigaretteRetriggered) {
+        this.view.addLog(`Beer + Cigarette retrigger: ${result.addedSpins} spins added.`);
+      } else if (result.beerRetriggered) {
         this.view.addLog(`Beer retrigger: ${result.addedSpins} spins added.`);
-      }
-      if (result.cigaretteRetriggered && result.awardedMultiplier !== null) {
-        this.view.addLog(`Cigarette retrigger: x${previousState.multiplier} multiplied by x${result.awardedMultiplier} to x${result.state.multiplier}.`);
+      } else if (result.cigaretteRetriggered) {
+        this.view.addLog(`Cigarette retrigger: ${result.addedSpins} spins added.`);
       }
       this.render();
       const evaluationTiming = this.getSpinTiming();
@@ -553,8 +559,15 @@ export class GameController {
       this.random,
       GAME_CONFIG.beerFreeSpins,
       GAME_CONFIG.cigaretteFreeSpins,
-      GAME_CONFIG.freeSpinBaseMultiplier,
-      GAME_CONFIG.cigaretteMultiplierWeights,
+      GAME_CONFIG.beerFreeSpinMultiplier,
+      {
+        minimumTenths: GAME_CONFIG.cigaretteCashAwardMinimumTenths,
+        maximumTenths: GAME_CONFIG.cigaretteCashAwardMaximumTenths,
+      },
+      {
+        minimumTenths: GAME_CONFIG.beerCashAwardMinimumTenths,
+        maximumTenths: GAME_CONFIG.beerCashAwardMaximumTenths,
+      },
     );
   }
 
@@ -608,6 +621,16 @@ function freeSpinWinSymbols(result: ReturnType<BonusEngine["applyFreeSpin"]>): R
     symbols.push("CIGARETTE");
   }
   return symbols;
+}
+
+function cashAwardSymbols(mode: "beer" | "cigarette" | "combined"): ReadonlyArray<"BEER" | "CIGARETTE"> {
+  if (mode === "cigarette") {
+    return ["CIGARETTE"];
+  }
+  if (mode === "combined") {
+    return ["BEER", "CIGARETTE"];
+  }
+  return [];
 }
 
 function isActiveSpinPhase(phase: GamePhase): boolean {

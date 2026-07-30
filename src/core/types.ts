@@ -63,6 +63,16 @@ export interface PayEvaluation {
 
 export type FreeSpinMode = "beer" | "cigarette" | "combined";
 
+export type CashAwardSymbolId = "BEER" | "CIGARETTE";
+
+export interface FreeSpinCashAward {
+  readonly position: Position;
+  readonly symbol: CashAwardSymbolId;
+  readonly baseAmountCents: number;
+  readonly multiplier: number;
+  readonly amountCents: number;
+}
+
 export interface BonusActivation {
   readonly symbol: "BEER" | "CIGARETTE";
   readonly symbolCount: number;
@@ -79,7 +89,6 @@ export type BonusTrigger =
       readonly kind: "free-spins";
       readonly mode: FreeSpinMode;
       readonly startingSpins: number;
-      readonly multiplier: number;
       readonly beer: BonusActivation | null;
       readonly cigarette: BonusActivation | null;
     };
@@ -103,11 +112,13 @@ export interface FreeSpinState {
 export interface FreeSpinResult {
   readonly state: FreeSpinState;
   readonly spinWinCents: number;
+  readonly waysWinCents: number;
+  readonly cashAwardWinCents: number;
+  readonly cashAwards: ReadonlyArray<FreeSpinCashAward>;
   readonly beerRetriggered: boolean;
   readonly cigaretteRetriggered: boolean;
   readonly swordTriggered: boolean;
   readonly addedSpins: number;
-  readonly awardedMultiplier: number | null;
   readonly complete: boolean;
 }
 
@@ -171,6 +182,7 @@ export interface GameViewModel {
   readonly phase: GamePhase;
   readonly grid: Grid;
   readonly winningPositions: Position[];
+  readonly cashAwards: ReadonlyArray<FreeSpinCashAward>;
   readonly freeSpins: FreeSpinState | null;
   readonly sword: SwordFeatureState | null;
   readonly bonusSummary: BonusSummary | null;

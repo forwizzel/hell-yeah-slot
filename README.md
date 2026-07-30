@@ -9,7 +9,7 @@ This is a local technical prototype. It has no accounts, payments, backend, pers
 - Five independent reel strips rather than independently generated cells
 - Regular-symbol ways wins with WILD substitution
 - BEER, CIGARETTE, combined, and SWORD feature outcomes
-- Stateful free spins with natural retriggers and compounding multipliers
+- Stateful free spins with natural retriggers and landed cash-symbol awards
 - Browser Web Crypto randomness for normal play
 - Reproducible seeded sessions and simulations
 - Responsive PixiJS presentation with local artwork and audio
@@ -88,15 +88,15 @@ Regular symbols `10`, `J`, `Q`, `K`, `A`, `COIN`, and `SKULL` pay left to right 
 | Feature | Initial award |
 | --- | --- |
 | BEER | 10 free spins at x5 |
-| CIGARETTE | 10 free spins at x10 through x50: the x5 baseline times a weighted x2 through x10 selection |
-| BEER + CIGARETTE | 10 free spins at x10 through x50: the x5 baseline times a weighted x2 through x10 selection |
+| CIGARETTE | 10 free spins at x1; each CIGARETTE awards x0.5-x50 bet in uniform x0.5 steps |
+| BEER + CIGARETTE | 10 free spins at x5; BEER and CIGARETTE awards are each multiplied by x5 |
 | SWORD | Sword Cleave: expanding 5-column respins, stage multipliers, and a possible Final Strike |
 
-Each spinning column can show at most one BEER, CIGARETTE, or SWORD, and a grid can show at most three matching copies of one type. BEER and CIGARETTE features require three matching symbols. A combined feature requires all five columns to show BEER/CIGARETTE symbols split 3+2 in either direction. Free-spin retriggers remain type-specific at three matching symbols: BEER adds spins, while CIGARETTE compounds the active multiplier by another weighted x2 through x10 selection. The x5 baseline is applied once at feature initialization and is included in the displayed multiplier. SWORD takes priority when outcomes overlap.
+Each spinning column can show at most one BEER, CIGARETTE, or SWORD, and a grid can show at most three matching copies of one type. BEER and CIGARETTE features require three matching symbols. A combined feature requires all five columns to show BEER/CIGARETTE symbols split 3+2 in either direction. During CIGARETTE spins, every CIGARETTE awards a uniform x0.5-x50 base value; during combined spins, every CIGARETTE and BEER awards a base value, then counts up to x5 after the reels settle. Three BEER or three CIGARETTE symbols add 10 spins. A feature converts to combined when the opposite symbol retriggers; x5 combined behavior begins on the following spin. SWORD takes priority when outcomes overlap.
 
 Sword Cleave begins at 5x3 with three spins and has no blank cells. Its boards use `10`, `J`, `Q`, `K`, `A`, COIN, SKULL, WILD, and at most one SWORD. Sword ways use a dedicated feature paytable documented in [Game Rules and Edge Cases](Edge-Cases.md). Before 5x3, 5x4, and 5x5 spins, a Sword expansion has a 40%, 25%, and 10% chance respectively; it replaces a card or WILD, then reveals a populated bottom row after the Sword lands. The board caps at 5x6. Each expansion adds three spins and replaces the active multiplier with the destination band: 5x4 x5-x10, 5x5 x14-x18, or 5x6 x25-x30. Sword Cleave payouts are capped at 3,750x the triggering bet.
 
-The configured math targets approximately 98% RTP, with more return moved into visible ordinary line pays while preserving lower-symbol frequency and rare Cigarette and Sword outcomes. The additional Sword spins and payout cap preserve substantial feature variance, so this design target is not a statistical or regulatory certification.
+Cash-symbol awards materially affect RTP. Use the seeded simulator to review the result after changing award ranges, reel strips, or feature rules; it is not a statistical or regulatory certification.
 
 See [Game Rules and Edge Cases](Edge-Cases.md) for the authoritative paytable, trigger probabilities, retrigger order, WILD treatment, SWORD priority, and round-accounting rules.
 
@@ -104,7 +104,7 @@ See [Game Rules and Edge Cases](Edge-Cases.md) for the authoritative paytable, t
 
 Normal browser play uses Web Crypto. Applying a seed switches the session to a deterministic random source; resetting the game restarts that seed's sequence.
 
-Reproduction depends on the same seed, code, configuration, starting state, and player actions. Reel stops, guaranteed bonus positions, combined 3+2 orientation, free spins, bonus multipliers, Sword expansion checks and targets, Sword board cells, stage multipliers, and Final Strikes consume the same sequence. Buying or forcing a feature, or changing the order of actions, therefore changes later outcomes.
+Reproduction depends on the same seed, code, configuration, starting state, and player actions. Reel stops, guaranteed bonus positions, combined 3+2 orientation, free spins, landed cash awards, Sword expansion checks and targets, Sword board cells, stage multipliers, and Final Strikes consume the same sequence. Presentation-only scrolling cash values do not consume it. Buying or forcing a feature, or changing the order of actions, therefore changes later outcomes.
 
 The seeded generator is intended for repeatability, not cryptographic security.
 

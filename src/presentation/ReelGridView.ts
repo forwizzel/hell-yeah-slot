@@ -1,7 +1,8 @@
-import { Application, Assets, Container, Graphics, Sprite, Texture } from "pixi.js";
+import { Application, Assets, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
 import { GAME_CONFIG } from "../config/gameConfig";
 import { REEL_STRIPS } from "../config/reelStrips";
-import type { CardSymbolId, BonusSymbolId, Cell, Grid, Position } from "../core/types";
+import { formatUsd } from "../core/formatUsd";
+import type { BonusSymbolId, CardSymbolId, CashAwardSymbolId, Cell, FreeSpinCashAward, Grid, Position } from "../core/types";
 import {
   REEL_LOCK_SOUND_PREROLL_MS,
   reelLockFlashAlpha,
@@ -36,6 +37,8 @@ interface CellVisual {
   readonly container: Container;
   readonly box: Graphics;
   readonly sprite: Sprite;
+  readonly cashAwardBox: Graphics;
+  readonly cashAwardLabel: Text;
 }
 
 interface ReelVisual {
@@ -50,7 +53,7 @@ interface ReelSpinState {
   settling: boolean;
   settleStartY: number;
   settleStartVelocity: number;
-  finalQueue: Cell[];
+  finalQueue: CellDisplay[];
   finalSequenceStarted: boolean;
   finalSequenceComplete: boolean;
   locked: boolean;
@@ -58,6 +61,13 @@ interface ReelSpinState {
   impactStartedAt: number | null;
   impactDurationMs: number;
   readonly stripCycle: ReelStripCycle;
+  readonly transientCashAwardSymbols: ReadonlySet<CashAwardSymbolId>;
+  readonly triggeringBetCents: number;
+}
+
+interface CellDisplay {
+  readonly cell: Cell;
+  readonly cashAwardCents: number | null;
 }
 
 interface ActiveAnimation {
@@ -139,7 +149,12 @@ export class ReelGridView {
     return new ReelGridView(application, new Map(textureEntries));
   }
 
-  renderGrid(grid: Grid, winningPositions: ReadonlyArray<Position> = []): void {
+  renderGrid(
+    grid: Grid,
+    winningPositions: ReadonlyArray<Position> = [],
+    cashAwards: ReadonlyArray<FreeSpinCashAward> = [],
+    showFinalCashAwards = true,
+  ): void {
     validateGrid(grid);
     for (const reel of this.reels) {
       reel.track.y = 0;
@@ -149,13 +164,21 @@ export class ReelGridView {
       }
     }
     const winningKeys = new Set(winningPositions.map((position) => `${position.row}:${position.column}`));
+    const cashAwardMap = cashAwardMapFrom(cashAwards);
     for (let row = 0; row < GAME_CONFIG.rows; row += 1) {
       for (let column = 0; column < GAME_CONFIG.columns; column += 1) {
         const cell = grid[row]![column]!;
-        this.drawCell(row, column, cell, winningKeys.has(`${row}:${column}`), false);
+        this.drawCell(
+          row,
+          column,
+          cell,
+          winningKeys.has(`${row}:${column}`),
+          false,
+          cashAwardDisplayAmount(cashAwardMap.get(`${row}:${column}`), showFinalCashAwards),
+        );
       }
     }
-    this.application.canvas.setAttribute("aria-label", gridAriaLabel(grid));
+    this.application.canvas.setAttribute("aria-label", gridAriaLabel(grid, cashAwards));
   }
 
   setTurboEnabled(enabled: boolean): void {
@@ -166,11 +189,20 @@ export class ReelGridView {
     this.activeAnimation?.settle();
   }
 
-  animateBaseSpin(result: Grid, turboEnabled: boolean, onColumnLocked?: (column: number) => void): Promise<void> {
+  animateBaseSpin(
+    result: Grid,
+    turboEnabled: boolean,
+    onColumnLocked?: (column: number) => void,
+    cashAwards: ReadonlyArray<FreeSpinCashAward> = [],
+    transientCashAwardSymbols: ReadonlyArray<CashAwardSymbolId> = [],
+    triggeringBetCents = 0,
+  ): Promise<void> {
     validateGrid(result);
     const normalDuration = GAME_CONFIG.normalSpinDurationMs;
     const quickDuration = GAME_CONFIG.quickSpinDurationMs;
     const stepDuration = GAME_CONFIG.normalReelStepDurationMs;
+    const cashAwardMap = cashAwardMapFrom(cashAwards);
+    const transientSymbols = new Set(transientCashAwardSymbols);
     const spinStates: ReelSpinState[] = this.reels.map((_reel, column) => ({
       stepStartedAt: 0,
       stepDuration,
@@ -178,9 +210,9 @@ export class ReelGridView {
       settleStartY: 0,
       settleStartVelocity: 0,
       finalQueue: [
-        result[GAME_CONFIG.rows - 1]![column]!,
-        result[GAME_CONFIG.rows - 2]![column]!,
-        result[GAME_CONFIG.rows - 3]![column]!,
+        displayCell(result[GAME_CONFIG.rows - 1]![column]!, cashAwardMap.get(`${GAME_CONFIG.rows - 1}:${column}`)),
+        displayCell(result[GAME_CONFIG.rows - 2]![column]!, cashAwardMap.get(`${GAME_CONFIG.rows - 2}:${column}`)),
+        displayCell(result[GAME_CONFIG.rows - 3]![column]!, cashAwardMap.get(`0:${column}`)),
       ],
       finalSequenceStarted: false,
       finalSequenceComplete: false,
@@ -189,6 +221,8 @@ export class ReelGridView {
       impactStartedAt: null,
       impactDurationMs: 0,
       stripCycle: createStripCycle(column),
+      transientCashAwardSymbols: transientSymbols,
+      triggeringBetCents,
     }));
 
     return new Promise((resolve) => {
@@ -203,7 +237,7 @@ export class ReelGridView {
         }
         complete = true;
         cancelAnimationFrame(animationFrame);
-        this.renderGrid(result);
+        this.renderGrid(result, [], cashAwards, false);
         for (let column = 0; column < GAME_CONFIG.columns; column += 1) {
           const state = spinStates[column];
           if (state !== undefined && !state.soundTriggered) {
@@ -248,8 +282,8 @@ export class ReelGridView {
 
           if (state.stepStartedAt === 0) {
             state.stepStartedAt = elapsed;
-            recycleSpinCell(reel, state, (cell, symbol) =>
-              this.drawCellVisual(cell, symbol, false, true));
+            recycleSpinCell(reel, state, (cell, display) =>
+              this.drawCellVisual(cell, display.cell, false, true, display.cashAwardCents));
           }
 
           const spinElapsed = Math.min(elapsed, settleStart);
@@ -276,8 +310,8 @@ export class ReelGridView {
               }
             }
 
-            recycleSpinCell(reel, state, (cell, symbol) =>
-              this.drawCellVisual(cell, symbol, false, true));
+            recycleSpinCell(reel, state, (cell, display) =>
+              this.drawCellVisual(cell, display.cell, false, true, display.cashAwardCents));
           }
 
           if (state.finalSequenceComplete) {
@@ -298,7 +332,14 @@ export class ReelGridView {
               state.settleStartVelocity = (CELL_HEIGHT + GAP) / state.stepDuration;
               if (turbo && !state.finalSequenceComplete) {
                 for (let row = 0; row < GAME_CONFIG.rows; row += 1) {
-                  this.drawCell(row, column, result[row]![column]!, false, true);
+                  this.drawCell(
+                    row,
+                    column,
+                    result[row]![column]!,
+                    false,
+                    true,
+                    cashAwardDisplayAmount(cashAwardMap.get(`${row}:${column}`), false),
+                  );
                 }
                 state.finalQueue.length = 0;
                 state.finalSequenceComplete = true;
@@ -311,7 +352,14 @@ export class ReelGridView {
             reel.track.y = settleTrackPosition(state.settleStartY, state.settleStartVelocity, settleDuration, settleProgress);
             if (elapsed >= stopTime && !state.locked) {
               for (let row = 0; row < GAME_CONFIG.rows; row += 1) {
-                this.drawCell(row, column, result[row]![column]!, false, false);
+                this.drawCell(
+                  row,
+                  column,
+                  result[row]![column]!,
+                  false,
+                  false,
+                  cashAwardDisplayAmount(cashAwardMap.get(`${row}:${column}`), false),
+                );
               }
               state.locked = true;
               state.impactStartedAt = now;
@@ -337,24 +385,72 @@ export class ReelGridView {
     return wait(durationMs);
   }
 
+  animateCashAwardCount(cashAwards: ReadonlyArray<FreeSpinCashAward>, turboEnabled: boolean): Promise<void> {
+    const multiplierAwards = cashAwards.filter((award) => award.multiplier > 1);
+    if (multiplierAwards.length === 0) {
+      return Promise.resolve();
+    }
+    const duration = turboEnabled
+      ? GAME_CONFIG.quickCashAwardCountDurationMs
+      : GAME_CONFIG.normalCashAwardCountDurationMs;
+    return new Promise((resolve) => {
+      const startedAt = performance.now();
+      const tick = (now: number): void => {
+        const progress = Math.min((now - startedAt) / duration, 1);
+        for (const award of multiplierAwards) {
+          const reel = this.reels[award.position.column];
+          const visual = reel?.cells[award.position.row];
+          if (visual !== undefined) {
+            const amount = Math.floor(award.baseAmountCents + (award.amountCents - award.baseAmountCents) * progress);
+            this.drawCashAward(visual, amount);
+          }
+        }
+        if (progress === 1) {
+          resolve();
+          return;
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+  }
+
   private createCellVisual(parent: Container, row: number): CellVisual {
     const container = new Container({ y: row * (CELL_HEIGHT + GAP) });
     const box = new Graphics();
     const sprite = new Sprite(Texture.EMPTY);
+    const cashAwardBox = new Graphics();
+    const cashAwardLabel = new Text({
+      text: "",
+      style: {
+        fill: 0xfff6c9,
+        fontFamily: "Silkscreen, monospace",
+        fontSize: 22,
+        fontWeight: "bold",
+      },
+    });
     sprite.anchor.set(0.5);
     sprite.position.set(CELL_WIDTH / 2, CELL_HEIGHT / 2);
-    container.addChild(box, sprite);
+    cashAwardLabel.anchor.set(0.5);
+    container.addChild(box, sprite, cashAwardBox, cashAwardLabel);
     parent.addChild(container);
-    return { container, box, sprite };
+    return { container, box, sprite, cashAwardBox, cashAwardLabel };
   }
 
-  private drawCell(row: number, column: number, cell: Cell, winning: boolean, spinning: boolean): void {
+  private drawCell(
+    row: number,
+    column: number,
+    cell: Cell,
+    winning: boolean,
+    spinning: boolean,
+    cashAwardCents: number | null = null,
+  ): void {
     const reel = this.reels[column];
     const visual = reel?.cells[row];
     if (visual === undefined) {
       throw new Error("Cell visual was not initialized");
     }
-    this.drawCellVisual(visual, cell, winning, spinning);
+    this.drawCellVisual(visual, cell, winning, spinning, cashAwardCents);
   }
 
   private setSpinningState(row: number, column: number, spinning: boolean): void {
@@ -366,7 +462,13 @@ export class ReelGridView {
     visual.container.alpha = spinning ? 0.88 : 1;
   }
 
-  private drawCellVisual(visual: CellVisual, cell: Cell, winning: boolean, spinning: boolean): void {
+  private drawCellVisual(
+    visual: CellVisual,
+    cell: Cell,
+    winning: boolean,
+    spinning: boolean,
+    cashAwardCents: number | null = null,
+  ): void {
     const appearance = CELL_APPEARANCES[cellStyle(cell)];
     visual.box
       .clear()
@@ -382,6 +484,35 @@ export class ReelGridView {
     }
     visual.sprite.texture = texture;
     visual.sprite.scale.set(Math.min((CELL_WIDTH * 0.92) / texture.width, (CELL_HEIGHT * 0.92) / texture.height));
+    this.drawCashAward(visual, cashAwardCents);
+  }
+
+  private drawCashAward(visual: CellVisual, amountCents: number | null): void {
+    if (amountCents === null) {
+      visual.cashAwardBox.visible = false;
+      visual.cashAwardLabel.visible = false;
+      return;
+    }
+    const label = visual.cashAwardLabel;
+    label.visible = true;
+    label.text = formatUsd(amountCents);
+    label.scale.set(1);
+    const scale = Math.min(1, (CELL_WIDTH * 0.86) / label.width, (CELL_HEIGHT * 0.24) / label.height);
+    label.scale.set(scale);
+    label.position.set(CELL_WIDTH / 2, CELL_HEIGHT * 0.78);
+    const padding = 5;
+    visual.cashAwardBox
+      .clear()
+      .roundRect(
+        label.x - label.width / 2 - padding,
+        label.y - label.height / 2 - 3,
+        label.width + padding * 2,
+        label.height + 6,
+        3,
+      )
+      .fill({ color: 0x21100d, alpha: 0.86 })
+      .stroke({ color: 0xf1a637, alpha: 0.9, width: 1 });
+    visual.cashAwardBox.visible = true;
   }
 }
 
@@ -410,13 +541,19 @@ function recycleReelCell(reel: ReelVisual, draw: (cell: CellVisual) => void): vo
 function recycleSpinCell(
   reel: ReelVisual,
   state: ReelSpinState,
-  draw: (cell: CellVisual, symbol: Cell) => void,
+  draw: (cell: CellVisual, display: CellDisplay) => void,
 ): void {
-  const symbol = state.finalSequenceStarted ? state.finalQueue.shift() : state.stripCycle.takeNextCell();
-  if (symbol === undefined) {
+  const display = state.finalSequenceStarted
+    ? state.finalQueue.shift()
+    : transientDisplayCell(
+      state.stripCycle.takeNextCell(),
+      state.transientCashAwardSymbols,
+      state.triggeringBetCents,
+    );
+  if (display === undefined) {
     throw new Error("Final reel sequence was exhausted before settling");
   }
-  recycleReelCell(reel, (cell) => draw(cell, symbol));
+  recycleReelCell(reel, (cell) => draw(cell, display));
 }
 
 function createStripCycle(column: number): ReelStripCycle {
@@ -480,18 +617,50 @@ function validateGrid(grid: Grid): void {
   }
 }
 
-function gridAriaLabel(grid: Grid): string {
+function gridAriaLabel(grid: Grid, cashAwards: ReadonlyArray<FreeSpinCashAward>): string {
+  const awardMap = cashAwardMapFrom(cashAwards);
   const rows = grid.map((row, index) =>
-    `Row ${index + 1}: ${row.map(accessibleCellLabel).join(", ")}`,
+    `Row ${index + 1}: ${row.map((cell, column) => accessibleCellLabel(cell, awardMap.get(`${index}:${column}`))).join(", ")}`,
   );
   return `Three row by five column slot grid. ${rows.join(". ")}.`;
 }
 
-function accessibleCellLabel(cell: Cell): string {
+function accessibleCellLabel(cell: Cell, cashAward: FreeSpinCashAward | undefined): string {
   if (cell.kind === "wild") {
     return "WILD";
   }
-  return cell.symbol;
+  return cashAward === undefined ? cell.symbol : `${cell.symbol}, ${formatUsd(cashAward.amountCents)}`;
+}
+
+function cashAwardMapFrom(cashAwards: ReadonlyArray<FreeSpinCashAward>): ReadonlyMap<string, FreeSpinCashAward> {
+  return new Map(cashAwards.map((award) => [`${award.position.row}:${award.position.column}`, award]));
+}
+
+function cashAwardDisplayAmount(award: FreeSpinCashAward | undefined, showFinalAmount: boolean): number | null {
+  if (award === undefined) {
+    return null;
+  }
+  return showFinalAmount ? award.amountCents : award.baseAmountCents;
+}
+
+function displayCell(cell: Cell, cashAward: FreeSpinCashAward | undefined): CellDisplay {
+  return { cell, cashAwardCents: cashAwardDisplayAmount(cashAward, false) };
+}
+
+function transientDisplayCell(
+  cell: Cell,
+  cashAwardSymbols: ReadonlySet<CashAwardSymbolId>,
+  betCents: number,
+): CellDisplay {
+  if (cell.kind !== "bonus" || !cashAwardSymbols.has(cell.symbol as CashAwardSymbolId)) {
+    return { cell, cashAwardCents: null };
+  }
+  const [minimumTenths, maximumTenths] = cell.symbol === "CIGARETTE"
+    ? [GAME_CONFIG.cigaretteCashAwardMinimumTenths, GAME_CONFIG.cigaretteCashAwardMaximumTenths]
+    : [GAME_CONFIG.beerCashAwardMinimumTenths, GAME_CONFIG.beerCashAwardMaximumTenths];
+  const choices = ((maximumTenths - minimumTenths) / 5) + 1;
+  const multiplierTenths = minimumTenths + Math.floor(Math.random() * choices) * 5;
+  return { cell, cashAwardCents: (betCents * multiplierTenths) / 10 };
 }
 
 function wait(durationMs: number): Promise<void> {

@@ -15,6 +15,7 @@ export class GameView {
   private readonly controls = new ControlPanel();
   private readonly audio = new GameAudio();
   private readonly log = new EventLogView(requiredElement<HTMLOListElement>("event-log"), GAME_CONFIG.recentEventLimit);
+  private readonly gamePanel = requiredElement<HTMLElement>("game-panel");
   private readonly bonusMetrics = requiredElement<HTMLElement>("bonus-metrics");
   private readonly bonusSpins = requiredElement<HTMLElement>("bonus-spins");
   private readonly bonusMultiplierLabel = requiredElement<HTMLElement>("bonus-multiplier-label");
@@ -66,6 +67,7 @@ export class GameView {
   render(model: GameViewModel, activeSeed: string | null): void {
     this.controls.update(model, activeSeed);
     const swordActive = model.sword !== null;
+    this.gamePanel.classList.toggle("game-panel--sword", swordActive);
     this.reelHost.hidden = swordActive;
     this.swordHost.hidden = !swordActive;
     if (model.sword === null) {

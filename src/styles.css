@@ -651,6 +651,62 @@ input::placeholder {
   color: #ffe5a2;
 }
 
+@media (min-width: 701px) {
+  .game-panel--sword .sword-metrics {
+    position: absolute;
+    z-index: 3;
+    inset: 1rem;
+    display: grid;
+    grid-template-areas:
+      "bank . . multiplier"
+      "cuts . . board";
+    grid-template-columns: 17.5% minmax(0, 1fr) minmax(0, 1fr) 17.5%;
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    min-height: 0;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    pointer-events: none;
+  }
+
+  .game-panel--sword .sword-metrics[hidden] {
+    display: none;
+  }
+
+  .game-panel--sword .sword-metric {
+    min-height: 0;
+    padding: clamp(0.45rem, 1.4vw, 0.8rem) clamp(0.2rem, 0.7vw, 0.5rem);
+    background:
+      repeating-linear-gradient(105deg, transparent 0 10px, rgba(255, 255, 255, 0.022) 11px 12px, transparent 13px 22px),
+      linear-gradient(180deg, rgba(44, 36, 29, 0.96), rgba(12, 16, 14, 0.96));
+    box-shadow: inset 1px 0 0 rgba(116, 125, 116, 0.4), inset -1px 0 0 rgba(0, 0, 0, 0.72);
+  }
+
+  .game-panel--sword .sword-metric::before {
+    display: none;
+  }
+
+  .game-panel--sword .sword-metric--bank,
+  .game-panel--sword .sword-metric--multiplier {
+    border-bottom: 1px solid rgba(102, 116, 107, 0.55);
+  }
+
+  .game-panel--sword .sword-metric__label {
+    font-size: clamp(0.48rem, 0.8vw, 0.66rem);
+    letter-spacing: 0.08em;
+  }
+
+  .game-panel--sword .sword-metric__value {
+    margin-top: 0.35rem;
+    font-size: clamp(1.8rem, 3.2vw, 2.8rem);
+    line-height: 0.82;
+  }
+
+  .game-panel--sword .sword-metric--bank .sword-metric__value {
+    font-size: clamp(1.45rem, 2.65vw, 2.35rem);
+  }
+}
+
 .bonus-retrigger {
   position: absolute;
   z-index: 1;

@@ -218,7 +218,7 @@ input::placeholder {
   position: relative;
   z-index: 3;
   display: grid;
-  grid-template-columns: 1.25fr 0.85fr 1.05fr 0.9fr;
+  grid-template-columns: 1.2fr 0.85fr 1fr;
   margin: 0 clamp(0.45rem, 3vw, 2.2rem) -0.5rem;
   border: 2px solid #090b0a;
   border-top-color: var(--signal-red-dark);
@@ -257,7 +257,7 @@ input::placeholder {
   display: grid;
   min-width: 0;
   gap: 0.18rem;
-  padding: 0.62rem 1rem 0.72rem;
+  padding: 0.72rem clamp(0.8rem, 2vw, 1.25rem) 0.82rem;
 }
 
 .status-panel > div + div::before {
@@ -273,7 +273,7 @@ input::placeholder {
 .status-panel dt {
   color: #a3aaa2;
   font-family: var(--stamp);
-  font-size: 0.56rem;
+  font-size: 0.6rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -284,37 +284,13 @@ input::placeholder {
   overflow: hidden;
   color: var(--signal-red-light);
   font-family: var(--terminal);
-  font-size: clamp(1.2rem, 2.5vw, 1.65rem);
+  font-size: clamp(1.35rem, 2.2vw, 1.8rem);
   letter-spacing: 0.04em;
   line-height: 1.15;
   text-overflow: ellipsis;
   text-shadow: 0 0 12px rgba(209, 75, 55, 0.2);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-}
-
-.status-panel__phase dd {
-  min-height: 2em;
-  color: var(--ivory-bright);
-  font-family: var(--terminal);
-  font-size: clamp(1rem, 2vw, 1.25rem);
-  letter-spacing: 0.02em;
-  line-height: 1;
-  overflow: visible;
-  overflow-wrap: normal;
-  text-overflow: clip;
-  white-space: normal;
-}
-
-.status-panel__phase dt::before {
-  display: inline-block;
-  width: 0.45rem;
-  height: 0.45rem;
-  margin-right: 0.42rem;
-  border-radius: 0;
-  background: var(--indicator);
-  box-shadow: 0 0 8px rgba(95, 147, 136, 0.75);
-  content: "";
 }
 
 .game-panel {
@@ -535,38 +511,10 @@ input::placeholder {
   transform-origin: center;
 }
 
-.bonus-status {
-  position: relative;
-  min-height: 2.65rem;
-  margin: 0;
-  padding: 0.68rem 2rem 0.65rem;
-  color: #b8bdb5;
-  background: repeating-linear-gradient(90deg, transparent 0 9px, rgba(255, 255, 255, 0.015) 10px 11px), #0c100e;
-  font-family: var(--stamp);
-  font-size: 0.5rem;
-  letter-spacing: 0.06em;
-  line-height: 1.5;
-  text-align: center;
-  text-transform: uppercase;
-}
-
-.bonus-status::before {
-  display: inline-block;
-  width: 0.45rem;
-  height: 0.45rem;
-  margin-right: 0.55rem;
-  border-radius: 0;
-  background: currentColor;
-  box-shadow: 0 0 7px currentColor;
-  content: "";
-  vertical-align: 0.02rem;
-}
-
-.bonus-metrics {
+.bonus-metrics,
+.sword-metrics {
   position: relative;
   display: grid;
-  grid-template-areas: "bank spins multiplier";
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   min-height: clamp(6.8rem, 15vw, 9rem);
   margin: 0;
   overflow: hidden;
@@ -577,13 +525,28 @@ input::placeholder {
     linear-gradient(180deg, #18201d, #0a0f0d 82%);
 }
 
+.bonus-metrics {
+  grid-template-areas: "bank spins multiplier";
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sword-metrics {
+  grid-template-areas: "bank cuts board multiplier";
+  grid-template-columns: 1.25fr repeat(3, minmax(0, 1fr));
+  min-height: clamp(7.2rem, 16vw, 9.8rem);
+  background:
+    repeating-linear-gradient(90deg, transparent 0 13px, rgba(255, 255, 255, 0.018) 14px 15px),
+    linear-gradient(180deg, #241c17, #0c0f0d 82%);
+}
+
 .bonus-metrics[hidden],
-.bonus-status[hidden],
+.sword-metrics[hidden],
 .bonus-retrigger[hidden] {
   display: none;
 }
 
-.bonus-metric {
+.bonus-metric,
+.sword-metric {
   position: relative;
   display: grid;
   align-content: center;
@@ -597,6 +560,10 @@ input::placeholder {
   grid-area: bank;
 }
 
+.sword-metric--bank {
+  grid-area: bank;
+}
+
 .bonus-metric--spins {
   grid-area: spins;
 }
@@ -605,8 +572,23 @@ input::placeholder {
   grid-area: multiplier;
 }
 
+.sword-metric--cuts {
+  grid-area: cuts;
+}
+
+.sword-metric--board {
+  grid-area: board;
+}
+
+.sword-metric--multiplier {
+  grid-area: multiplier;
+}
+
 .bonus-metric--spins::before,
-.bonus-metric--multiplier::before {
+.bonus-metric--multiplier::before,
+.sword-metric--cuts::before,
+.sword-metric--board::before,
+.sword-metric--multiplier::before {
   position: absolute;
   top: 0.8rem;
   bottom: 0.8rem;
@@ -617,7 +599,8 @@ input::placeholder {
   content: "";
 }
 
-.bonus-metric__label {
+.bonus-metric__label,
+.sword-metric__label {
   color: #a8b1a8;
   font-family: var(--stamp);
   font-size: clamp(0.58rem, 1.45vw, 0.78rem);
@@ -626,7 +609,8 @@ input::placeholder {
   text-transform: uppercase;
 }
 
-.bonus-metric__value {
+.bonus-metric__value,
+.sword-metric__value {
   display: block;
   width: 100%;
   min-width: 0;
@@ -648,6 +632,23 @@ input::placeholder {
   font-size: clamp(2rem, 5.2vw, 3.7rem);
   text-shadow: 3px 3px 0 #180707, 0 0 14px rgba(209, 75, 55, 0.42);
   transform-origin: center;
+}
+
+.sword-metric__value {
+  color: var(--ivory-bright);
+  font-size: clamp(2.65rem, 6.8vw, 4.8rem);
+  text-shadow: 3px 3px 0 #120b08, 0 0 15px rgba(241, 166, 55, 0.25);
+}
+
+.sword-metric--bank .sword-metric__value {
+  color: var(--signal-red-light);
+  font-size: clamp(2rem, 5vw, 3.55rem);
+  text-shadow: 3px 3px 0 #180707, 0 0 14px rgba(209, 75, 55, 0.42);
+  transform-origin: center;
+}
+
+.sword-metric--multiplier .sword-metric__value {
+  color: #ffe5a2;
 }
 
 .bonus-retrigger {
@@ -1183,15 +1184,30 @@ input::placeholder {
   }
 
   .status-panel {
+    grid-template-areas:
+      "balance balance"
+      "bet last-win";
     grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-bottom: -0.35rem;
   }
 
-  .status-panel > div:nth-child(3)::before {
+  .status-panel__balance {
+    grid-area: balance;
+  }
+
+  .status-panel__bet {
+    grid-area: bet;
+  }
+
+  .status-panel__last-win {
+    grid-area: last-win;
+  }
+
+  .status-panel > div:nth-child(2)::before {
     display: none;
   }
 
-  .status-panel > div:nth-child(-n + 2)::after {
+  .status-panel > div:first-child::after {
     position: absolute;
     right: 0.65rem;
     bottom: 0;
@@ -1199,12 +1215,6 @@ input::placeholder {
     height: 1px;
     background: linear-gradient(90deg, transparent, #43534f, transparent);
     content: "";
-  }
-
-  .bonus-status {
-    min-height: 2.4rem;
-    padding: 0.6rem 1rem;
-    font-size: 0.58rem;
   }
 
   .bonus-metrics {
@@ -1217,6 +1227,32 @@ input::placeholder {
 
   .bonus-metric--bank {
     border-top: 1px solid #405049;
+  }
+
+  .sword-metrics {
+    grid-template-areas:
+      "bank bank"
+      "cuts multiplier"
+      "board board";
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-height: 14.6rem;
+  }
+
+  .sword-metric--cuts,
+  .sword-metric--multiplier {
+    border-top: 1px solid #405049;
+  }
+
+  .sword-metric--board {
+    border-top: 1px solid #405049;
+  }
+
+  .sword-metric--cuts::before {
+    display: none;
+  }
+
+  .sword-metric--board::before {
+    display: none;
   }
 
   .bonus-metric--spins::before {
@@ -1232,6 +1268,14 @@ input::placeholder {
   }
 
   .bonus-metric--bank .bonus-metric__value {
+    font-size: clamp(2rem, 8.5vw, 3rem);
+  }
+
+  .sword-metric__value {
+    font-size: clamp(2.35rem, 12vw, 3.8rem);
+  }
+
+  .sword-metric--bank .sword-metric__value {
     font-size: clamp(2rem, 8.5vw, 3rem);
   }
 
@@ -1326,10 +1370,6 @@ input::placeholder {
 
   .status-panel dd {
     font-size: 1.15rem;
-  }
-
-  .status-panel__phase dd {
-    font-size: 1rem;
   }
 
   .controls {

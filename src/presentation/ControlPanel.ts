@@ -32,7 +32,6 @@ export class ControlPanel {
   private readonly balanceValue = requiredElement<HTMLElement>("balance");
   private readonly betValue = requiredElement<HTMLElement>("bet");
   private readonly lastWinValue = requiredElement<HTMLElement>("last-win");
-  private readonly phaseValue = requiredElement<HTMLElement>("phase");
   private readonly seedStatus = requiredElement<HTMLElement>("seed-status");
   private readonly featureBuyButtons: ReadonlyArray<readonly [HTMLButtonElement, FeatureBuyId]> = [
     [requiredElement<HTMLButtonElement>("buy-beer-bonus"), "beer"],
@@ -84,7 +83,6 @@ export class ControlPanel {
     this.balanceValue.textContent = formatUsd(model.balanceCents);
     this.betValue.textContent = formatUsd(model.betCents);
     this.lastWinValue.textContent = formatUsd(model.lastWinCents);
-    this.phaseValue.textContent = formatPhase(model.phase);
 
     this.spinButton.disabled = spinning ? false : !interactive || model.balanceCents < model.betCents;
     this.spinButton.textContent = spinning ? "Settle" : "Spin";
@@ -141,13 +139,6 @@ function featureBuyLabel(feature: FeatureBuyId): string {
     case "sword":
       return "Sword";
   }
-}
-
-function formatPhase(phase: GameViewModel["phase"]): string {
-  return phase
-    .split("-")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
 }
 
 function requiredElement<T extends HTMLElement>(id: string): T {

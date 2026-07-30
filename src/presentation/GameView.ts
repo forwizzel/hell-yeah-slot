@@ -15,13 +15,17 @@ export class GameView {
   private readonly controls = new ControlPanel();
   private readonly audio = new GameAudio();
   private readonly log = new EventLogView(requiredElement<HTMLOListElement>("event-log"), GAME_CONFIG.recentEventLimit);
-  private readonly bonusStatus = requiredElement<HTMLElement>("bonus-status");
   private readonly bonusMetrics = requiredElement<HTMLElement>("bonus-metrics");
   private readonly bonusSpins = requiredElement<HTMLElement>("bonus-spins");
   private readonly bonusMultiplierLabel = requiredElement<HTMLElement>("bonus-multiplier-label");
   private readonly bonusMultiplier = requiredElement<HTMLElement>("bonus-multiplier");
   private readonly bonusBank = requiredElement<HTMLElement>("bonus-bank");
   private readonly bonusRetrigger = requiredElement<HTMLElement>("bonus-retrigger");
+  private readonly swordMetrics = requiredElement<HTMLElement>("sword-metrics");
+  private readonly swordBank = requiredElement<HTMLElement>("sword-bank");
+  private readonly swordCuts = requiredElement<HTMLElement>("sword-cuts");
+  private readonly swordBoardSize = requiredElement<HTMLElement>("sword-board-size");
+  private readonly swordMultiplier = requiredElement<HTMLElement>("sword-multiplier");
   private readonly featureOverlay = requiredElement<HTMLElement>("feature-overlay");
   private readonly featureKicker = requiredElement<HTMLElement>("feature-kicker");
   private readonly featureTitle = requiredElement<HTMLElement>("feature-title");
@@ -75,8 +79,7 @@ export class GameView {
       "aria-busy",
       String(model.phase === "base-spinning" || model.phase === "free-spin-spinning" || model.phase === "sword-spinning"),
     );
-    this.bonusStatus.textContent = statusText(model);
-    this.renderBonusMetrics(model);
+    this.renderFeatureMetrics(model);
     this.renderFeatureOverlay(model);
   }
 
@@ -395,26 +398,36 @@ export class GameView {
     this.largeWinSkip = null;
   }
 
-  private renderBonusMetrics(model: GameViewModel): void {
+  private renderFeatureMetrics(model: GameViewModel): void {
     const state = model.sword === null ? model.freeSpins : null;
     const active = state !== null && isActiveFreeSpinPhase(model.phase);
     this.bonusMetrics.hidden = !active;
-    this.bonusStatus.hidden = active;
+    this.swordMetrics.hidden = model.sword === null;
     this.bonusRetrigger.hidden = true;
     this.bonusMetrics.classList.remove("bonus-metrics--retrigger");
-    if (state === null) {
-      return;
+
+    if (state !== null) {
+      this.bonusSpins.textContent = String(state.remainingSpins);
+      this.bonusMultiplierLabel.textContent = state.mode === "cigarette" ? "Cash Awards" : "Multiplier";
+      this.bonusMultiplier.textContent = state.mode === "cigarette" ? "LIVE" : `X${state.multiplier}`;
+      this.bonusBank.textContent = formatUsd(state.accumulatedWinCents);
+      this.fitMetricValue(this.bonusBank);
     }
 
-    this.bonusSpins.textContent = String(state.remainingSpins);
-    this.bonusMultiplierLabel.textContent = state.mode === "cigarette" ? "Cash Awards" : "Multiplier";
-    this.bonusMultiplier.textContent = state.mode === "cigarette" ? "LIVE" : `X${state.multiplier}`;
-    const bankValue = formatUsd(state.accumulatedWinCents);
-    this.bonusBank.textContent = bankValue;
-    this.bonusBank.style.transform = "";
-    const bankScale = Math.min(1, this.bonusBank.clientWidth / this.bonusBank.scrollWidth);
-    if (bankScale < 1) {
-      this.bonusBank.style.transform = `scaleX(${bankScale})`;
+    if (model.sword !== null) {
+      this.swordBank.textContent = formatUsd(model.sword.accumulatedWinCents);
+      this.swordCuts.textContent = String(model.sword.remainingSpins);
+      this.swordBoardSize.textContent = `5X${model.sword.rows}`;
+      this.swordMultiplier.textContent = `X${model.sword.activeMultiplier}`;
+      this.fitMetricValue(this.swordBank);
+    }
+  }
+
+  private fitMetricValue(value: HTMLElement): void {
+    value.style.transform = "";
+    const scale = Math.min(1, value.clientWidth / value.scrollWidth);
+    if (scale < 1) {
+      value.style.transform = `scaleX(${scale})`;
     }
   }
 
@@ -436,52 +449,6 @@ export class GameView {
     this.featureOverlay.setAttribute("aria-live", variant === "jackpot" ? "assertive" : "polite");
     this.featureOverlay.hidden = false;
   }
-}
-
-function statusText(model: GameViewModel): string {
-  if (model.phase === "idle" && model.bonusSummary !== null) {
-    return `Last feature · ${summaryText(model.bonusSummary)}`;
-  }
-
-  if (model.sword !== null) {
-    return `Sword Cleave // 5x${model.sword.rows} rig // ${model.sword.remainingSpins} cuts left // x${model.sword.activeMultiplier} multiplier // ${formatUsd(model.sword.accumulatedWinCents)} banked`;
-  }
-
-  if (model.phase === "bonus-intro") {
-    return "Feature mechanism engaged";
-  }
-
-  if (model.phase === "bonus-start") {
-    const label = model.sword !== null
-      ? "Sword"
-      : model.freeSpins === null
-        ? "Bonus"
-        : startFeatureLabel(model.freeSpins.mode);
-    return `Press to start ${label} feature`;
-  }
-
-  if (model.phase === "bonus-complete") {
-    return completionText(model.bonusSummary);
-  }
-
-  if (model.freeSpins !== null) {
-    return freeSpinStatus(model.freeSpins);
-  }
-
-  if (model.phase === "base-spinning") {
-    return "Reels in motion";
-  }
-
-  if (model.phase === "base-evaluation") {
-    return "Reels locked · reading result";
-  }
-
-  return "Machine ready";
-}
-
-function freeSpinStatus(state: FreeSpinState): string {
-  const multiplier = state.mode === "cigarette" ? "cash awards active" : `x${state.multiplier} multiplier`;
-  return `${modeLabel(state.mode)} // ${state.remainingSpins} spins left // ${multiplier} // ${formatUsd(state.accumulatedWinCents)} banked`;
 }
 
 function completionText(summary: BonusSummary | null): string {

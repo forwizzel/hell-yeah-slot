@@ -36,10 +36,9 @@
       </header>
 
       <dl class="status-panel" aria-label="Game status">
-        <div><dt>Balance</dt><dd id="balance">$1,000.00</dd></div>
-        <div><dt>Bet</dt><dd id="bet">$10.00</dd></div>
-        <div><dt>Last Win</dt><dd id="last-win">$0.00</dd></div>
-        <div class="status-panel__phase"><dt>Phase</dt><dd id="phase">Idle</dd></div>
+        <div class="status-panel__balance"><dt>Balance</dt><dd id="balance">$1,000.00</dd></div>
+        <div class="status-panel__bet"><dt>Bet</dt><dd id="bet">$10.00</dd></div>
+        <div class="status-panel__last-win"><dt>Last Win</dt><dd id="last-win">$0.00</dd></div>
       </dl>
 
       <section class="game-panel" aria-label="Slot machine reels">
@@ -82,7 +81,25 @@
           </div>
           <strong id="bonus-retrigger" class="bonus-retrigger" aria-hidden="true" hidden>+10 SPINS</strong>
         </section>
-        <p id="bonus-status" class="bonus-status" aria-live="polite" aria-atomic="true">Machine ready</p>
+        <section id="sword-metrics" class="sword-metrics" aria-live="polite" aria-atomic="true" hidden>
+          <h2 class="sr-only">Sword Cleave status</h2>
+          <div class="sword-metric sword-metric--bank">
+            <span class="sword-metric__label">Banked Win</span>
+            <strong id="sword-bank" class="sword-metric__value">$0.00</strong>
+          </div>
+          <div class="sword-metric sword-metric--cuts">
+            <span class="sword-metric__label">Cuts Left</span>
+            <strong id="sword-cuts" class="sword-metric__value">3</strong>
+          </div>
+          <div class="sword-metric sword-metric--board">
+            <span class="sword-metric__label">Cleave Board</span>
+            <strong id="sword-board-size" class="sword-metric__value">5X3</strong>
+          </div>
+          <div class="sword-metric sword-metric--multiplier">
+            <span class="sword-metric__label">Multiplier</span>
+            <strong id="sword-multiplier" class="sword-metric__value">X1</strong>
+          </div>
+        </section>
       </section>
 
       <section id="game-controls" class="controls" aria-labelledby="controls-title">

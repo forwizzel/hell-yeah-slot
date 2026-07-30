@@ -10,6 +10,7 @@ import {
   reelLockImpactOffset,
 } from "./ReelLockImpact";
 import { ReelStripCycle } from "./ReelStripCycle";
+import { payingPositionKeys, positionKey } from "./PayingCells";
 
 const WIDTH = 750;
 const HEIGHT = 450;
@@ -17,6 +18,7 @@ const GAP = 4;
 const MARGIN = 8;
 const CELL_WIDTH = (WIDTH - MARGIN * 2 - GAP * (GAME_CONFIG.columns - 1)) / GAME_CONFIG.columns;
 const CELL_HEIGHT = (HEIGHT - MARGIN * 2 - GAP * (GAME_CONFIG.rows - 1)) / GAME_CONFIG.rows;
+const SYMBOL_SCALE = 0.98;
 type CellAsset = CardSymbolId | BonusSymbolId | "WILD";
 
 const CELL_ASSET_PATHS: Record<CellAsset, string> = {
@@ -37,6 +39,7 @@ interface CellVisual {
   readonly container: Container;
   readonly box: Graphics;
   readonly sprite: Sprite;
+  readonly winFocus: Graphics;
   readonly cashAwardBox: Graphics;
   readonly cashAwardLabel: Text;
 }
@@ -75,38 +78,17 @@ interface ActiveAnimation {
   readonly setTurbo: (enabled: boolean) => void;
 }
 
-type CellStyle = "card" | "wild" | "beer" | "cigarette" | "sword";
-
-interface CellAppearance {
-  readonly fill: number;
-}
-
-const CELL_APPEARANCES: Record<CellStyle, CellAppearance> = {
-  card: {
-    fill: 0xfffbec,
-  },
-  wild: {
-    fill: 0xfffbec,
-  },
-  beer: {
-    fill: 0xfffbec,
-  },
-  cigarette: {
-    fill: 0xfffbec,
-  },
-  sword: {
-    fill: 0xfffbec,
-  },
-};
-
 export class ReelGridView {
   private readonly reels: ReelVisual[] = [];
   private activeAnimation: ActiveAnimation | null = null;
+  private focusActive = false;
+  private focusStartedAt = 0;
 
   private constructor(
     private readonly application: Application,
     private readonly textures: ReadonlyMap<CellAsset, Texture>,
   ) {
+    this.application.ticker.add(() => this.updateWinFocus());
     const reelHeight = GAME_CONFIG.rows * CELL_HEIGHT + (GAME_CONFIG.rows - 1) * GAP;
     for (let column = 0; column < GAME_CONFIG.columns; column += 1) {
       const viewport = new Container({
@@ -156,6 +138,7 @@ export class ReelGridView {
     showFinalCashAwards = true,
   ): void {
     validateGrid(grid);
+    this.clearWinFocus();
     for (const reel of this.reels) {
       reel.track.y = 0;
       reel.impactFlash.alpha = 0;
@@ -163,7 +146,6 @@ export class ReelGridView {
         cell.container.alpha = 1;
       }
     }
-    const winningKeys = new Set(winningPositions.map((position) => `${position.row}:${position.column}`));
     const cashAwardMap = cashAwardMapFrom(cashAwards);
     for (let row = 0; row < GAME_CONFIG.rows; row += 1) {
       for (let column = 0; column < GAME_CONFIG.columns; column += 1) {
@@ -172,12 +154,12 @@ export class ReelGridView {
           row,
           column,
           cell,
-          winningKeys.has(`${row}:${column}`),
           false,
           cashAwardDisplayAmount(cashAwardMap.get(`${row}:${column}`), showFinalCashAwards),
         );
       }
     }
+    this.applyWinFocus(payingPositionKeys(winningPositions, cashAwards));
     this.application.canvas.setAttribute("aria-label", gridAriaLabel(grid, cashAwards));
   }
 
@@ -198,6 +180,7 @@ export class ReelGridView {
     triggeringBetCents = 0,
   ): Promise<void> {
     validateGrid(result);
+    this.clearWinFocus();
     const normalDuration = GAME_CONFIG.normalSpinDurationMs;
     const quickDuration = GAME_CONFIG.quickSpinDurationMs;
     const stepDuration = GAME_CONFIG.normalReelStepDurationMs;
@@ -283,7 +266,7 @@ export class ReelGridView {
           if (state.stepStartedAt === 0) {
             state.stepStartedAt = elapsed;
             recycleSpinCell(reel, state, (cell, display) =>
-              this.drawCellVisual(cell, display.cell, false, true, display.cashAwardCents));
+              this.drawCellVisual(cell, display.cell, true, display.cashAwardCents));
           }
 
           const spinElapsed = Math.min(elapsed, settleStart);
@@ -311,7 +294,7 @@ export class ReelGridView {
             }
 
             recycleSpinCell(reel, state, (cell, display) =>
-              this.drawCellVisual(cell, display.cell, false, true, display.cashAwardCents));
+              this.drawCellVisual(cell, display.cell, true, display.cashAwardCents));
           }
 
           if (state.finalSequenceComplete) {
@@ -336,7 +319,6 @@ export class ReelGridView {
                     row,
                     column,
                     result[row]![column]!,
-                    false,
                     true,
                     cashAwardDisplayAmount(cashAwardMap.get(`${row}:${column}`), false),
                   );
@@ -356,7 +338,6 @@ export class ReelGridView {
                   row,
                   column,
                   result[row]![column]!,
-                  false,
                   false,
                   cashAwardDisplayAmount(cashAwardMap.get(`${row}:${column}`), false),
                 );
@@ -419,6 +400,10 @@ export class ReelGridView {
     const container = new Container({ y: row * (CELL_HEIGHT + GAP) });
     const box = new Graphics();
     const sprite = new Sprite(Texture.EMPTY);
+    const winFocus = new Graphics()
+      .roundRect(3, 3, CELL_WIDTH - 6, CELL_HEIGHT - 6, 2)
+      .fill({ color: 0xffc55c, alpha: 0.72 });
+    winFocus.visible = false;
     const cashAwardBox = new Graphics();
     const cashAwardLabel = new Text({
       text: "",
@@ -432,16 +417,15 @@ export class ReelGridView {
     sprite.anchor.set(0.5);
     sprite.position.set(CELL_WIDTH / 2, CELL_HEIGHT / 2);
     cashAwardLabel.anchor.set(0.5);
-    container.addChild(box, sprite, cashAwardBox, cashAwardLabel);
+    container.addChild(box, sprite, winFocus, cashAwardBox, cashAwardLabel);
     parent.addChild(container);
-    return { container, box, sprite, cashAwardBox, cashAwardLabel };
+    return { container, box, sprite, winFocus, cashAwardBox, cashAwardLabel };
   }
 
   private drawCell(
     row: number,
     column: number,
     cell: Cell,
-    winning: boolean,
     spinning: boolean,
     cashAwardCents: number | null = null,
   ): void {
@@ -450,7 +434,7 @@ export class ReelGridView {
     if (visual === undefined) {
       throw new Error("Cell visual was not initialized");
     }
-    this.drawCellVisual(visual, cell, winning, spinning, cashAwardCents);
+    this.drawCellVisual(visual, cell, spinning, cashAwardCents);
   }
 
   private setSpinningState(row: number, column: number, spinning: boolean): void {
@@ -465,26 +449,68 @@ export class ReelGridView {
   private drawCellVisual(
     visual: CellVisual,
     cell: Cell,
-    winning: boolean,
     spinning: boolean,
     cashAwardCents: number | null = null,
   ): void {
-    const appearance = CELL_APPEARANCES[cellStyle(cell)];
     visual.box
       .clear()
       .roundRect(0, 0, CELL_WIDTH, CELL_HEIGHT, 2)
-      .fill(appearance.fill);
-    if (winning) {
-      visual.box.stroke({ color: 0xd14b37, width: 3 });
-    }
+      .fill(0x111819);
     visual.container.alpha = spinning ? 0.88 : 1;
     const texture = this.textures.get(cellAsset(cell));
     if (texture === undefined) {
       throw new Error(`No texture was loaded for ${cellAsset(cell)}`);
     }
     visual.sprite.texture = texture;
-    visual.sprite.scale.set(Math.min((CELL_WIDTH * 0.92) / texture.width, (CELL_HEIGHT * 0.92) / texture.height));
+    visual.sprite.scale.set(Math.min((CELL_WIDTH * SYMBOL_SCALE) / texture.width, (CELL_HEIGHT * SYMBOL_SCALE) / texture.height));
     this.drawCashAward(visual, cashAwardCents);
+  }
+
+  private applyWinFocus(payingKeys: ReadonlySet<string>): void {
+    if (payingKeys.size === 0) {
+      return;
+    }
+    this.focusActive = true;
+    this.focusStartedAt = performance.now();
+    for (let column = 0; column < GAME_CONFIG.columns; column += 1) {
+      const reel = this.reels[column];
+      if (reel === undefined) {
+        throw new Error("Reel visual was not initialized");
+      }
+      for (let row = 0; row < GAME_CONFIG.rows; row += 1) {
+        const cell = reel.cells[row];
+        if (cell === undefined) {
+          throw new Error("Reel cell was not initialized");
+        }
+        const paying = payingKeys.has(positionKey({ row, column }));
+        cell.container.alpha = paying ? 1 : 0.36;
+        cell.winFocus.visible = paying;
+      }
+    }
+  }
+
+  private clearWinFocus(): void {
+    this.focusActive = false;
+    for (const reel of this.reels) {
+      for (const cell of reel.cells) {
+        cell.container.alpha = 1;
+        cell.winFocus.visible = false;
+      }
+    }
+  }
+
+  private updateWinFocus(): void {
+    if (!this.focusActive) {
+      return;
+    }
+    const pulse = (Math.sin((performance.now() - this.focusStartedAt) / 180) + 1) / 2;
+    for (const reel of this.reels) {
+      for (const cell of reel.cells) {
+        if (cell.winFocus.visible) {
+          cell.winFocus.alpha = 0.36 + pulse * 0.56;
+        }
+      }
+    }
   }
 
   private drawCashAward(visual: CellVisual, amountCents: number | null): void {
@@ -592,23 +618,6 @@ function settleTrackPosition(startY: number, startVelocity: number, duration: nu
     + (3 - 2 * normalizedVelocity) * progress ** 2
     + normalizedVelocity * progress;
   return startY + distance * cubic;
-}
-
-function cellStyle(cell: Cell): CellStyle {
-  if (cell.kind === "card") {
-    return "card";
-  }
-  if (cell.kind === "wild") {
-    return "wild";
-  }
-  switch (cell.symbol) {
-    case "BEER":
-      return "beer";
-    case "CIGARETTE":
-      return "cigarette";
-    case "SWORD":
-      return "sword";
-  }
 }
 
 function validateGrid(grid: Grid): void {

@@ -7,6 +7,7 @@ import {
   reelLockImpactDurationMs,
   reelLockImpactOffset,
 } from "./ReelLockImpact";
+import { payingPositionKeys, positionKey } from "./PayingCells";
 
 const WIDTH = 750;
 const HEIGHT = 600;
@@ -14,9 +15,9 @@ const COLUMNS = 5;
 const ROWS = 6;
 const GAP = 4;
 const MARGIN = 8;
+const SYMBOL_SCALE = 0.98;
 
 type CellAsset = CardSymbolId | BonusSymbolId | "WILD";
-type SwordCellStyle = "card" | "wild" | "sword";
 
 const CELL_ASSET_PATHS: Record<CellAsset, string> = {
   "10": new URL("../../graphics/10.png", import.meta.url).href,
@@ -46,6 +47,7 @@ interface CellVisual {
   readonly container: Container;
   readonly box: Graphics;
   readonly sprite: Sprite;
+  readonly winFocus: Graphics;
 }
 
 interface ColumnVisual {
@@ -83,12 +85,16 @@ export class SwordBoardView {
   private hasEnteringCell = false;
   private cellWidth = 0;
   private cellHeight = 0;
+  private focusActive = false;
+  private focusStartedAt = 0;
 
   private constructor(
     private readonly application: Application,
     private readonly textures: ReadonlyMap<CellAsset, Texture>,
     private readonly chainOverlayTexture: Texture,
-  ) {}
+  ) {
+    this.application.ticker.add(() => this.updateWinFocus());
+  }
 
   static async create(host: HTMLElement): Promise<SwordBoardView> {
     const [textureEntries, chainOverlayTexture] = await Promise.all([
@@ -111,23 +117,25 @@ export class SwordBoardView {
     validateGrid(grid);
     validateUnlockedRows(unlockedRows);
     this.buildGrid(false);
+    this.clearWinFocus();
     this.drawLockedRows(unlockedRows);
     for (const column of this.columns) {
       column.track.y = 0;
       column.impactFlash.alpha = 0;
     }
-    const winningKeys = new Set(winningPositions.map((position) => `${position.row}:${position.column}`));
     for (let row = 0; row < grid.length; row += 1) {
       for (let column = 0; column < COLUMNS; column += 1) {
-        this.drawCell(row, column, grid[row]![column]!, winningKeys.has(`${row}:${column}`));
+        this.drawCell(row, column, grid[row]![column]!);
       }
     }
+    this.applyWinFocus(payingPositionKeys(winningPositions), unlockedRows);
     this.application.canvas.setAttribute("aria-label", swordBoardAriaLabel(grid, unlockedRows));
   }
 
   renderPlaceholder(unlockedRows: number): void {
     validateUnlockedRows(unlockedRows);
     this.buildGrid(false);
+    this.clearWinFocus();
     this.drawLockedRows(unlockedRows);
     for (const column of this.columns) {
       column.track.y = 0;
@@ -160,6 +168,7 @@ export class SwordBoardView {
     validateGrid(result);
     validateUnlockedRows(unlockedRows);
     this.buildGrid(true);
+    this.clearWinFocus();
     this.drawLockedRows(unlockedRows);
     const pitch = this.cellHeight + GAP;
     const normalDuration = GAME_CONFIG.normalSpinDurationMs;
@@ -372,31 +381,30 @@ export class SwordBoardView {
     const container = new Container({ y: row * (this.cellHeight + GAP) });
     const box = new Graphics();
     const sprite = new Sprite(Texture.EMPTY);
+    const winFocus = new Graphics()
+      .roundRect(3, 3, this.cellWidth - 6, this.cellHeight - 6, 2)
+      .fill({ color: 0xffc55c, alpha: 0.72 });
+    winFocus.visible = false;
     sprite.anchor.set(0.5);
     sprite.position.set(this.cellWidth / 2, this.cellHeight / 2);
-    container.addChild(box, sprite);
+    container.addChild(box, sprite, winFocus);
     parent.addChild(container);
-    return { container, box, sprite };
+    return { container, box, sprite, winFocus };
   }
 
-  private drawCell(row: number, column: number, cell: WaysCell, winning = false): void {
+  private drawCell(row: number, column: number, cell: WaysCell): void {
     const visual = this.columns[column]?.cells[row];
     if (visual === undefined) {
       throw new Error("Sword board cell was not initialized");
     }
-    this.drawCellVisual(visual, cell, winning);
+    this.drawCellVisual(visual, cell);
   }
 
-  private drawCellVisual(visual: CellVisual, cell: WaysCell, winning = false): void {
-    const style = cellStyle(cell);
-    const appearance = appearances[style];
+  private drawCellVisual(visual: CellVisual, cell: WaysCell): void {
     visual.box
       .clear()
       .roundRect(0, 0, this.cellWidth, this.cellHeight, 2)
-      .fill(appearance.fill);
-    if (winning) {
-      visual.box.stroke({ color: 0xd14b37, width: 3 });
-    }
+      .fill(0x111819);
     const asset = cellAsset(cell);
     if (asset === null) {
       visual.sprite.texture = Texture.EMPTY;
@@ -407,7 +415,59 @@ export class SwordBoardView {
       throw new Error(`Sword board texture ${asset} was not loaded`);
     }
     visual.sprite.texture = texture;
-    visual.sprite.scale.set(Math.min((this.cellWidth * 0.92) / texture.width, (this.cellHeight * 0.92) / texture.height));
+    visual.sprite.scale.set(Math.min((this.cellWidth * SYMBOL_SCALE) / texture.width, (this.cellHeight * SYMBOL_SCALE) / texture.height));
+  }
+
+  private applyWinFocus(payingKeys: ReadonlySet<string>, unlockedRows: number): void {
+    if (payingKeys.size === 0) {
+      return;
+    }
+    this.focusActive = true;
+    this.focusStartedAt = performance.now();
+    for (let column = 0; column < COLUMNS; column += 1) {
+      const visual = this.columns[column];
+      if (visual === undefined) {
+        throw new Error("Sword board column was not initialized");
+      }
+      for (let row = 0; row < ROWS; row += 1) {
+        const cell = visual.cells[row];
+        if (cell === undefined) {
+          throw new Error("Sword board cell was not initialized");
+        }
+        if (row < ROWS - unlockedRows) {
+          cell.container.alpha = 1;
+          cell.winFocus.visible = false;
+          continue;
+        }
+        const paying = payingKeys.has(positionKey({ row, column }));
+        cell.container.alpha = paying ? 1 : 0.36;
+        cell.winFocus.visible = paying;
+      }
+    }
+  }
+
+  private clearWinFocus(): void {
+    this.focusActive = false;
+    for (const column of this.columns) {
+      for (const cell of column.cells) {
+        cell.container.alpha = 1;
+        cell.winFocus.visible = false;
+      }
+    }
+  }
+
+  private updateWinFocus(): void {
+    if (!this.focusActive) {
+      return;
+    }
+    const pulse = (Math.sin((performance.now() - this.focusStartedAt) / 180) + 1) / 2;
+    for (const column of this.columns) {
+      for (const cell of column.cells) {
+        if (cell.winFocus.visible) {
+          cell.winFocus.alpha = 0.36 + pulse * 0.56;
+        }
+      }
+    }
   }
 
   private recycleCell(column: ColumnVisual, state: SpinState, draw: (cell: CellVisual, symbol: WaysCell) => void): void {
@@ -427,25 +487,6 @@ export class SwordBoardView {
     });
     draw(recycled, symbol);
   }
-}
-
-const appearances: Record<SwordCellStyle, { readonly fill: number }> = {
-  card: { fill: 0xfffbec },
-  wild: { fill: 0xfffbec },
-  sword: { fill: 0xfffbec },
-};
-
-function cellStyle(cell: WaysCell): SwordCellStyle {
-  if (cell.kind === "card") {
-    return "card";
-  }
-  if (cell.kind === "wild") {
-    return "wild";
-  }
-  if (cell.kind === "bonus") {
-    return "sword";
-  }
-  throw new Error("Sword board cannot contain blank cells");
 }
 
 function cellAsset(cell: WaysCell): CellAsset | null {

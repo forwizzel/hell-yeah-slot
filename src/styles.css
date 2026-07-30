@@ -294,6 +294,7 @@ input::placeholder {
 }
 
 .status-panel__phase dd {
+  min-height: 2em;
   color: var(--ivory-bright);
   font-family: var(--terminal);
   font-size: clamp(1rem, 2vw, 1.25rem);

@@ -31,6 +31,7 @@ const CELL_ASSET_PATHS: Record<CellAsset, string> = {
   CIGARETTE: new URL("../../graphics/CIGARETTE.png", import.meta.url).href,
   SWORD: new URL("../../graphics/SWORD.png", import.meta.url).href,
 };
+const CHAIN_OVERLAY_PATH = new URL("../../graphics/CHAIN_OVERLAY.png", import.meta.url).href;
 
 const CYCLE_CELLS: readonly WaysCell[] = [
   { kind: "card", symbol: "10" },
@@ -78,6 +79,7 @@ export class SwordBoardView {
   private readonly columns: ColumnVisual[] = [];
   private activeAnimation: ActiveAnimation | null = null;
   private lockedRowsOverlay: Graphics | null = null;
+  private lockedRowsChains: Container | null = null;
   private hasEnteringCell = false;
   private cellWidth = 0;
   private cellHeight = 0;
@@ -85,20 +87,24 @@ export class SwordBoardView {
   private constructor(
     private readonly application: Application,
     private readonly textures: ReadonlyMap<CellAsset, Texture>,
+    private readonly chainOverlayTexture: Texture,
   ) {}
 
   static async create(host: HTMLElement): Promise<SwordBoardView> {
-    const textureEntries = await Promise.all(
-      Object.entries(CELL_ASSET_PATHS).map(async ([asset, path]) => [
-        asset as CellAsset,
-        await Assets.load<Texture>(path),
-      ] as const),
-    );
+    const [textureEntries, chainOverlayTexture] = await Promise.all([
+      Promise.all(
+        Object.entries(CELL_ASSET_PATHS).map(async ([asset, path]) => [
+          asset as CellAsset,
+          await Assets.load<Texture>(path),
+        ] as const),
+      ),
+      Assets.load<Texture>(CHAIN_OVERLAY_PATH),
+    ]);
     const application = new Application();
     await application.init({ width: WIDTH, height: HEIGHT, backgroundColor: 0x111819, antialias: true });
     application.canvas.setAttribute("role", "img");
     host.append(application.canvas);
-    return new SwordBoardView(application, new Map(textureEntries));
+    return new SwordBoardView(application, new Map(textureEntries), chainOverlayTexture);
   }
 
   render(grid: WaysGrid, unlockedRows: number, winningPositions: ReadonlyArray<Position> = []): void {
@@ -300,6 +306,7 @@ export class SwordBoardView {
     this.application.stage.removeChildren();
     this.columns.length = 0;
     this.lockedRowsOverlay = null;
+    this.lockedRowsChains = null;
     this.hasEnteringCell = includeEnteringCell;
     const maximumCellWidth = (WIDTH - MARGIN * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
     const maximumCellHeight = (HEIGHT - MARGIN * 2 - GAP * (ROWS - 1)) / ROWS;
@@ -329,23 +336,35 @@ export class SwordBoardView {
       this.columns.push({ track, cells, impactFlash });
     }
     this.lockedRowsOverlay = new Graphics();
-    this.application.stage.addChild(this.lockedRowsOverlay);
+    this.lockedRowsChains = new Container();
+    this.application.stage.addChild(this.lockedRowsOverlay, this.lockedRowsChains);
   }
 
   private drawLockedRows(unlockedRows: number): void {
     const overlay = this.lockedRowsOverlay;
-    if (overlay === null) {
-      throw new Error("Sword locked-row overlay was not initialized");
+    const chains = this.lockedRowsChains;
+    if (overlay === null || chains === null) {
+      throw new Error("Sword locked-row layers were not initialized");
     }
     const lockedRows = ROWS - unlockedRows;
     const reelWidth = COLUMNS * this.cellWidth + (COLUMNS - 1) * GAP;
     const startX = (WIDTH - reelWidth) / 2;
     const pitch = this.cellHeight + GAP;
     overlay.clear();
+    for (const chain of chains.removeChildren()) {
+      chain.destroy();
+    }
     if (lockedRows > 0) {
       overlay
         .rect(startX, MARGIN, reelWidth, lockedRows * pitch - GAP)
         .fill({ color: 0x000000, alpha: 0.62 });
+      for (let row = 0; row < lockedRows; row += 1) {
+        const chain = new Sprite(this.chainOverlayTexture);
+        chain.position.set(startX, MARGIN + row * pitch);
+        chain.width = reelWidth;
+        chain.height = this.cellHeight;
+        chains.addChild(chain);
+      }
     }
   }
 

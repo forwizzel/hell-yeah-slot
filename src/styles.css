@@ -561,6 +561,112 @@ input::placeholder {
   vertical-align: 0.02rem;
 }
 
+.bonus-metrics {
+  position: relative;
+  display: grid;
+  grid-template-areas: "bank spins multiplier";
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-height: clamp(6.8rem, 15vw, 9rem);
+  margin: 0;
+  overflow: hidden;
+  border-top: 2px solid #060807;
+  color: var(--ivory-bright);
+  background:
+    repeating-linear-gradient(90deg, transparent 0 13px, rgba(255, 255, 255, 0.018) 14px 15px),
+    linear-gradient(180deg, #18201d, #0a0f0d 82%);
+}
+
+.bonus-metrics[hidden],
+.bonus-status[hidden],
+.bonus-retrigger[hidden] {
+  display: none;
+}
+
+.bonus-metric {
+  position: relative;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  min-width: 0;
+  padding: 0.8rem 0.7rem 0.9rem;
+  text-align: center;
+}
+
+.bonus-metric--bank {
+  grid-area: bank;
+}
+
+.bonus-metric--spins {
+  grid-area: spins;
+}
+
+.bonus-metric--multiplier {
+  grid-area: multiplier;
+}
+
+.bonus-metric + .bonus-metric::before {
+  position: absolute;
+  top: 0.8rem;
+  bottom: 0.8rem;
+  left: 0;
+  width: 2px;
+  background: linear-gradient(transparent, #4d5e57 18% 82%, transparent);
+  box-shadow: 1px 0 0 #060807;
+  content: "";
+}
+
+.bonus-metric__label {
+  color: #a8b1a8;
+  font-family: var(--stamp);
+  font-size: clamp(0.58rem, 1.45vw, 0.78rem);
+  letter-spacing: 0.1em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.bonus-metric__value {
+  min-width: 0;
+  margin-top: 0.2rem;
+  overflow: hidden;
+  color: #ffe5a2;
+  font-family: var(--terminal);
+  font-size: clamp(2.8rem, 7.5vw, 5.15rem);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.025em;
+  line-height: 0.78;
+  text-overflow: ellipsis;
+  text-shadow: 3px 3px 0 #120b08, 0 0 15px rgba(241, 166, 55, 0.42);
+  white-space: nowrap;
+}
+
+.bonus-metric--bank .bonus-metric__value {
+  color: var(--signal-red-light);
+  font-size: clamp(2rem, 5.2vw, 3.7rem);
+  text-shadow: 3px 3px 0 #180707, 0 0 14px rgba(209, 75, 55, 0.42);
+}
+
+.bonus-retrigger {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 50%;
+  padding: 0.25rem 0.55rem;
+  border: 2px solid #ffe08a;
+  color: #fff4ca;
+  background: #7f2119;
+  box-shadow: 3px 3px 0 #180707, 0 0 16px rgba(245, 121, 50, 0.68);
+  font-family: var(--stamp);
+  font-size: clamp(0.72rem, 2.1vw, 1rem);
+  letter-spacing: 0.09em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  transform: translate(-50%, -50%);
+}
+
+.bonus-metrics--retrigger .bonus-retrigger {
+  animation: bonus-retrigger-impact 420ms steps(5, end) both;
+}
+
 .controls {
   position: relative;
   z-index: 2;
@@ -992,6 +1098,23 @@ input::placeholder {
   }
 }
 
+@keyframes bonus-retrigger-impact {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.55);
+  }
+
+  45% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.18);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
 @media (max-width: 700px) {
   #app {
     width: min(calc(100% - 0.75rem), 960px);
@@ -1077,6 +1200,34 @@ input::placeholder {
     min-height: 2.4rem;
     padding: 0.6rem 1rem;
     font-size: 0.58rem;
+  }
+
+  .bonus-metrics {
+    grid-template-areas:
+      "spins spins"
+      "bank multiplier";
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-height: 9.6rem;
+  }
+
+  .bonus-metric--bank {
+    border-top: 1px solid #405049;
+  }
+
+  .bonus-metric.bonus-metric--bank::before {
+    display: none;
+  }
+
+  .bonus-metric__value {
+    font-size: clamp(2.55rem, 12vw, 3.8rem);
+  }
+
+  .bonus-metric--spins .bonus-metric__value {
+    font-size: clamp(3.15rem, 16vw, 4.8rem);
+  }
+
+  .bonus-metric--bank .bonus-metric__value {
+    font-size: clamp(2rem, 8.5vw, 3rem);
   }
 
   .controls {

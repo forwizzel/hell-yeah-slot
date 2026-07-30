@@ -16,6 +16,12 @@ export class GameView {
   private readonly audio = new GameAudio();
   private readonly log = new EventLogView(requiredElement<HTMLOListElement>("event-log"), GAME_CONFIG.recentEventLimit);
   private readonly bonusStatus = requiredElement<HTMLElement>("bonus-status");
+  private readonly bonusMetrics = requiredElement<HTMLElement>("bonus-metrics");
+  private readonly bonusSpins = requiredElement<HTMLElement>("bonus-spins");
+  private readonly bonusMultiplierLabel = requiredElement<HTMLElement>("bonus-multiplier-label");
+  private readonly bonusMultiplier = requiredElement<HTMLElement>("bonus-multiplier");
+  private readonly bonusBank = requiredElement<HTMLElement>("bonus-bank");
+  private readonly bonusRetrigger = requiredElement<HTMLElement>("bonus-retrigger");
   private readonly featureOverlay = requiredElement<HTMLElement>("feature-overlay");
   private readonly featureKicker = requiredElement<HTMLElement>("feature-kicker");
   private readonly featureTitle = requiredElement<HTMLElement>("feature-title");
@@ -68,6 +74,7 @@ export class GameView {
       String(model.phase === "base-spinning" || model.phase === "free-spin-spinning" || model.phase === "sword-spinning"),
     );
     this.bonusStatus.textContent = statusText(model);
+    this.renderBonusMetrics(model);
     this.renderFeatureOverlay(model);
   }
 
@@ -96,6 +103,43 @@ export class GameView {
 
   wait(durationMs: number): Promise<void> {
     return this.reels.wait(durationMs);
+  }
+
+  playFreeSpinRetriggerCounter(
+    beforeAwardRemainingSpins: number,
+    addedSpins: number,
+    finalState: FreeSpinState,
+    durationMs: number,
+  ): Promise<void> {
+    if (addedSpins <= 0 || durationMs <= 0) {
+      return Promise.resolve();
+    }
+    this.bonusSpins.textContent = String(beforeAwardRemainingSpins);
+    this.bonusRetrigger.textContent = `+${addedSpins} SPINS`;
+    this.bonusRetrigger.hidden = false;
+    this.bonusMetrics.classList.remove("bonus-metrics--retrigger");
+    void this.bonusMetrics.offsetWidth;
+    this.bonusMetrics.classList.add("bonus-metrics--retrigger");
+
+    return new Promise((resolve) => {
+      const startedAt = performance.now();
+      const tick = (now: number): void => {
+        const progress = Math.min((now - startedAt) / durationMs, 1);
+        const currentSpins = Math.round(
+          beforeAwardRemainingSpins + (finalState.remainingSpins - beforeAwardRemainingSpins) * progress,
+        );
+        this.bonusSpins.textContent = String(currentSpins);
+        if (progress === 1) {
+          this.bonusSpins.textContent = String(finalState.remainingSpins);
+          this.bonusRetrigger.hidden = true;
+          this.bonusMetrics.classList.remove("bonus-metrics--retrigger");
+          resolve();
+          return;
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
   }
 
   waitForFeatureStart(): Promise<void> {
@@ -349,6 +393,23 @@ export class GameView {
     this.largeWinSkip = null;
   }
 
+  private renderBonusMetrics(model: GameViewModel): void {
+    const state = model.sword === null ? model.freeSpins : null;
+    const active = state !== null && isActiveFreeSpinPhase(model.phase);
+    this.bonusMetrics.hidden = !active;
+    this.bonusStatus.hidden = active;
+    this.bonusRetrigger.hidden = true;
+    this.bonusMetrics.classList.remove("bonus-metrics--retrigger");
+    if (state === null) {
+      return;
+    }
+
+    this.bonusSpins.textContent = String(state.remainingSpins);
+    this.bonusMultiplierLabel.textContent = state.mode === "cigarette" ? "Cash Awards" : "Multiplier";
+    this.bonusMultiplier.textContent = state.mode === "cigarette" ? "LIVE" : `X${state.multiplier}`;
+    this.bonusBank.textContent = formatUsd(state.accumulatedWinCents);
+  }
+
   private showFeatureOverlay(
     kicker: string,
     title: string,
@@ -462,6 +523,13 @@ function freeSpinIntroText(state: FreeSpinState): string {
     return `${modeLabel(state.mode)} // ${state.remainingSpins} spins // cash awards active`;
   }
   return `${modeLabel(state.mode)} // ${state.remainingSpins} spins // x${state.multiplier} multiplier`;
+}
+
+function isActiveFreeSpinPhase(phase: GameViewModel["phase"]): boolean {
+  return phase === "bonus-start"
+    || phase === "bonus-intro"
+    || phase === "free-spin-spinning"
+    || phase === "free-spin-evaluation";
 }
 
 function requiredElement<T extends HTMLElement>(id: string): T {

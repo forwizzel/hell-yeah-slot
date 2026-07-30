@@ -317,7 +317,15 @@ export class GameController {
       }
       this.render();
       const evaluationTiming = this.getSpinTiming();
-      await this.view.wait(evaluationTiming.evaluationDelay);
+      await Promise.all([
+        this.view.wait(evaluationTiming.evaluationDelay),
+        this.view.playFreeSpinRetriggerCounter(
+          previousState.remainingSpins - 1,
+          result.addedSpins,
+          result.state,
+          evaluationTiming.evaluationDelay,
+        ),
+      ]);
 
       if (result.swordTriggered) {
         await this.playSwordFeature(previousState.triggeringBetCents, true);

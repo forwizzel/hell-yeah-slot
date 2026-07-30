@@ -54,7 +54,7 @@ The report uses US-dollar amounts and separately reports total, base-game, free-
 
 - **Spin** places the selected US-dollar wager and plays one complete paid round. While a base, free, or Sword spin is animating, the button becomes **Settle** and immediately shows that already-resolved spin.
 - **- / +** moves through the configured bets: `$0.20`, `$0.40`, `$0.60`, `$0.80`, `$1.00`, `$1.20`, `$1.40`, `$1.60`, `$1.80`, `$2.00`, `$2.50`, `$3.00`, `$5.00`, `$10.00`, `$25.00`, `$50.00`, `$75.00`, `$100.00`, `$150.00`, `$200.00`, `$250.00`, `$300.00`, `$400.00`, and `$500.00`.
-- **Turbo** shortens the current and future spin animations without changing results. It can be toggled during spins and bonus games, and turns off automatically when a bonus feature begins.
+- **Turbo** shortens the current and future spin animations without changing results. It can be toggled during spins and bonus games; a qualifying spin remains in Turbo through its settlement, then Turbo turns off before the feature-start prompt.
 - **Music On / Music Off** and **SFX On / SFX Off** control the soundtrack and sound effects independently. Both are enabled by default. Bonus-symbol columns replace the normal reel-lock click with symbol-specific first, second, and third hit sounds; an individual feature's third hit also plays its win sound.
 - **Reset** restores a `$450,000.00` balance and a `$500.00` bet, restarts an active deterministic sequence, and clears prior Spin Ledger entries.
 - **Engage** starts a deterministic random sequence from a non-empty seed in the Machine Room.
@@ -94,7 +94,7 @@ Regular symbols `10`, `J`, `Q`, `K`, `A`, `COIN`, and `SKULL` pay left to right 
 
 Each spinning column can show at most one BEER, CIGARETTE, or SWORD, and a grid can show at most three matching copies of one type. BEER and CIGARETTE features require three matching symbols. A combined feature requires all five columns to show BEER/CIGARETTE symbols split 3+2 in either direction. During CIGARETTE spins, every CIGARETTE awards a uniform x0.5-x50 base value; during combined spins, every CIGARETTE and BEER awards a base value, then counts up to x5 after the reels settle. Three BEER or three CIGARETTE symbols add 10 spins. A feature converts to combined when the opposite symbol retriggers; x5 combined behavior begins on the following spin. SWORD takes priority when outcomes overlap.
 
-Sword Cleave begins at 5x3 with three spins and has no blank cells. Its boards use `10`, `J`, `Q`, `K`, `A`, COIN, SKULL, WILD, and at most one SWORD. Sword ways use a dedicated feature paytable documented in [Game Rules and Edge Cases](Edge-Cases.md). Before 5x3, 5x4, and 5x5 spins, a Sword expansion has a 40%, 25%, and 10% chance respectively; it replaces a card or WILD, then reveals a populated bottom row after the Sword lands. The board caps at 5x6. Each expansion adds three spins and replaces the active multiplier with the destination band: 5x4 x5-x10, 5x5 x14-x18, or 5x6 x25-x30. Sword Cleave payouts are capped at 3,750x the triggering bet.
+Sword Cleave displays a 5x6 board with its bottom three rows initially unlocked. Covered rows still resolve symbols but cannot pay or trigger an award until an expansion unlocks them upward. Its boards use `10`, `J`, `Q`, `K`, `A`, COIN, SKULL, WILD, and at most one SWORD. Sword ways use a dedicated feature paytable documented in [Game Rules and Edge Cases](Edge-Cases.md). Before a spin with three, four, or five unlocked rows, an in-play Sword expansion has a 40%, 25%, and 10% chance respectively. Only after that roll fails, the same chance can place a cosmetic no-op SWORD in a locked row. Each expansion adds three spins and replaces the active multiplier with the destination band: 5x4 x5-x10, 5x5 x14-x18, or 5x6 x25-x30. Sword Cleave payouts are capped at 3,750x the triggering bet.
 
 Cash-symbol awards materially affect RTP. Use the seeded simulator to review the result after changing award ranges, reel strips, or feature rules; it is not a statistical or regulatory certification.
 
@@ -104,7 +104,7 @@ See [Game Rules and Edge Cases](Edge-Cases.md) for the authoritative paytable, t
 
 Normal browser play uses Web Crypto. Applying a seed switches the session to a deterministic random source; resetting the game restarts that seed's sequence.
 
-Reproduction depends on the same seed, code, configuration, starting state, and player actions. Reel stops, guaranteed bonus positions, combined 3+2 orientation, free spins, landed cash awards, Sword expansion checks and targets, Sword board cells, stage multipliers, and Final Strikes consume the same sequence. Presentation-only scrolling cash values do not consume it. Buying or forcing a feature, or changing the order of actions, therefore changes later outcomes.
+Reproduction depends on the same seed, code, configuration, starting state, and player actions. Reel stops, guaranteed bonus positions, combined 3+2 orientation, free spins, landed cash awards, Sword in-play and locked-row checks and targets, Sword board cells, stage multipliers, and Final Strikes consume the same sequence. Presentation-only scrolling cash values do not consume it. Buying or forcing a feature, or changing the order of actions, therefore changes later outcomes.
 
 The seeded generator is intended for repeatability, not cryptographic security.
 

@@ -83,6 +83,7 @@ describe("formatUsd", () => {
     [100, "$1.00"],
     [12_345, "$123.45"],
     [100_000, "$1,000.00"],
+    [Number.MAX_SAFE_INTEGER, "$90,071,992,547,409.91"],
     [-120, "-$1.20"],
   ] as const)("formats %i cents as %s", (cents, expected) => {
     expect(formatUsd(cents)).toBe(expected);

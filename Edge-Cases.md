@@ -99,8 +99,8 @@ The x5 Beer multiplier applies separately to each BEER or combined spin's ordina
 
 - At least three SWORD symbols trigger Sword Cleave and take priority over BEER and CIGARETTE. The triggering paid grid's independent regular-symbol/WILD ways still pay.
 - Every natural, purchased, or development-triggered bonus pauses after its triggering spin and requires the player to press the on-screen start button before its intro animation and feature spins begin.
-- Sword Cleave starts with a fresh 5x3 dedicated board, three Cleave Spins, and an active x1 Sword multiplier. Its boards contain `10`, `J`, `Q`, `K`, `A`, `COIN`, `SKULL`, WILDs, and at most one non-paying SWORD; the boards never create BEER or CIGARETTE triggers. Non-Sword cells use weights `10` 28, `J` 23, `Q` 18, `K` 16, `A` 8, `COIN` 5, `SKULL` 1, and WILD 1.
-- Every Cleave Spin resolves the same left-to-right ways rules and WILD treatment as the base game, but uses the dedicated Sword paytable below. It multiplies that award by the active Sword multiplier and adds it to a Sword-only accumulator. The balance is credited once when Sword Cleave completes.
+- Sword Cleave displays a dedicated 5x6 board, three Cleave Spins, and an active x1 Sword multiplier. Its bottom three rows start unlocked; expansions unlock one row upward until all six rows are active. Every row resolves symbols on every spin, but locked rows are covered and excluded from ways, winning highlights, and feature awards. Boards contain `10`, `J`, `Q`, `K`, `A`, `COIN`, `SKULL`, WILDs, and at most one non-paying SWORD; the boards never create BEER or CIGARETTE triggers. Non-Sword cells use weights `10` 28, `J` 23, `Q` 18, `K` 16, `A` 8, `COIN` 5, `SKULL` 1, and WILD 1.
+- Every Cleave Spin resolves the same left-to-right ways rules and WILD treatment as the base game, but uses the dedicated Sword paytable below and considers only unlocked rows. It multiplies that award by the active Sword multiplier and adds it to a Sword-only accumulator. The balance is credited once when Sword Cleave completes.
 
 | Sword symbol | 3 columns | 4 columns | 5 columns |
 | --- | ---: | ---: | ---: |
@@ -114,7 +114,7 @@ The x5 Beer multiplier applies separately to each BEER or combined spin's ordina
 
 COIN and SKULL can now land on valid Sword boards and use the dedicated Sword paytable above. A qualifying all-WILD Sword result is paid once through the internal Sword SKULL entry: x0.5 for three columns, x0.8 for four, or x5.2 for five.
 
-- Before a 5x3, 5x4, or 5x5 board is drawn, there is a 40%, 25%, or 10% chance respectively for exactly one SWORD expansion. The SWORD replaces a drawn card or WILD and does not contribute to that spin's ways payout. It lands before the board changes; after the spin ends, a fully populated bottom row is revealed and three spins are added to the remaining Cleave counter.
+- Before a feature with three, four, or five unlocked rows is drawn, there is a 40%, 25%, or 10% chance respectively for exactly one SWORD expansion in an unlocked row. The SWORD replaces a drawn card or WILD and does not contribute to that spin's ways payout. It unlocks the next covered row upward and adds three spins to the remaining Cleave counter. If that in-play expansion roll fails, a second roll at the same chance can place one cosmetic SWORD in a locked row; it is covered and does not unlock a row, add spins, select a multiplier, or affect payout.
 - The multiplier selected by an expansion replaces, rather than compounds with, the prior Sword multiplier. The destination-row bands are: 5x4 x5-x10, 5x5 x14-x18, and 5x6 x25-x30.
 - The expansion spin uses the multiplier active before its SWORD lands. The selected replacement multiplier begins on the next Cleave Spin.
 - At 5x6 no new SWORD can appear. If it reaches 5x6, the feature continues until its remaining Cleave spins expire, then one Final Strike multiplies the entire Sword accumulator: x5 (53%), x10 (21%), x15 (12%), x20 (7%), x30 (4%), x50 (2%), or x100 (1%). The completed Sword payout is capped at 3,750x the triggering bet.
@@ -128,13 +128,13 @@ COIN and SKULL can now land on valid Sword boards and use the dedicated Sword pa
 - A SWORD that causes a Sword Cleave expansion plays the first SWORD hit sound when its column locks but does not play the SWORD feature-win sound.
 - During a base, free, or Sword spin animation, clicking the Spin button settles only the current already-resolved spin. It does not place another wager, reroll the outcome, enable Turbo, or skip evaluation and feature sequencing.
 - Turbo can be enabled or disabled during an active spin or bonus game. Enabling it accelerates the current animation and applies to future spins until disabled.
-- Turbo is disabled automatically when a BEER, CIGARETTE, combined, or SWORD bonus begins. The player can enable it again during that feature.
+- Turbo remains active through the settled triggering spin, then is disabled before the BEER, CIGARETTE, combined, or SWORD feature-start prompt. The player can enable it again during that feature.
 - Transient scrolling symbols traverse each column's configured reel strip from a presentation-only random offset. They preserve that reel's symbol frequency and ordering but do not select or alter the predetermined final stop.
 - CIGARETTE cash labels show the resolved award on the landed symbol. In combined spins, BEER/CIGARETTE labels begin at their resolved base value after the board settles and count up to their resolved x5 value. Transient non-landing eligible symbols show presentation-only values that never affect the outcome.
-- Sword Cleave highlights the evaluated ways on each stopped board. On expansion, it shows the larger populated board and a cosmetic roll through the resolved destination multiplier band before the additional Cleave spins begin; neither animation rerolls the outcome.
+- Sword Cleave highlights only evaluated ways in its unlocked rows on each stopped 5x6 board. On expansion, it removes the cover from the newly unlocked row and shows a cosmetic roll through the resolved destination multiplier band before the additional Cleave spins begin; neither animation rerolls the outcome.
 - Normal browser play uses Web Crypto randomness. A non-empty applied seed starts a deterministic sequence.
 - The same seed reproduces the same results only with the same code, configuration, starting state, and player actions.
-- Reel stops, combined 3+2 orientation, purchased or development bonus-symbol positions, free spins, landed cash-award picks, Sword expansion checks and targets, Sword board-cell and added-row draws, Sword stage multipliers, Final Strikes, and retriggers consume one sequence in execution order. Presentation-only scrolling cash labels do not consume this sequence.
+- Reel stops, combined 3+2 orientation, purchased or development bonus-symbol positions, free spins, landed cash-award picks, Sword in-play and cosmetic locked-row checks and targets, Sword board-cell draws, Sword stage multipliers, Final Strikes, and retriggers consume one sequence in execution order. Presentation-only scrolling cash labels do not consume this sequence.
 - Resetting while a seed is active restores the initial balance and bet and restarts that seed's sequence. Clearing the seed restores Web Crypto randomness.
 
 ## Reel Lock Animation and SFX Sync

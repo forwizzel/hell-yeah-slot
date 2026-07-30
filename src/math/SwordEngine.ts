@@ -54,14 +54,24 @@ export class SwordEngine {
       throw new Error("Cannot play a completed Sword feature");
     }
 
-    // Random calls are the stage chance, optional target, current board, optional multiplier, then expansion row.
+    // An in-play expansion always has priority. A second same-chance roll can place a cosmetic
+    // SWORD in a locked row only after that expansion chance has failed.
     const expansionChance = state.rows < this.config.maximumRows
       ? this.config.expansionChances[state.rows as SwordExpansionRows]
       : null;
     const expands = expansionChance !== null && this.random.nextFloat() < expansionChance;
-    const expansionTarget = expands ? this.random.nextInt(state.rows * this.config.columns) : null;
-    const board = this.drawBoard(state.rows, expansionTarget);
-    const evaluation = evaluateWays(board, SWORD_PAYTABLE, state.triggeringBetCents);
+    const lockedRows = this.config.maximumRows - state.rows;
+    const expansionTarget = expands
+      ? this.toBoardIndex(this.random.nextInt(state.rows * this.config.columns), lockedRows)
+      : null;
+    const cosmeticSwordTarget = !expands
+      && expansionChance !== null
+      && this.random.nextFloat() < expansionChance
+      ? this.random.nextInt(lockedRows * this.config.columns)
+      : null;
+    const swordTarget = expansionTarget ?? cosmeticSwordTarget;
+    const board = this.drawBoard(swordTarget);
+    const evaluation = evaluateWays(board.slice(lockedRows), SWORD_PAYTABLE, state.triggeringBetCents);
     const baseWinCents = evaluation.totalWinCents;
     const spinWinCents = safeMultiply(
       baseWinCents,
@@ -102,9 +112,6 @@ export class SwordEngine {
           ),
         )
       : null;
-    const nextBoard = expansion === null
-      ? board
-      : [...board, this.drawRow()];
     const nextState: SwordFeatureState = {
       triggeringBetCents: state.triggeringBetCents,
       rows: expansion?.destinationRows ?? state.rows,
@@ -112,7 +119,7 @@ export class SwordEngine {
       totalSpinsPlayed: safeAdd(state.totalSpinsPlayed, 1, "Sword spin count exceeds the safe integer range"),
       activeMultiplier: expansion?.destinationMultiplier ?? state.activeMultiplier,
       accumulatedWinCents,
-      board: nextBoard,
+      board,
       finalStrikeMultiplier,
       finalPayoutCents,
     };
@@ -120,7 +127,10 @@ export class SwordEngine {
     return {
       state: nextState,
       spinBoard: board,
-      winningPositions: evaluation.winningPositions,
+      winningPositions: evaluation.winningPositions.map((position) => ({
+        row: position.row + lockedRows,
+        column: position.column,
+      })),
       baseWinCents,
       spinWinCents,
       expansion,
@@ -144,9 +154,9 @@ export class SwordEngine {
     };
   }
 
-  private drawBoard(rows: number, expansionTarget: number | null): WaysGrid {
-    const board: WaysGrid = Array.from({ length: rows }, () => []);
-    for (let row = 0; row < rows; row += 1) {
+  private drawBoard(swordTarget: number | null): WaysGrid {
+    const board: WaysGrid = Array.from({ length: this.config.maximumRows }, () => []);
+    for (let row = 0; row < this.config.maximumRows; row += 1) {
       const boardRow = board[row];
       if (boardRow === undefined) {
         throw new Error("Sword board row lookup failed");
@@ -155,7 +165,7 @@ export class SwordEngine {
         const index = row * this.config.columns + column;
         // Draw the underlying card/WILD before replacing the selected position with SWORD.
         const cell = this.drawCell();
-        boardRow.push(index === expansionTarget ? { kind: "bonus", symbol: "SWORD" } : cell);
+        boardRow.push(index === swordTarget ? { kind: "bonus", symbol: "SWORD" } : cell);
       }
     }
     return board;
@@ -172,10 +182,6 @@ export class SwordEngine {
     throw new Error("Sword board weight selection failed");
   }
 
-  private drawRow(): WaysCell[] {
-    return Array.from({ length: this.config.columns }, () => this.drawCell());
-  }
-
   private createExpansion(rows: number, target: number): SwordExpansion {
     const destinationRows = rows + 1;
     const band = this.config.multiplierBands[destinationRows as SwordStageRows];
@@ -187,6 +193,11 @@ export class SwordEngine {
       destinationRows,
       destinationMultiplier: pickBandMultiplier(this.random, band),
     };
+  }
+
+  private toBoardIndex(unlockedIndex: number, lockedRows: number): number {
+    const row = Math.floor(unlockedIndex / this.config.columns) + lockedRows;
+    return row * this.config.columns + unlockedIndex % this.config.columns;
   }
 
   private pickFinalStrikeMultiplier(): number {

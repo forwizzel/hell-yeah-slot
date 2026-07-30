@@ -61,13 +61,15 @@ export class GameView {
 
   render(model: GameViewModel, activeSeed: string | null): void {
     this.controls.update(model, activeSeed);
-    const swordActive = model.sword !== null && model.sword.board.length > 0;
+    const swordActive = model.sword !== null;
     this.reelHost.hidden = swordActive;
     this.swordHost.hidden = !swordActive;
     if (model.sword === null) {
       this.reels.renderGrid(model.grid, model.winningPositions, model.cashAwards);
     } else if (model.sword.board.length > 0) {
-      this.swordBoard.render(model.sword.board, model.winningPositions);
+      this.swordBoard.render(model.sword.board, model.sword.rows, model.winningPositions);
+    } else {
+      this.swordBoard.renderPlaceholder(model.sword.rows);
     }
     this.reelHost.setAttribute(
       "aria-busy",
@@ -188,13 +190,14 @@ export class GameView {
 
   animateSwordSpin(
     result: WaysGrid,
+    unlockedRows: number,
     turboEnabled: boolean,
     expansionPosition: Position | null,
   ): Promise<void> {
     this.reelHost.hidden = true;
     this.swordHost.hidden = false;
     this.audio.play("spin");
-    return this.swordBoard.animateSpin(result, turboEnabled, (column) => {
+    return this.swordBoard.animateSpin(result, unlockedRows, turboEnabled, (column) => {
       this.audio.play(swordColumnAudioEffect(column, expansionPosition));
     });
   }
@@ -407,7 +410,13 @@ export class GameView {
     this.bonusSpins.textContent = String(state.remainingSpins);
     this.bonusMultiplierLabel.textContent = state.mode === "cigarette" ? "Cash Awards" : "Multiplier";
     this.bonusMultiplier.textContent = state.mode === "cigarette" ? "LIVE" : `X${state.multiplier}`;
-    this.bonusBank.textContent = formatUsd(state.accumulatedWinCents);
+    const bankValue = formatUsd(state.accumulatedWinCents);
+    this.bonusBank.textContent = bankValue;
+    this.bonusBank.style.transform = "";
+    const bankScale = Math.min(1, this.bonusBank.clientWidth / this.bonusBank.scrollWidth);
+    if (bankScale < 1) {
+      this.bonusBank.style.transform = `scaleX(${bankScale})`;
+    }
   }
 
   private showFeatureOverlay(

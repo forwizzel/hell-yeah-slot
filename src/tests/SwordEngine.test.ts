@@ -36,27 +36,27 @@ describe("SwordEngine", () => {
     expect(engine().start(20)).toEqual(activeState());
   });
 
-  it("draws a no-blank board and pays it with the active multiplier", () => {
-    const random = new ControlledRandomSource([0.99], Array.from({ length: 15 }, () => 0));
+  it("draws a full no-blank board and pays only its unlocked bottom rows", () => {
+    const random = new ControlledRandomSource([0.99, 0.99], Array.from({ length: 30 }, () => 0));
     const result = engine(random).playSpin(activeState({ activeMultiplier: 3 }));
 
     expect(result.baseWinCents).toBe(486);
     expect(result.spinWinCents).toBe(1_458);
-    expect(result.spinBoard).toHaveLength(3);
+    expect(result.spinBoard).toHaveLength(6);
     expect(result.spinBoard.flat().every((cell) => cell.kind === "card" && cell.symbol === "10")).toBe(true);
     expect(result.winningPositions).toHaveLength(15);
-    expect(result.state.board).toHaveLength(3);
+    expect(result.winningPositions[0]).toEqual({ row: 3, column: 0 });
+    expect(result.state.board).toHaveLength(6);
     expect(result.state.board.flat().every((cell) => cell.kind === "card" && cell.symbol === "10")).toBe(true);
-    expect(random.floatCalls).toBe(1);
-    expect(random.integerCalls).toBe(15);
+    expect(random.floatCalls).toBe(2);
+    expect(random.integerCalls).toBe(30);
   });
 
-  it("replaces a drawn symbol with SWORD, reveals a populated expansion row, and adds three spins", () => {
+  it("places an in-play SWORD in the unlocked rows and adds three spins", () => {
     const random = new ControlledRandomSource([0], [
       7,
-      ...Array.from({ length: 15 }, () => 0),
+      ...Array.from({ length: 30 }, () => 0),
       3,
-      ...Array.from({ length: 5 }, () => 0),
     ]);
     const result = engine(random).playSpin(activeState({ activeMultiplier: 4 }));
 
@@ -64,35 +64,41 @@ describe("SwordEngine", () => {
       baseWinCents: 324,
       spinWinCents: 1_296,
       expansion: {
-        position: { row: 1, column: 2 },
+        position: { row: 4, column: 2 },
         destinationRows: 4,
         destinationMultiplier: 8,
       },
     });
     expect(result.state).toMatchObject({ rows: 4, remainingSpins: 5, activeMultiplier: 8 });
-    expect(result.spinBoard[1]?.[2]).toEqual({ kind: "bonus", symbol: "SWORD" });
+    expect(result.spinBoard[4]?.[2]).toEqual({ kind: "bonus", symbol: "SWORD" });
     expect(result.winningPositions).toHaveLength(14);
-    expect(result.winningPositions).not.toContainEqual({ row: 1, column: 2 });
-    expect(result.spinBoard).toHaveLength(3);
-    expect(result.state.board).toHaveLength(4);
-    expect(result.state.board[3]).toEqual([
-      { kind: "card", symbol: "10" },
-      { kind: "card", symbol: "10" },
-      { kind: "card", symbol: "10" },
-      { kind: "card", symbol: "10" },
-      { kind: "card", symbol: "10" },
-    ]);
+    expect(result.winningPositions).not.toContainEqual({ row: 4, column: 2 });
+    expect(result.spinBoard).toHaveLength(6);
+    expect(result.state.board).toHaveLength(6);
     expect(result.state.board.flat().some((cell) => cell.kind === "blank")).toBe(false);
-    expect(evaluateWays(result.spinBoard, SWORD_PAYTABLE, 20).totalWinCents).toBe(324);
+    expect(evaluateWays(result.spinBoard.slice(3), SWORD_PAYTABLE, 20).totalWinCents).toBe(324);
     expect(random.floatCalls).toBe(1);
-    expect(random.integerCalls).toBe(22);
+    expect(random.integerCalls).toBe(32);
+  });
+
+  it("can place a cosmetic SWORD in a locked row only after a failed expansion roll", () => {
+    const random = new ControlledRandomSource([0.99, 0], [7, ...Array.from({ length: 30 }, () => 0)]);
+    const result = engine(random).playSpin(activeState());
+
+    expect(result.expansion).toBeNull();
+    expect(result.state).toMatchObject({ rows: 3, remainingSpins: 2, activeMultiplier: 1 });
+    expect(result.spinBoard[1]?.[2]).toEqual({ kind: "bonus", symbol: "SWORD" });
+    expect(result.winningPositions).toHaveLength(15);
+    expect(result.winningPositions).not.toContainEqual({ row: 1, column: 2 });
+    expect(random.floatCalls).toBe(2);
+    expect(random.integerCalls).toBe(31);
   });
 
   it("uses decreasing expansion chances by stage", () => {
     expect(engine(new ControlledRandomSource([0.39])).playSpin(activeState()).expansion).toMatchObject({ destinationRows: 4 });
     expect(engine(new ControlledRandomSource([0.24])).playSpin(activeState({ rows: 4 })).expansion).toMatchObject({ destinationRows: 5 });
     expect(engine(new ControlledRandomSource([0.09])).playSpin(activeState({ rows: 5 })).expansion).toMatchObject({ destinationRows: 6 });
-    expect(engine(new ControlledRandomSource([0.4])).playSpin(activeState()).expansion).toBeNull();
+    expect(engine(new ControlledRandomSource([0.4, 0.99])).playSpin(activeState()).expansion).toBeNull();
   });
 
   it("does not roll expansion at six rows and applies the weighted final strike after its third spin", () => {
@@ -117,7 +123,7 @@ describe("SwordEngine", () => {
   });
 
   it("ends without a final strike when three spins expire below six rows", () => {
-    const random = new ControlledRandomSource([0.99, 0.99, 0.99], Array.from({ length: 45 }, () => 0));
+    const random = new ControlledRandomSource([0.99, 0.99, 0.99, 0.99, 0.99, 0.99], Array.from({ length: 90 }, () => 0));
     let state = activeState({ remainingSpins: 3, accumulatedWinCents: 40 });
 
     state = engine(random).playSpin(state).state;
@@ -125,8 +131,8 @@ describe("SwordEngine", () => {
     const result = engine(random).playSpin(state);
 
     expect(result).toMatchObject({ complete: true, finalStrikeMultiplier: null, finalPayoutCents: 1_498 });
-    expect(random.floatCalls).toBe(3);
-    expect(random.integerCalls).toBe(45);
+    expect(random.floatCalls).toBe(6);
+    expect(random.integerCalls).toBe(90);
   });
 
   it("rejects a triggering bet that cannot pay exact tenths", () => {

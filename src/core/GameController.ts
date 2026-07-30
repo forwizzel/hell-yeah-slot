@@ -77,7 +77,6 @@ export class GameController {
 
       // The complete paid-spin outcome, including any feature trigger, is fixed before animation.
       const result = this.createPaidSpinResult(triggeringBetCents);
-      this.disableTurboForFeature(result.bonusTrigger);
       await this.playTriggeringSpin(
         result,
         triggeringBetCents,
@@ -101,7 +100,6 @@ export class GameController {
       return;
     }
 
-    this.view.setQuickSpinEnabled(false);
     this.state.lastWinCents = 0;
     this.state.winningPositions = [];
     this.state.cashAwards = [];
@@ -113,7 +111,6 @@ export class GameController {
 
     try {
       const result = this.createGuaranteedSpinResult(bonus, this.state.betCents);
-      this.disableTurboForFeature(result.bonusTrigger);
       await this.playTriggeringSpin(
         result,
         this.state.betCents,
@@ -152,7 +149,6 @@ export class GameController {
 
     try {
       const result = this.createGuaranteedSpinResult(feature, triggeringBetCents);
-      this.disableTurboForFeature(result.bonusTrigger);
       await this.playTriggeringSpin(
         result,
         triggeringBetCents,
@@ -379,6 +375,7 @@ export class GameController {
       this.render();
       await this.view.animateSwordSpin(
         result.spinBoard,
+        previousSwordState.rows,
         this.view.isQuickSpinEnabled(),
         result.expansion?.position ?? null,
       );

@@ -9,8 +9,9 @@ import {
 } from "./ReelLockImpact";
 
 const WIDTH = 750;
-const HEIGHT = 450;
+const HEIGHT = 600;
 const COLUMNS = 5;
+const ROWS = 6;
 const GAP = 4;
 const MARGIN = 8;
 
@@ -76,7 +77,8 @@ interface ActiveAnimation {
 export class SwordBoardView {
   private readonly columns: ColumnVisual[] = [];
   private activeAnimation: ActiveAnimation | null = null;
-  private rows = 0;
+  private lockedRowsOverlay: Graphics | null = null;
+  private hasEnteringCell = false;
   private cellWidth = 0;
   private cellHeight = 0;
 
@@ -99,9 +101,11 @@ export class SwordBoardView {
     return new SwordBoardView(application, new Map(textureEntries));
   }
 
-  render(grid: WaysGrid, winningPositions: ReadonlyArray<Position> = []): void {
+  render(grid: WaysGrid, unlockedRows: number, winningPositions: ReadonlyArray<Position> = []): void {
     validateGrid(grid);
-    this.buildGrid(grid.length, false);
+    validateUnlockedRows(unlockedRows);
+    this.buildGrid(false);
+    this.drawLockedRows(unlockedRows);
     for (const column of this.columns) {
       column.track.y = 0;
       column.impactFlash.alpha = 0;
@@ -112,7 +116,25 @@ export class SwordBoardView {
         this.drawCell(row, column, grid[row]![column]!, winningKeys.has(`${row}:${column}`));
       }
     }
-    this.application.canvas.setAttribute("aria-label", swordBoardAriaLabel(grid));
+    this.application.canvas.setAttribute("aria-label", swordBoardAriaLabel(grid, unlockedRows));
+  }
+
+  renderPlaceholder(unlockedRows: number): void {
+    validateUnlockedRows(unlockedRows);
+    this.buildGrid(false);
+    this.drawLockedRows(unlockedRows);
+    for (const column of this.columns) {
+      column.track.y = 0;
+      column.impactFlash.alpha = 0;
+      for (const cell of column.cells) {
+        cell.box.clear().roundRect(0, 0, this.cellWidth, this.cellHeight, 2).fill(0x28302d);
+        cell.sprite.texture = Texture.EMPTY;
+      }
+    }
+    this.application.canvas.setAttribute(
+      "aria-label",
+      `Sword Cleave board, five columns by six rows. Bottom ${unlockedRows} rows are unlocked. Awaiting spin.`,
+    );
   }
 
   setTurboEnabled(enabled: boolean): void {
@@ -123,9 +145,16 @@ export class SwordBoardView {
     this.activeAnimation?.settle();
   }
 
-  animateSpin(result: WaysGrid, turboEnabled: boolean, onColumnLocked?: (column: number) => void): Promise<void> {
+  animateSpin(
+    result: WaysGrid,
+    unlockedRows: number,
+    turboEnabled: boolean,
+    onColumnLocked?: (column: number) => void,
+  ): Promise<void> {
     validateGrid(result);
-    this.buildGrid(result.length, true);
+    validateUnlockedRows(unlockedRows);
+    this.buildGrid(true);
+    this.drawLockedRows(unlockedRows);
     const pitch = this.cellHeight + GAP;
     const normalDuration = GAME_CONFIG.normalSpinDurationMs;
     const quickDuration = GAME_CONFIG.quickSpinDurationMs;
@@ -162,7 +191,7 @@ export class SwordBoardView {
         }
         complete = true;
         cancelAnimationFrame(animationFrame);
-        this.render(result);
+        this.render(result, unlockedRows);
         for (let column = 0; column < COLUMNS; column += 1) {
           const state = states[column];
           if (state !== undefined && !state.soundTriggered) {
@@ -263,22 +292,20 @@ export class SwordBoardView {
     });
   }
 
-  private buildGrid(rows: number, includeEnteringCell: boolean): void {
-    if (this.rows === rows
-      && this.columns.length > 0
-      && this.columns[0]?.cells.length === rows + (includeEnteringCell ? 1 : 0)) {
+  private buildGrid(includeEnteringCell: boolean): void {
+    if (this.columns.length > 0 && this.hasEnteringCell === includeEnteringCell) {
       return;
     }
 
     this.application.stage.removeChildren();
     this.columns.length = 0;
-    this.rows = rows;
+    this.lockedRowsOverlay = null;
+    this.hasEnteringCell = includeEnteringCell;
     const maximumCellWidth = (WIDTH - MARGIN * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
-    const maximumCellHeight = (HEIGHT - MARGIN * 2 - GAP * (rows - 1)) / rows;
-    const cellSize = Math.min(maximumCellWidth, maximumCellHeight);
-    this.cellWidth = cellSize;
-    this.cellHeight = cellSize;
-    const reelHeight = rows * this.cellHeight + (rows - 1) * GAP;
+    const maximumCellHeight = (HEIGHT - MARGIN * 2 - GAP * (ROWS - 1)) / ROWS;
+    this.cellWidth = maximumCellWidth;
+    this.cellHeight = maximumCellHeight;
+    const reelHeight = ROWS * this.cellHeight + (ROWS - 1) * GAP;
     const reelWidth = COLUMNS * this.cellWidth + (COLUMNS - 1) * GAP;
     const startX = (WIDTH - reelWidth) / 2;
 
@@ -295,11 +322,30 @@ export class SwordBoardView {
       viewport.addChild(mask, track, impactFlash);
       viewport.mask = mask;
       this.application.stage.addChild(viewport);
-      for (let row = 0; row < rows + (includeEnteringCell ? 1 : 0); row += 1) {
+      for (let row = 0; row < ROWS + (includeEnteringCell ? 1 : 0); row += 1) {
         const visual = this.createCellVisual(track, row);
         cells.push(visual);
       }
       this.columns.push({ track, cells, impactFlash });
+    }
+    this.lockedRowsOverlay = new Graphics();
+    this.application.stage.addChild(this.lockedRowsOverlay);
+  }
+
+  private drawLockedRows(unlockedRows: number): void {
+    const overlay = this.lockedRowsOverlay;
+    if (overlay === null) {
+      throw new Error("Sword locked-row overlay was not initialized");
+    }
+    const lockedRows = ROWS - unlockedRows;
+    const reelWidth = COLUMNS * this.cellWidth + (COLUMNS - 1) * GAP;
+    const startX = (WIDTH - reelWidth) / 2;
+    const pitch = this.cellHeight + GAP;
+    overlay.clear();
+    if (lockedRows > 0) {
+      overlay
+        .rect(startX, MARGIN, reelWidth, lockedRows * pitch - GAP)
+        .fill({ color: 0x000000, alpha: 0.62 });
     }
   }
 
@@ -397,18 +443,24 @@ function cellAsset(cell: WaysCell): CellAsset | null {
 }
 
 function validateGrid(grid: WaysGrid): void {
-  if (grid.length < 3
-    || grid.length > 6
+  if (grid.length !== ROWS
     || grid.some((row) => row.length !== COLUMNS || row.some((cell) => cell.kind === "blank"))) {
-    throw new Error("Sword board must contain three through six non-blank rows and five columns");
+    throw new Error("Sword board must contain six non-blank rows and five columns");
   }
 }
 
-function swordBoardAriaLabel(grid: WaysGrid): string {
+function validateUnlockedRows(unlockedRows: number): void {
+  if (!Number.isInteger(unlockedRows) || unlockedRows < 3 || unlockedRows > ROWS) {
+    throw new Error("Sword board must have three through six unlocked rows");
+  }
+}
+
+function swordBoardAriaLabel(grid: WaysGrid, unlockedRows: number): string {
+  const lockedRows = ROWS - unlockedRows;
   const rows = grid.map((row, index) =>
-    `Row ${index + 1}: ${row.map(cellLabel).join(", ")}`,
+    `Row ${index + 1}${index < lockedRows ? " locked" : " unlocked"}: ${row.map(cellLabel).join(", ")}`,
   );
-  return `Sword Cleave board, five columns by ${grid.length} rows. ${rows.join(". ")}.`;
+  return `Sword Cleave board, five columns by six rows. ${rows.join(". ")}.`;
 }
 
 function cellLabel(cell: WaysCell): string {

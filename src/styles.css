@@ -323,7 +323,7 @@ input::placeholder {
   border: 3px solid #070908;
   border-top-color: var(--signal-red-dark);
   border-radius: 0;
-  padding: 0.8rem 0.8rem 0;
+  padding: 0.8rem;
   background:
     repeating-linear-gradient(96deg, transparent 0 19px, rgba(169, 52, 39, 0.075) 20px 21px, transparent 22px 41px),
     repeating-linear-gradient(4deg, rgba(0, 0, 0, 0.12) 0 1px, transparent 1px 6px),
@@ -605,7 +605,8 @@ input::placeholder {
   grid-area: multiplier;
 }
 
-.bonus-metric + .bonus-metric::before {
+.bonus-metric--spins::before,
+.bonus-metric--multiplier::before {
   position: absolute;
   top: 0.8rem;
   bottom: 0.8rem;
@@ -626,6 +627,8 @@ input::placeholder {
 }
 
 .bonus-metric__value {
+  display: block;
+  width: 100%;
   min-width: 0;
   margin-top: 0.2rem;
   overflow: hidden;
@@ -644,6 +647,7 @@ input::placeholder {
   color: var(--signal-red-light);
   font-size: clamp(2rem, 5.2vw, 3.7rem);
   text-shadow: 3px 3px 0 #180707, 0 0 14px rgba(209, 75, 55, 0.42);
+  transform-origin: center;
 }
 
 .bonus-retrigger {
@@ -1205,8 +1209,8 @@ input::placeholder {
 
   .bonus-metrics {
     grid-template-areas:
-      "spins spins"
-      "bank multiplier";
+      "spins multiplier"
+      "bank bank";
     grid-template-columns: repeat(2, minmax(0, 1fr));
     min-height: 9.6rem;
   }
@@ -1215,7 +1219,7 @@ input::placeholder {
     border-top: 1px solid #405049;
   }
 
-  .bonus-metric.bonus-metric--bank::before {
+  .bonus-metric--spins::before {
     display: none;
   }
 

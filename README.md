@@ -73,7 +73,7 @@ Bet, wager, reset, seed, and feature-buy controls are disabled while a round or 
 
 ## Game Overview
 
-Regular symbols `10`, `J`, `Q`, `K`, `A`, `COIN`, and `SKULL` pay left to right from the first reel. `COIN` ranks directly above `A`, and `SKULL` is the highest-paying regular symbol. `WILD` substitutes for regular symbols. `BEER`, `CIGARETTE`, and `SWORD` are non-paying special symbols.
+Regular symbols `10`, `J`, `Q`, `K`, `A`, `GUN`, and `KNIGHT` pay left to right from the first reel. `GUN` ranks directly above `A`, and `KNIGHT` is the highest-paying regular symbol. `WILD` substitutes for regular symbols. `BEER`, `CIGARETTE`, and `SWORD` are non-paying special symbols.
 
 | Symbol | 3 columns | 4 columns | 5 columns |
 | --- | ---: | ---: | ---: |
@@ -82,8 +82,8 @@ Regular symbols `10`, `J`, `Q`, `K`, `A`, `COIN`, and `SKULL` pay left to right 
 | `Q` | x0.2 | x0.3 | x0.5 |
 | `K` | x0.2 | x0.4 | x0.5 |
 | `A` | x0.5 | x0.7 | x5.2 |
-| `COIN` | x0.8 | x2.3 | x15 |
-| `SKULL` | x1.5 | x4.5 | x30 |
+| `GUN` | x0.8 | x2.3 | x15 |
+| `KNIGHT` | x1.5 | x4.5 | x30 |
 
 | Feature | Initial award |
 | --- | --- |
@@ -94,7 +94,7 @@ Regular symbols `10`, `J`, `Q`, `K`, `A`, `COIN`, and `SKULL` pay left to right 
 
 Each spinning column can show at most one BEER, CIGARETTE, or SWORD, and a grid can show at most three matching copies of one type. BEER and CIGARETTE features require three matching symbols. A combined feature requires all five columns to show BEER/CIGARETTE symbols split 3+2 in either direction. During CIGARETTE spins, every CIGARETTE awards a uniform x0.5-x50 base value; during combined spins, every CIGARETTE and BEER awards a base value, then counts up to x5 after the reels settle. Three BEER or three CIGARETTE symbols add 10 spins. A feature converts to combined when the opposite symbol retriggers; x5 combined behavior begins on the following spin. SWORD takes priority when outcomes overlap.
 
-Sword Cleave displays a 5x6 board with its bottom three rows initially unlocked. Covered rows still resolve symbols but cannot pay or trigger an award until an expansion unlocks them upward. Its boards use `10`, `J`, `Q`, `K`, `A`, COIN, SKULL, WILD, and at most one SWORD. Sword ways use a dedicated feature paytable documented in [Game Rules and Edge Cases](Edge-Cases.md). Before a spin with three, four, or five unlocked rows, an in-play Sword expansion has a 40%, 25%, and 10% chance respectively. Only after that roll fails, the same chance can place a cosmetic no-op SWORD in a locked row. Each expansion adds three spins and replaces the active multiplier with the destination band: 5x4 x5-x10, 5x5 x14-x18, or 5x6 x25-x30. Sword Cleave payouts are capped at 3,750x the triggering bet.
+Sword Cleave displays a 5x6 board with its bottom three rows initially unlocked. Covered rows still resolve symbols but cannot pay or trigger an award until an expansion unlocks them upward. Its boards use `10`, `J`, `Q`, `K`, `A`, GUN, KNIGHT, WILD, and at most one SWORD. Sword ways use a dedicated feature paytable documented in [Game Rules and Edge Cases](Edge-Cases.md). Before a spin with three, four, or five unlocked rows, an in-play Sword expansion has a 40%, 25%, and 10% chance respectively. Only after that roll fails, the same chance can place a cosmetic no-op SWORD in a locked row. Each expansion adds three spins and replaces the active multiplier with the destination band: 5x4 x5-x10, 5x5 x14-x18, or 5x6 x25-x30. Sword Cleave payouts are capped at 3,750x the triggering bet.
 
 Cash-symbol awards materially affect RTP. Use the seeded simulator to review the result after changing award ranges, reel strips, or feature rules; it is not a statistical or regulatory certification.
 

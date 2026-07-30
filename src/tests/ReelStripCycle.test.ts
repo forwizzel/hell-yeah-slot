@@ -12,7 +12,7 @@ describe("ReelStripCycle", () => {
 
   it("creates the correct cell type for every reel symbol", () => {
     const symbols: ReelSymbol[] = [
-      "10", "J", "Q", "K", "A", "COIN", "SKULL", "WILD", "BEER", "CIGARETTE", "SWORD",
+      "10", "J", "Q", "K", "A", "GUN", "KNIGHT", "WILD", "BEER", "CIGARETTE", "SWORD",
     ];
     const cycle = new ReelStripCycle(symbols, symbols.length - 1);
 
@@ -21,8 +21,8 @@ describe("ReelStripCycle", () => {
       { kind: "bonus", symbol: "CIGARETTE" },
       { kind: "bonus", symbol: "BEER" },
       { kind: "wild" },
-      { kind: "card", symbol: "SKULL" },
-      { kind: "card", symbol: "COIN" },
+      { kind: "card", symbol: "KNIGHT" },
+      { kind: "card", symbol: "GUN" },
       { kind: "card", symbol: "A" },
       { kind: "card", symbol: "K" },
       { kind: "card", symbol: "Q" },

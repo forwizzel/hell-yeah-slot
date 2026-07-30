@@ -26,7 +26,7 @@ This document is the authoritative public contract for current game behavior, in
 - The current reel counts are BEER `4/7/9/0/0`, CIGARETTE `0/0/3/3/9`, and SWORD `3/4/0/4/0` across reels 1 through 5. These produce exact aggregate activation rates of approximately 2.6468% BEER, 0.9883% CIGARETTE, and 0.4944% SWORD per paid spin; the approximately 0.2053% combined rate is included in both BEER and CIGARETTE activation rates.
 - Every special entry is separated from every other special entry on the same cyclic strip by at least two ordinary stops. A visible column therefore contains at most one BEER, CIGARETTE, or SWORD.
 - Each special-symbol type appears on exactly three reel strips, so no grid can contain more than three matching copies. BEER is available on reels 1-3, CIGARETTE on reels 3-5, and SWORD on reels 1, 2, and 4. This keeps both combined layouts reachable while making a natural SWORD trigger structurally incompatible with another feature trigger.
-- The regular symbols are `10`, `J`, `Q`, `K`, `A`, `COIN`, and `SKULL`. `COIN` ranks directly above `A`, and `SKULL` is the highest-paying regular symbol. COIN and SKULL are more common than before but remain substantially rarer than the lower symbols. `WILD` substitutes for regular symbols. `BEER`, `CIGARETTE`, and `SWORD` neither pay as ways symbols nor substitute for regular symbols.
+- The regular symbols are `10`, `J`, `Q`, `K`, `A`, `GUN`, and `KNIGHT`. `GUN` ranks directly above `A`, and `KNIGHT` is the highest-paying regular symbol. GUN and KNIGHT are more common than before but remain substantially rarer than the lower symbols. `WILD` substitutes for regular symbols. `BEER`, `CIGARETTE`, and `SWORD` neither pay as ways symbols nor substitute for regular symbols.
 
 ## Ways Evaluation
 
@@ -45,12 +45,12 @@ Paytable values are stored as integer tenths so all configured wagers produce ex
 | `Q` | x0.2 | x0.3 | x0.5 |
 | `K` | x0.2 | x0.4 | x0.5 |
 | `A` | x0.5 | x0.7 | x5.2 |
-| `COIN` | x0.8 | x2.3 | x15 |
-| `SKULL` | x1.5 | x4.5 | x30 |
+| `GUN` | x0.8 | x2.3 | x15 |
+| `KNIGHT` | x1.5 | x4.5 | x30 |
 
 - Multiple regular symbols can win on one result.
 - WILD can support each applicable regular symbol, but an award must contain at least one natural instance of that symbol in its qualifying columns.
-- A qualifying result made entirely from WILD cells is paid once using the `SKULL` paytable, not once for every regular symbol.
+- A qualifying result made entirely from WILD cells is paid once using the `KNIGHT` paytable, not once for every regular symbol.
 - A matching sequence that does not begin in the leftmost column does not pay.
 
 ## Paid-Spin Triggers
@@ -99,7 +99,7 @@ The x5 Beer multiplier applies separately to each BEER or combined spin's ordina
 
 - At least three SWORD symbols trigger Sword Cleave and take priority over BEER and CIGARETTE. The triggering paid grid's independent regular-symbol/WILD ways still pay.
 - Every natural, purchased, or development-triggered bonus pauses after its triggering spin and requires the player to press the on-screen start button before its intro animation and feature spins begin.
-- Sword Cleave displays a dedicated 5x6 board, three Cleave Spins, and an active x1 Sword multiplier. Its bottom three rows start unlocked; expansions unlock one row upward until all six rows are active. Every row resolves symbols on every spin, but locked rows are covered and excluded from ways, winning highlights, and feature awards. Boards contain `10`, `J`, `Q`, `K`, `A`, `COIN`, `SKULL`, WILDs, and at most one non-paying SWORD; the boards never create BEER or CIGARETTE triggers. Non-Sword cells use weights `10` 28, `J` 23, `Q` 18, `K` 16, `A` 8, `COIN` 5, `SKULL` 1, and WILD 1.
+- Sword Cleave displays a dedicated 5x6 board, three Cleave Spins, and an active x1 Sword multiplier. Its bottom three rows start unlocked; expansions unlock one row upward until all six rows are active. Every row resolves symbols on every spin, but locked rows are covered and excluded from ways, winning highlights, and feature awards. Boards contain `10`, `J`, `Q`, `K`, `A`, `GUN`, `KNIGHT`, WILDs, and at most one non-paying SWORD; the boards never create BEER or CIGARETTE triggers. Non-Sword cells use weights `10` 28, `J` 23, `Q` 18, `K` 16, `A` 8, `GUN` 5, `KNIGHT` 1, and WILD 1.
 - Every Cleave Spin resolves the same left-to-right ways rules and WILD treatment as the base game, but uses the dedicated Sword paytable below and considers only unlocked rows. It multiplies that award by the active Sword multiplier and adds it to a Sword-only accumulator. The balance is credited once when Sword Cleave completes.
 
 | Sword symbol | 3 columns | 4 columns | 5 columns |
@@ -109,10 +109,10 @@ The x5 Beer multiplier applies separately to each BEER or combined spin's ordina
 | `Q` | x0.2 | x0.2 | x0.4 |
 | `K` | x0.2 | x0.4 | x0.8 |
 | `A` | x0.5 | x0.8 | x5.2 |
-| `COIN` | x0.5 | x0.8 | x5.2 |
-| `SKULL` | x0.5 | x0.8 | x5.2 |
+| `GUN` | x0.5 | x0.8 | x5.2 |
+| `KNIGHT` | x0.5 | x0.8 | x5.2 |
 
-COIN and SKULL can now land on valid Sword boards and use the dedicated Sword paytable above. A qualifying all-WILD Sword result is paid once through the internal Sword SKULL entry: x0.5 for three columns, x0.8 for four, or x5.2 for five.
+GUN and KNIGHT can now land on valid Sword boards and use the dedicated Sword paytable above. A qualifying all-WILD Sword result is paid once through the internal Sword KNIGHT entry: x0.5 for three columns, x0.8 for four, or x5.2 for five.
 
 - Before a feature with three, four, or five unlocked rows is drawn, there is a 40%, 25%, or 10% chance respectively for exactly one SWORD expansion in an unlocked row. The SWORD replaces a drawn card or WILD and does not contribute to that spin's ways payout. It unlocks the next covered row upward and adds three spins to the remaining Cleave counter. If that in-play expansion roll fails, a second roll at the same chance can place one cosmetic SWORD in a locked row; it is covered and does not unlock a row, add spins, select a multiplier, or affect payout.
 - The multiplier selected by an expansion replaces, rather than compounds with, the prior Sword multiplier. The destination-row bands are: 5x4 x5-x10, 5x5 x14-x18, and 5x6 x25-x30.

@@ -77,7 +77,7 @@ describe("evaluateWays", () => {
     expect(evaluation.totalWinCents).toBe(112);
   });
 
-  it("awards a pure-WILD result once as the highest-paying SKULL symbol", () => {
+  it("awards a pure-WILD result once as the highest-paying KNIGHT symbol", () => {
     const grid = fromColumns([
       [wild(), bonus(), bonus()],
       [wild(), bonus(), bonus()],
@@ -89,20 +89,20 @@ describe("evaluateWays", () => {
 
     expect(evaluation).toMatchObject({
       totalWinCents: 30,
-      wins: [{ symbol: "SKULL", columns: 3, ways: 1, multiplierTenths: 15 }],
+      wins: [{ symbol: "KNIGHT", columns: 3, ways: 1, multiplierTenths: 15 }],
     });
   });
 
-  it("pays COIN and SKULL as the two highest regular symbols", () => {
-    const coinGrid = fromColumns([
-      [card("COIN")], [card("COIN")], [card("COIN")], [bonus()], [bonus()],
+  it("pays GUN and KNIGHT as the two highest regular symbols", () => {
+    const gunGrid = fromColumns([
+      [card("GUN")], [card("GUN")], [card("GUN")], [bonus()], [bonus()],
     ]);
-    const skullGrid = fromColumns([
-      [card("SKULL")], [card("SKULL")], [card("SKULL")], [bonus()], [bonus()],
+    const knightGrid = fromColumns([
+      [card("KNIGHT")], [card("KNIGHT")], [card("KNIGHT")], [bonus()], [bonus()],
     ]);
 
-    expect(evaluateWays(coinGrid, PAYTABLE, 20).totalWinCents).toBe(16);
-    expect(evaluateWays(skullGrid, PAYTABLE, 20).totalWinCents).toBe(30);
+    expect(evaluateWays(gunGrid, PAYTABLE, 20).totalWinCents).toBe(16);
+    expect(evaluateWays(knightGrid, PAYTABLE, 20).totalWinCents).toBe(30);
   });
 
   it("ignores all bonus symbols in card wins", () => {

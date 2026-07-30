@@ -47,7 +47,7 @@ export function evaluateWays(grid: WaysGrid, paytable: Paytable, betCents: numbe
   if (wins.length === 0) {
     const wildColumns = collectConsecutivePositions(grid, (cell) => cell.kind === "wild").slice(0, 5);
     if (wildColumns.length >= 3) {
-      const win = createWin("SKULL", wildColumns, paytable, betCents);
+      const win = createWin("KNIGHT", wildColumns, paytable, betCents);
       if (win.amountCents > 0) {
         wins.push(win);
       }

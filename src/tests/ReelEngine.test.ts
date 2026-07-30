@@ -116,12 +116,12 @@ describe("ReelEngine", () => {
     expect(rates.combined).toBeCloseTo(0.20530969, 7);
   });
 
-  it("includes visible COIN and SKULL symbols on every base and free-spin reel", () => {
+  it("includes visible GUN and KNIGHT symbols on every base and free-spin reel", () => {
     for (const strip of REEL_STRIPS) {
-      expect(count(strip, "COIN")).toBeGreaterThanOrEqual(5);
-      expect(count(strip, "SKULL")).toBeGreaterThanOrEqual(3);
-      expect(count(strip, "10")).toBeGreaterThan(count(strip, "COIN"));
-      expect(count(strip, "J")).toBeGreaterThan(count(strip, "SKULL"));
+      expect(count(strip, "GUN")).toBeGreaterThanOrEqual(5);
+      expect(count(strip, "KNIGHT")).toBeGreaterThanOrEqual(3);
+      expect(count(strip, "10")).toBeGreaterThan(count(strip, "GUN"));
+      expect(count(strip, "J")).toBeGreaterThan(count(strip, "KNIGHT"));
     }
   });
 

@@ -4,7 +4,7 @@ export type MatchLength = 3 | 4 | 5;
 export type Paytable = Readonly<Record<CardSymbolId, Readonly<Record<MatchLength, number>>>>;
 export const PAYOUT_MULTIPLIER_SCALE = 10;
 
-export const CARD_SYMBOLS: readonly CardSymbolId[] = ["10", "J", "Q", "K", "A", "COIN", "SKULL"];
+export const CARD_SYMBOLS: readonly CardSymbolId[] = ["10", "J", "Q", "K", "A", "GUN", "KNIGHT"];
 
 // Values are multiplier tenths, so 1 is x0.1 and 1600 is x160.
 export const PAYTABLE: Paytable = {
@@ -13,8 +13,8 @@ export const PAYTABLE: Paytable = {
   Q: { 3: 2, 4: 3, 5: 5 },
   K: { 3: 2, 4: 4, 5: 5 },
   A: { 3: 5, 4: 7, 5: 52 },
-  COIN: { 3: 8, 4: 23, 5: 150 },
-  SKULL: { 3: 15, 4: 45, 5: 300 },
+  GUN: { 3: 8, 4: 23, 5: 150 },
+  KNIGHT: { 3: 15, 4: 45, 5: 300 },
 };
 
 export const SWORD_PAYTABLE: Paytable = Object.freeze({
@@ -23,6 +23,6 @@ export const SWORD_PAYTABLE: Paytable = Object.freeze({
   Q: Object.freeze({ 3: 2, 4: 2, 5: 4 }),
   K: Object.freeze({ 3: 2, 4: 4, 5: 8 }),
   A: Object.freeze({ 3: 5, 4: 8, 5: 52 }),
-  COIN: Object.freeze({ 3: 5, 4: 8, 5: 52 }),
-  SKULL: Object.freeze({ 3: 5, 4: 8, 5: 52 }),
+  GUN: Object.freeze({ 3: 5, 4: 8, 5: 52 }),
+  KNIGHT: Object.freeze({ 3: 5, 4: 8, 5: 52 }),
 });

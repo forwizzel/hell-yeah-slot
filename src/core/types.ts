@@ -14,7 +14,7 @@ export type GamePhase =
   | "bonus-complete"
   | "large-win";
 
-export type CardSymbolId = "10" | "J" | "Q" | "K" | "A" | "COIN" | "SKULL";
+export type CardSymbolId = "10" | "J" | "Q" | "K" | "A" | "GUN" | "KNIGHT";
 export type BonusSymbolId = "BEER" | "CIGARETTE" | "SWORD";
 
 export interface CardCell {

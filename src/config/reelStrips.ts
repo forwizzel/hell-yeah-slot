@@ -5,10 +5,10 @@ export type ReelSymbol = CardSymbolId | "WILD" | BonusSymbolId;
 const REEL_LENGTH = 64;
 // Higher-paying regular symbols are progressively rarer on the base/free-spin strips.
 const CARD_DISTRIBUTION: readonly CardSymbolId[] = [
-  "10", "J", "Q", "K", "A", "COIN", "SKULL", "10", "J", "Q", "K", "A", "COIN",
-  "10", "J", "Q", "K", "A", "10", "J", "Q", "K", "10", "J", "Q", "COIN", "J", "10",
-  "10", "J", "Q", "K", "COIN", "SKULL", "Q", "10", "J", "10", "10", "J", "Q", "K", "COIN",
-  "J", "Q", "10", "J", "COIN", "SKULL", "J", "Q",
+  "10", "J", "Q", "K", "A", "GUN", "KNIGHT", "10", "J", "Q", "K", "A", "GUN",
+  "10", "J", "Q", "K", "A", "10", "J", "Q", "K", "10", "J", "Q", "GUN", "J", "10",
+  "10", "J", "Q", "K", "GUN", "KNIGHT", "Q", "10", "J", "10", "10", "J", "Q", "K", "GUN",
+  "J", "Q", "10", "J", "GUN", "KNIGHT", "J", "Q",
 ];
 
 function createReel(offset: number, specials: ReadonlyArray<readonly [number, ReelSymbol]>): ReadonlyArray<ReelSymbol> {

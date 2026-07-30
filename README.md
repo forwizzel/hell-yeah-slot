@@ -125,7 +125,7 @@ src/
   main.ts         Browser entry point
 ```
 
-Symbol artwork, the top-bar logo, and `BackgroundVideo.webm` are stored in `graphics/`; audio is stored in `audio/`. The Silkscreen and VT323 files come from the installed Fontsource packages. Vite bundles all runtime assets through module URL and CSS imports; the prototype uses no runtime CDN or external asset service.
+Symbol artwork, the top-bar logo, and `BG_VIDEO.mp4` are stored in `graphics/`; audio is stored in `audio/`. The Silkscreen and VT323 files come from the installed Fontsource packages. Vite bundles all runtime assets through module URL and CSS imports; the prototype uses no runtime CDN or external asset service.
 
 ## Current Limitations
 

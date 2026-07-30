@@ -12,6 +12,7 @@ import type {
   SwordFeatureState,
   SwordFeatureSummary,
   SwordSpinResult,
+  SymbolWin,
   WaysCell,
   WaysGrid,
 } from "../core/types";
@@ -72,6 +73,7 @@ export class SwordEngine {
     const swordTarget = expansionTarget ?? cosmeticSwordTarget;
     const board = this.drawBoard(swordTarget);
     const evaluation = evaluateWays(board.slice(lockedRows), SWORD_PAYTABLE, state.triggeringBetCents);
+    const winningWins = offsetWinningRows(evaluation.wins, lockedRows);
     const baseWinCents = evaluation.totalWinCents;
     const spinWinCents = safeMultiply(
       baseWinCents,
@@ -127,6 +129,7 @@ export class SwordEngine {
     return {
       state: nextState,
       spinBoard: board,
+      winningWins,
       winningPositions: evaluation.winningPositions.map((position) => ({
         row: position.row + lockedRows,
         column: position.column,
@@ -210,6 +213,16 @@ export class SwordEngine {
     }
     throw new Error("Sword final strike weight selection failed");
   }
+}
+
+function offsetWinningRows(wins: ReadonlyArray<SymbolWin>, rowOffset: number): SymbolWin[] {
+  return wins.map((win) => ({
+    ...win,
+    positions: win.positions.map((position) => ({
+      ...position,
+      row: position.row + rowOffset,
+    })),
+  }));
 }
 
 function cellFor(symbol: SwordBoardSymbol): WaysCell {

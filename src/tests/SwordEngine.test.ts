@@ -46,6 +46,7 @@ describe("SwordEngine", () => {
     expect(result.spinBoard.flat().every((cell) => cell.kind === "card" && cell.symbol === "10")).toBe(true);
     expect(result.winningPositions).toHaveLength(15);
     expect(result.winningPositions[0]).toEqual({ row: 3, column: 0 });
+    expect(result.winningWins[0]?.positions[0]).toEqual({ row: 3, column: 0 });
     expect(result.state.board).toHaveLength(6);
     expect(result.state.board.flat().every((cell) => cell.kind === "card" && cell.symbol === "10")).toBe(true);
     expect(random.floatCalls).toBe(2);
@@ -73,6 +74,7 @@ describe("SwordEngine", () => {
     expect(result.spinBoard[4]?.[2]).toEqual({ kind: "bonus", symbol: "SWORD" });
     expect(result.winningPositions).toHaveLength(14);
     expect(result.winningPositions).not.toContainEqual({ row: 4, column: 2 });
+    expect(result.winningWins.flatMap((win) => win.positions)).not.toContainEqual({ row: 4, column: 2 });
     expect(result.spinBoard).toHaveLength(6);
     expect(result.state.board).toHaveLength(6);
     expect(result.state.board.flat().some((cell) => cell.kind === "blank")).toBe(false);

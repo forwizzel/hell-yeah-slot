@@ -68,6 +68,7 @@ export class GameController {
       this.state.balanceCents -= triggeringBetCents;
       this.state.lastWinCents = 0;
       this.state.winningPositions = [];
+      this.state.winningWins = [];
       this.state.cashAwards = [];
       this.state.freeSpins = null;
       this.state.sword = null;
@@ -102,6 +103,7 @@ export class GameController {
 
     this.state.lastWinCents = 0;
     this.state.winningPositions = [];
+    this.state.winningWins = [];
     this.state.cashAwards = [];
     this.state.freeSpins = null;
     this.state.sword = null;
@@ -140,6 +142,7 @@ export class GameController {
     this.state.balanceCents -= costCents;
     this.state.lastWinCents = 0;
     this.state.winningPositions = [];
+    this.state.winningWins = [];
     this.state.cashAwards = [];
     this.state.freeSpins = null;
     this.state.sword = null;
@@ -184,6 +187,7 @@ export class GameController {
     startLog: string,
   ): Promise<void> {
     this.state.winningPositions = [];
+    this.state.winningWins = [];
     this.state.cashAwards = [];
     this.state.bonusSummary = null;
     this.state.largeWin = null;
@@ -203,6 +207,7 @@ export class GameController {
     this.state.grid = result.grid;
     this.state.phase = "base-evaluation";
     this.state.winningPositions = result.winningPositions;
+    this.state.winningWins = result.winningWins;
     this.state.cashAwards = [];
     this.awardWin(result.regularWinCents);
     this.view.addLog(result.regularWinCents > 0 ? `Base win: ${formatUsd(result.regularWinCents)}.` : "No base win.");
@@ -234,6 +239,7 @@ export class GameController {
       regularWinCents: evaluation.totalWinCents,
       bonusTrigger: this.bonusEngine.resolveBaseTrigger(grid),
       winningPositions: evaluation.winningPositions,
+      winningWins: evaluation.wins,
     };
   }
 
@@ -246,6 +252,7 @@ export class GameController {
       regularWinCents: evaluation.totalWinCents,
       bonusTrigger: this.bonusEngine.resolveBaseTrigger(grid),
       winningPositions: evaluation.winningPositions,
+      winningWins: evaluation.wins,
     };
   }
 
@@ -255,6 +262,7 @@ export class GameController {
   ): Promise<void> {
     this.view.setQuickSpinEnabled(false);
     this.state.winningPositions = [];
+    this.state.winningWins = [];
     this.state.bonusSummary = null;
     this.state.largeWin = null;
     this.state.freeSpins = this.bonusEngine.startFreeSpins(trigger, triggeringBetCents);
@@ -276,6 +284,7 @@ export class GameController {
       const previousState = this.state.freeSpins;
       this.state.phase = "free-spin-spinning";
       this.state.winningPositions = [];
+      this.state.winningWins = [];
       this.state.cashAwards = [];
       this.render();
 
@@ -295,6 +304,7 @@ export class GameController {
 
       this.state.grid = grid;
       this.state.winningPositions = evaluation.winningPositions;
+      this.state.winningWins = evaluation.wins;
       this.state.cashAwards = [...result.cashAwards];
       this.state.freeSpins = result.state;
       this.state.phase = "free-spin-evaluation";
@@ -332,6 +342,7 @@ export class GameController {
     }
 
     this.state.winningPositions = [];
+    this.state.winningWins = [];
     const summary = this.bonusEngine.summarize(this.state.freeSpins);
     this.state.bonusSummary = summary;
     this.state.phase = "bonus-complete";
@@ -356,6 +367,7 @@ export class GameController {
     this.view.setQuickSpinEnabled(false);
     this.state.sword = this.swordEngine.start(triggeringBetCents);
     this.state.winningPositions = [];
+    this.state.winningWins = [];
     this.state.bonusSummary = null;
     this.state.largeWin = null;
     this.view.addLog(duringFreeSpins
@@ -375,6 +387,7 @@ export class GameController {
       const result = this.swordEngine.playSpin(previousSwordState);
       this.state.phase = "sword-spinning";
       this.state.winningPositions = [];
+      this.state.winningWins = [];
       this.render();
       await this.view.animateSwordSpin(
         result.spinBoard,
@@ -393,6 +406,7 @@ export class GameController {
             board: result.spinBoard,
           };
       this.state.winningPositions = result.winningPositions;
+      this.state.winningWins = result.winningWins;
       this.state.phase = "sword-evaluation";
       this.view.addLog(
         `Sword spin ${result.state.totalSpinsPlayed}: ${formatUsd(result.baseWinCents)} x${previousSwordState.activeMultiplier} = ${formatUsd(result.spinWinCents)}.`,
@@ -409,6 +423,7 @@ export class GameController {
       if (result.expansion !== null) {
         this.state.sword = result.state;
         this.state.winningPositions = [];
+        this.state.winningWins = [];
         this.render();
         await this.view.wait(evaluationTiming.evaluationDelay);
         const multiplierRevealDuration = evaluationTiming.quickSpin
@@ -426,6 +441,7 @@ export class GameController {
     }
 
     this.state.winningPositions = [];
+    this.state.winningWins = [];
     const summary = this.swordEngine.summarize(this.state.sword);
     this.awardWin(summary.payoutCents);
     if (!duringFreeSpins) {

@@ -98,6 +98,7 @@ export interface SpinResult {
   readonly regularWinCents: number;
   readonly bonusTrigger: BonusTrigger;
   readonly winningPositions: Position[];
+  readonly winningWins: SymbolWin[];
 }
 
 export interface FreeSpinState {
@@ -152,6 +153,7 @@ export interface SwordSpinResult {
   readonly state: SwordFeatureState;
   readonly spinBoard: WaysGrid;
   readonly winningPositions: Position[];
+  readonly winningWins: SymbolWin[];
   readonly baseWinCents: number;
   readonly spinWinCents: number;
   readonly expansion: SwordExpansion | null;
@@ -182,6 +184,7 @@ export interface GameViewModel {
   readonly phase: GamePhase;
   readonly grid: Grid;
   readonly winningPositions: Position[];
+  readonly winningWins: SymbolWin[];
   readonly cashAwards: ReadonlyArray<FreeSpinCashAward>;
   readonly freeSpins: FreeSpinState | null;
   readonly sword: SwordFeatureState | null;

@@ -41,6 +41,7 @@ describe("GameController Turbo transitions", () => {
         cigarette: null,
       },
       winningPositions: [],
+      winningWins: [],
     });
     internals.playFreeSpins = async () => { events.push("feature"); };
 
@@ -81,6 +82,7 @@ describe("GameController feature audio", () => {
         cigarette: { symbol: "CIGARETTE", symbolCount: 2, positions: [] },
       },
       winningPositions: [],
+      winningWins: [],
     }, 20, "Combined spin started.");
 
     expect(events).toEqual(["sound:spin", "spin-settled", "sound:win-combination"]);

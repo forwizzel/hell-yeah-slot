@@ -1,13 +1,13 @@
 import { Application, Assets, Container, Graphics, Sprite, Texture } from "pixi.js";
 import { GAME_CONFIG } from "../config/gameConfig";
-import type { BonusSymbolId, CardSymbolId, Position, WaysCell, WaysGrid } from "../core/types";
+import type { BonusSymbolId, CardSymbolId, SymbolWin, WaysCell, WaysGrid } from "../core/types";
 import {
   REEL_LOCK_SOUND_PREROLL_MS,
   reelLockFlashAlpha,
   reelLockImpactDurationMs,
   reelLockImpactOffset,
 } from "./ReelLockImpact";
-import { payingPositionKeys, positionKey } from "./PayingCells";
+import { activePayingCellGroupIndex, allPayingPositionKeys, createPayingCellGroups, positionKey, type PayingCellGroup } from "./PayingCells";
 
 const WIDTH = 750;
 const HEIGHT = 600;
@@ -16,6 +16,8 @@ const ROWS = 6;
 const GAP = 4;
 const MARGIN = 8;
 const SYMBOL_SCALE = 0.98;
+const FOCUS_GROUP_DURATION_MS = 620;
+const FOCUS_COLORS = [0xffc55c, 0x79c9ba, 0xf5e4bc, 0xdf6551] as const;
 
 type CellAsset = CardSymbolId | BonusSymbolId | "WILD";
 
@@ -87,6 +89,10 @@ export class SwordBoardView {
   private cellHeight = 0;
   private focusActive = false;
   private focusStartedAt = 0;
+  private focusGroups: ReadonlyArray<PayingCellGroup> = [];
+  private payingKeys: ReadonlySet<string> = new Set();
+  private activeFocusGroup = -1;
+  private focusUnlockedRows = ROWS;
 
   private constructor(
     private readonly application: Application,
@@ -113,7 +119,7 @@ export class SwordBoardView {
     return new SwordBoardView(application, new Map(textureEntries), chainOverlayTexture);
   }
 
-  render(grid: WaysGrid, unlockedRows: number, winningPositions: ReadonlyArray<Position> = []): void {
+  render(grid: WaysGrid, unlockedRows: number, winningWins: ReadonlyArray<SymbolWin> = []): void {
     validateGrid(grid);
     validateUnlockedRows(unlockedRows);
     this.buildGrid(false);
@@ -128,7 +134,7 @@ export class SwordBoardView {
         this.drawCell(row, column, grid[row]![column]!);
       }
     }
-    this.applyWinFocus(payingPositionKeys(winningPositions), unlockedRows);
+    this.applyWinFocus(createPayingCellGroups(winningWins), unlockedRows);
     this.application.canvas.setAttribute("aria-label", swordBoardAriaLabel(grid, unlockedRows));
   }
 
@@ -317,10 +323,9 @@ export class SwordBoardView {
     this.lockedRowsOverlay = null;
     this.lockedRowsChains = null;
     this.hasEnteringCell = includeEnteringCell;
-    const maximumCellWidth = (WIDTH - MARGIN * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
     const maximumCellHeight = (HEIGHT - MARGIN * 2 - GAP * (ROWS - 1)) / ROWS;
-    this.cellWidth = maximumCellWidth;
     this.cellHeight = maximumCellHeight;
+    this.cellWidth = maximumCellHeight;
     const reelHeight = ROWS * this.cellHeight + (ROWS - 1) * GAP;
     const reelWidth = COLUMNS * this.cellWidth + (COLUMNS - 1) * GAP;
     const startX = (WIDTH - reelWidth) / 2;
@@ -418,12 +423,26 @@ export class SwordBoardView {
     visual.sprite.scale.set(Math.min((this.cellWidth * SYMBOL_SCALE) / texture.width, (this.cellHeight * SYMBOL_SCALE) / texture.height));
   }
 
-  private applyWinFocus(payingKeys: ReadonlySet<string>, unlockedRows: number): void {
-    if (payingKeys.size === 0) {
+  private applyWinFocus(groups: ReadonlyArray<PayingCellGroup>, unlockedRows: number): void {
+    if (groups.length === 0) {
       return;
     }
     this.focusActive = true;
     this.focusStartedAt = performance.now();
+    this.focusGroups = groups;
+    this.payingKeys = allPayingPositionKeys(groups);
+    this.activeFocusGroup = -1;
+    this.focusUnlockedRows = unlockedRows;
+    this.setActiveFocusGroup(0, unlockedRows);
+  }
+
+  private setActiveFocusGroup(index: number, unlockedRows: number): void {
+    const group = this.focusGroups[index];
+    if (group === undefined) {
+      throw new Error("Sword paying-cell focus group was not initialized");
+    }
+    const color = FOCUS_COLORS[index % FOCUS_COLORS.length]!;
+    this.activeFocusGroup = index;
     for (let column = 0; column < COLUMNS; column += 1) {
       const visual = this.columns[column];
       if (visual === undefined) {
@@ -439,15 +458,24 @@ export class SwordBoardView {
           cell.winFocus.visible = false;
           continue;
         }
-        const paying = payingKeys.has(positionKey({ row, column }));
-        cell.container.alpha = paying ? 1 : 0.36;
-        cell.winFocus.visible = paying;
+        const key = positionKey({ row, column });
+        const paying = this.payingKeys.has(key);
+        const active = group.keys.has(key);
+        cell.container.alpha = active ? 1 : paying ? 0.68 : 0.36;
+        cell.winFocus.visible = active;
+        if (active) {
+          this.drawWinFocus(cell, color);
+        }
       }
     }
   }
 
   private clearWinFocus(): void {
     this.focusActive = false;
+    this.focusGroups = [];
+    this.payingKeys = new Set();
+    this.activeFocusGroup = -1;
+    this.focusUnlockedRows = ROWS;
     for (const column of this.columns) {
       for (const cell of column.cells) {
         cell.container.alpha = 1;
@@ -460,6 +488,14 @@ export class SwordBoardView {
     if (!this.focusActive) {
       return;
     }
+    const group = activePayingCellGroupIndex(
+      this.focusGroups.length,
+      performance.now() - this.focusStartedAt,
+      FOCUS_GROUP_DURATION_MS,
+    );
+    if (group !== this.activeFocusGroup) {
+      this.setActiveFocusGroup(group, this.focusUnlockedRows);
+    }
     const pulse = (Math.sin((performance.now() - this.focusStartedAt) / 180) + 1) / 2;
     for (const column of this.columns) {
       for (const cell of column.cells) {
@@ -468,6 +504,13 @@ export class SwordBoardView {
         }
       }
     }
+  }
+
+  private drawWinFocus(cell: CellVisual, color: number): void {
+    cell.winFocus
+      .clear()
+      .roundRect(3, 3, this.cellWidth - 6, this.cellHeight - 6, 2)
+      .fill({ color, alpha: 0.72 });
   }
 
   private recycleCell(column: ColumnVisual, state: SpinState, draw: (cell: CellVisual, symbol: WaysCell) => void): void {

@@ -69,9 +69,9 @@ export class GameView {
     this.reelHost.hidden = swordActive;
     this.swordHost.hidden = !swordActive;
     if (model.sword === null) {
-      this.reels.renderGrid(model.grid, model.winningPositions, model.cashAwards);
+      this.reels.renderGrid(model.grid, model.winningWins, model.cashAwards);
     } else if (model.sword.board.length > 0) {
-      this.swordBoard.render(model.sword.board, model.sword.rows, model.winningPositions);
+      this.swordBoard.render(model.sword.board, model.sword.rows, model.winningWins);
     } else {
       this.swordBoard.renderPlaceholder(model.sword.rows);
     }

@@ -8,6 +8,7 @@ import type {
   Grid,
   LargeWin,
   Position,
+  SymbolWin,
   SwordFeatureState,
 } from "./types";
 
@@ -18,6 +19,7 @@ export class GameState {
   phase: GamePhase = "idle";
   grid: Grid = createInitialGrid();
   winningPositions: Position[] = [];
+  winningWins: SymbolWin[] = [];
   cashAwards: FreeSpinCashAward[] = [];
   freeSpins: FreeSpinState | null = null;
   sword: SwordFeatureState | null = null;
@@ -31,6 +33,7 @@ export class GameState {
     this.phase = "idle";
     this.grid = createInitialGrid();
     this.winningPositions = [];
+    this.winningWins = [];
     this.cashAwards = [];
     this.freeSpins = null;
     this.sword = null;
@@ -46,6 +49,10 @@ export class GameState {
       phase: this.phase,
       grid: this.grid.map((row) => row.map((cell) => ({ ...cell }))),
       winningPositions: this.winningPositions.map((position) => ({ ...position })),
+      winningWins: this.winningWins.map((win) => ({
+        ...win,
+        positions: win.positions.map((position) => ({ ...position })),
+      })),
       cashAwards: this.cashAwards.map((award) => ({ ...award, position: { ...award.position } })),
       freeSpins: this.freeSpins === null ? null : { ...this.freeSpins },
       sword: this.sword === null ? null : {

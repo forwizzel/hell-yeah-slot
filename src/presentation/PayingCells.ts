@@ -8,9 +8,10 @@ export function createPayingCellGroups(
   winningWins: ReadonlyArray<SymbolWin>,
   cashAwards: ReadonlyArray<FreeSpinCashAward> = [],
 ): ReadonlyArray<PayingCellGroup> {
+  const cashAwardKeys = new Set(cashAwards.map((award) => positionKey(award.position)));
   return [
+    ...(cashAwardKeys.size > 0 ? [{ keys: cashAwardKeys }] : []),
     ...winningWins.map((win) => ({ keys: new Set(win.positions.map(positionKey)) })),
-    ...cashAwards.map((award) => ({ keys: new Set([positionKey(award.position)]) })),
   ].filter((group) => group.keys.size > 0);
 }
 

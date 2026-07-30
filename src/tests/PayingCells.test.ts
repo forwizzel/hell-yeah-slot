@@ -34,12 +34,14 @@ describe("createPayingCellGroups", () => {
     ]);
   });
 
-  it("creates an individual group for every cash award", () => {
-    const groups = createPayingCellGroups([], [cashAward(1, 3), cashAward(2, 4)]);
+  it("groups every cash award before ways wins", () => {
+    const groups = createPayingCellGroups([
+      symbolWin(position(0, 0), position(1, 1)),
+    ], [cashAward(1, 3), cashAward(2, 4)]);
 
     expect(groups.map((group) => group.keys)).toEqual([
-      new Set(["1:3"]),
-      new Set(["2:4"]),
+      new Set(["1:3", "2:4"]),
+      new Set(["0:0", "1:1"]),
     ]);
   });
 
@@ -51,6 +53,7 @@ describe("createPayingCellGroups", () => {
 
     expect(allPayingPositionKeys(groups)).toEqual(new Set(["1:2", "2:4"]));
     expect(groups).toHaveLength(3);
+    expect(groups[0]?.keys).toEqual(new Set(["1:2"]));
   });
 
   it("creates stable position keys for base and Sword board coordinates", () => {

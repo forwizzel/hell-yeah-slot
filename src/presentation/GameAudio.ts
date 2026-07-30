@@ -5,6 +5,8 @@ export type GameSoundEffect =
   | "bet-up"
   | "bet-down"
   | "click"
+  | "count-win"
+  | "win-combination"
   | `symbol-${SymbolSoundName}-${1 | 2 | 3}`
   | `win-${SymbolSoundName}`;
 
@@ -17,6 +19,8 @@ const EFFECT_PATHS: Record<GameSoundEffect, string> = {
   "bet-up": new URL("../../audio/bet-up-button.mp3", import.meta.url).href,
   "bet-down": new URL("../../audio/bet-down-button.mp3", import.meta.url).href,
   click: new URL("../../audio/cells-click.mp3", import.meta.url).href,
+  "count-win": new URL("../../audio/count-win.mp3", import.meta.url).href,
+  "win-combination": new URL("../../audio/win-combination.mp3", import.meta.url).href,
   "symbol-beer-1": new URL("../../audio/symbol-beer-1.mp3", import.meta.url).href,
   "symbol-beer-2": new URL("../../audio/symbol-beer-2.mp3", import.meta.url).href,
   "symbol-beer-3": new URL("../../audio/symbol-beer-3.mp3", import.meta.url).href,
@@ -74,20 +78,21 @@ export class GameAudio {
     return this.sfxEnabled;
   }
 
-  play(effect: GameSoundEffect): void {
+  play(effect: GameSoundEffect, loop = false): (() => void) | null {
     if (this.musicEnabled) {
       this.startMusic();
     }
     if (!this.sfxEnabled) {
-      return;
+      return null;
     }
     const buffer = this.effects.get(effect);
     if (buffer === undefined) {
-      return;
+      return null;
     }
 
     const playback = this.audioContext.createBufferSource();
     playback.buffer = buffer;
+    playback.loop = loop;
     const symbolGain = isSymbolSoundEffect(effect) ? this.audioContext.createGain() : null;
     if (symbolGain === null) {
       playback.connect(this.audioContext.destination);
@@ -96,7 +101,12 @@ export class GameAudio {
       playback.connect(symbolGain);
       symbolGain.connect(this.audioContext.destination);
     }
+    let finished = false;
     const finish = (): void => {
+      if (finished) {
+        return;
+      }
+      finished = true;
       this.activeEffects.delete(playback);
       playback.disconnect();
       symbolGain?.disconnect();
@@ -104,6 +114,13 @@ export class GameAudio {
     playback.addEventListener("ended", finish, { once: true });
     this.activeEffects.add(playback);
     playback.start();
+    return () => {
+      if (finished) {
+        return;
+      }
+      playback.stop();
+      finish();
+    };
   }
 
   private startMusic(): void {

@@ -18,7 +18,7 @@ This document is the authoritative public contract for current game behavior, in
 
 - An ordinary ways win or completed free-spin or Sword Cleave payout at least five times its triggering bet shows a large payout count-up after that award resolves. The display does not alter the resolved outcome or award money a second time.
 - The labels are `BIG WIN!` from 5x up to 10x, `HUGE WIN!` from 10x up to 25x, `SUPER WIN!` from 25x up to 50x, and `HELL YEAH!` at 50x or more.
-- The final payout holds for five seconds after the count-up. Clicking or tapping the machine window once the count-up has finished dismisses it and continues the current round or feature.
+- The final payout remains visible after the count-up until the player clicks or taps the machine window to dismiss it and continue the current round or feature. The large-win count-up sound loops from the start of the count until that dismissal.
 
 ## Reels and Symbols
 
@@ -124,7 +124,7 @@ GUN and KNIGHT can now land on valid Sword boards and use the dedicated Sword pa
 ## Spin Controls and Deterministic Seeds
 
 - Complete outcomes are fixed before visual animation. Turbo changes timing only and cannot change symbols, triggers, cash awards, or payouts.
-- Final bonus symbols are counted independently by type as columns lock from left to right. The first, second, and third copy play their matching numbered sound instead of that column's generic lock click. The third copy of a resolved BEER, CIGARETTE, or SWORD trigger/retrigger also starts that symbol's win sound. Combined triggers play all five numbered hit sounds but currently have no combined win stinger.
+- Final bonus symbols are counted independently by type as columns lock from left to right. The first, second, and third copy play their matching numbered sound instead of that column's generic lock click. The third copy of a resolved BEER, CIGARETTE, or SWORD trigger/retrigger also starts that symbol's win sound. Combined triggers play all five numbered hit sounds, then start their combined win stinger after the reels settle.
 - A SWORD that causes a Sword Cleave expansion plays the first SWORD hit sound when its column locks but does not play the SWORD feature-win sound.
 - During a base, free, or Sword spin animation, clicking the Spin button settles only the current already-resolved spin. It does not place another wager, reroll the outcome, enable Turbo, or skip evaluation and feature sequencing.
 - Turbo can be enabled or disabled during an active spin or bonus game. Enabling it accelerates the current animation and applies to future spins until disabled.

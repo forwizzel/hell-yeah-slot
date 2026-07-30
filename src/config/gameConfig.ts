@@ -71,7 +71,6 @@ export const GAME_CONFIG = {
   quickCashAwardCountDurationMs: 180,
   normalLargeWinDurationMs: 3_000,
   quickLargeWinDurationMs: 750,
-  largeWinFinalHoldDurationMs: 5_000,
 } as const;
 import { safeMultiply } from "../math/safeInteger";
 

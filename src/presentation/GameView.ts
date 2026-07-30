@@ -273,6 +273,7 @@ export class GameView {
       let animationFrame = 0;
       let complete = false;
       const startedAt = performance.now();
+      const stopCountWin = this.audio.play("count-win", true);
       const finishCount = () => {
         if (complete) {
           return;
@@ -280,7 +281,10 @@ export class GameView {
         complete = true;
         cancelAnimationFrame(animationFrame);
         this.featureMultiplier.textContent = formatUsd(payoutCents);
-        void this.holdLargeWinFinalPayout().then(resolve);
+        void this.holdLargeWinFinalPayout().then(() => {
+          stopCountWin?.();
+          resolve();
+        });
       };
       const tick = (now: number) => {
         const progress = Math.min((now - startedAt) / durationMs, 1);
@@ -300,20 +304,15 @@ export class GameView {
   private holdLargeWinFinalPayout(): Promise<void> {
     return new Promise((resolve) => {
       let complete = false;
-      let timeout: number | null = null;
       const finish = () => {
         if (complete) {
           return;
         }
         complete = true;
-        if (timeout !== null) {
-          window.clearTimeout(timeout);
-        }
         this.largeWinSkip = null;
         resolve();
       };
 
-      timeout = window.setTimeout(finish, GAME_CONFIG.largeWinFinalHoldDurationMs);
       this.largeWinSkip = finish;
     });
   }

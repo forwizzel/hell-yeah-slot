@@ -196,6 +196,9 @@ export class GameController {
       this.view.isQuickSpinEnabled(),
       triggerWinSymbols(result.bonusTrigger),
     );
+    if (isCombinedTrigger(result.bonusTrigger)) {
+      this.view.playSound("win-combination");
+    }
 
     this.state.grid = result.grid;
     this.state.phase = "base-evaluation";
@@ -612,6 +615,10 @@ function triggerWinSymbols(trigger: BonusTrigger): ReadonlyArray<BonusSymbolId> 
     return [];
   }
   return [trigger.mode === "beer" ? "BEER" : "CIGARETTE"];
+}
+
+function isCombinedTrigger(trigger: BonusTrigger): boolean {
+  return trigger.kind === "free-spins" && trigger.mode === "combined";
 }
 
 function freeSpinWinSymbols(result: ReturnType<BonusEngine["applyFreeSpin"]>): ReadonlyArray<BonusSymbolId> {

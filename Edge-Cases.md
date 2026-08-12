@@ -121,7 +121,7 @@ GUN and KNIGHT can now land on valid Sword boards and use the dedicated Sword pa
 - If a 5x3 through 5x5 feature exhausts its remaining spins without expanding, it ends without a Final Strike and awards its unmodified Sword accumulator.
 - During free spins, a natural SWORD trigger consumes the current spin and suppresses same-grid BEER and CIGARETTE retriggers. That triggering spin pays its ordinary ways at the multiplier active when it began; Sword Cleave then completes before the interrupted free-spin state resumes.
 
-## Spin Controls and Deterministic Seeds
+## Spin Controls and Auto Spin
 
 - Complete outcomes are fixed before visual animation. Turbo changes timing only and cannot change symbols, triggers, cash awards, or payouts.
 - Final bonus symbols are counted independently by type as columns lock from left to right. The first, second, and third copy play their matching numbered sound instead of that column's generic lock click. The third copy of a resolved BEER, CIGARETTE, or SWORD trigger/retrigger also starts that symbol's win sound. Combined triggers play all five numbered hit sounds, then start their combined win stinger after the reels settle.
@@ -132,10 +132,13 @@ GUN and KNIGHT can now land on valid Sword boards and use the dedicated Sword pa
 - Transient scrolling symbols traverse each column's configured reel strip from a presentation-only random offset. They preserve that reel's symbol frequency and ordering but do not select or alter the predetermined final stop.
 - CIGARETTE cash labels show the resolved award on the landed symbol. In combined spins, BEER/CIGARETTE labels begin at their resolved base value after the board settles and count up to their resolved x5 value. Transient non-landing eligible symbols show presentation-only values that never affect the outcome.
 - Sword Cleave visually focuses only evaluated ways in its unlocked rows on each stopped 5x6 board. On expansion, it removes the cover from the newly unlocked row and shows a cosmetic roll through the resolved destination multiplier band before the additional Cleave spins begin; neither animation rerolls the outcome.
-- Normal browser play uses Web Crypto randomness. A non-empty applied seed starts a deterministic sequence.
-- The same seed reproduces the same results only with the same code, configuration, starting state, and player actions.
-- Reel stops, combined 3+2 orientation, purchased or development bonus-symbol positions, free spins, landed cash-award picks, Sword in-play and cosmetic locked-row checks and targets, Sword board-cell draws, Sword stage multipliers, Final Strikes, and retriggers consume one sequence in execution order. Presentation-only scrolling cash labels do not consume this sequence.
-- Resetting while a seed is active restores the initial balance and bet and restarts that seed's sequence. Clearing the seed restores Web Crypto randomness.
+- Browser play always uses Web Crypto randomness and exposes no deterministic seed control. Seeded reproducibility is limited to the headless simulator.
+- Auto Spin accepts a configured bet and 1-1,000 paid spins. Its bet remains fixed for the run, and only paid base spins decrement the remaining count; triggered free spins and Sword spins do not.
+- Auto Spin resolves one complete paid round before starting the next. It cannot overlap a manual spin, Feature Buy, development trigger, or another Auto Spin run.
+- Stop requests finish the current already-resolved paid spin, then preserve the unplayed count in the status.
+- If a paid spin triggers BEER, CIGARETTE, combined, or SWORD, Auto Spin ends after that triggering spin. The feature remains locked in and waits for the normal manual feature-start action.
+- Base-game large-win count-ups complete without a dismissal hold during Auto Spin, then the next paid spin begins. Feature large wins retain normal manual dismissal because Auto Spin has already ended at the feature trigger.
+- Auto Spin ends before another wager when the balance cannot cover its configured bet. Invalid bets and spin counts do not start a run or consume balance/randomness.
 
 ## Reel Lock Animation and SFX Sync
 
@@ -151,7 +154,7 @@ GUN and KNIGHT can now land on valid Sword boards and use the dedicated Sword pa
 - Vite development mode exposes forced BEER, CIGARETTE, combined, and SWORD buttons. Production startup removes their panel from the UI, and the controller independently rejects forced triggers outside development mode.
 - A development feature can start only while the game is idle. It first plays a qualifying spin using the same symbol construction as the corresponding Feature Buy, then waits for the normal manual feature-start action.
 - Development qualifying spins charge no wager, evaluate and credit ordinary ways at the selected bet, and use that bet for all feature payouts and large-win tiers.
-- Development combined orientation, guaranteed positions, multipliers, free spins, reel stops, Sword board and feature selections, and retriggers consume the active random sequence normally, so using a development trigger changes subsequent seeded results.
+- Development combined orientation, guaranteed positions, multipliers, free spins, reel stops, Sword board and feature selections, and retriggers consume browser Web Crypto randomness normally.
 - Starting a development feature clears the previous last-win value and bonus summary, then records the qualifying-spin and feature awards like a purchased feature.
 
 ## Simulation Interpretation

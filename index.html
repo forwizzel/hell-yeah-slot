@@ -118,68 +118,47 @@
         </div>
       </section>
 
-      <details class="machine-room">
-        <summary>
-          <span>Machine Room</span>
-          <small>Feature buys, seed, history, and service controls</small>
-        </summary>
-          <div class="machine-room__content">
-            <section class="feature-buy-panel" aria-labelledby="feature-buy-title">
-              <div>
-                <p class="feature-buy-panel__eyebrow">Temporary pricing</p>
-                <h2 id="feature-buy-title">Feature Buy</h2>
-                <p>Buy a bonus using the current bet. Prices are temporary and do not account for RTP.</p>
-              </div>
-              <div class="feature-buy-controls">
-                <button id="buy-beer-bonus" type="button">Beer</button>
-                <button id="buy-cigarette-bonus" type="button">Cigarette</button>
-                <button id="buy-combined-bonus" type="button">Beer + Cigarette</button>
-                <button id="buy-sword-bonus" type="button">Sword</button>
-              </div>
-            </section>
+      <section class="auto-spin-panel auxiliary-panel" aria-labelledby="auto-spin-title">
+        <div class="auxiliary-panel__intro">
+          <p class="auxiliary-panel__eyebrow">Paid rounds</p>
+          <h2 id="auto-spin-title">Auto Spin</h2>
+          <p>Choose a fixed wager and run length. A bonus trigger stops the run.</p>
+        </div>
+        <div class="auto-spin-controls">
+          <label for="auto-spin-bet"><span>Bet amount</span><select id="auto-spin-bet" name="auto-spin-bet"></select></label>
+          <label for="auto-spin-count"><span>Number of spins</span><select id="auto-spin-count" name="auto-spin-count">
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="custom">Custom</option>
+          </select></label>
+          <label id="auto-spin-custom-label" for="auto-spin-custom" hidden><span>Custom spins</span><input id="auto-spin-custom" name="auto-spin-custom" type="number" min="1" max="1000" step="1" inputmode="numeric" value="10" /></label>
+          <button id="auto-spin-start" type="button">Start</button>
+          <button id="auto-spin-stop" class="auto-spin-stop" type="button" disabled>Stop</button>
+        </div>
+        <p id="auto-spin-status" class="auto-spin-status" role="status" aria-live="polite">Ready.</p>
+      </section>
 
-            <section id="development-panel" class="development-panel" aria-labelledby="development-title" hidden>
-            <div>
-              <p class="development-panel__eyebrow">Development only</p>
-              <h2 id="development-title">Feature Service</h2>
-              <p>Starts a feature at the current bet without placing a wager.</p>
-            </div>
-            <div class="development-controls">
-              <button id="dev-beer-bonus" type="button">Beer</button>
-              <button id="dev-cigarette-bonus" type="button">Cigarette</button>
-              <button id="dev-combined-bonus" type="button">Beer + Cigarette</button>
-              <button id="dev-sword-bonus" type="button">Sword</button>
-            </div>
-          </section>
+      <section id="feature-buy-panel" class="feature-buy-panel auxiliary-panel" aria-labelledby="feature-buy-title">
+        <div class="auxiliary-panel__intro">
+          <p class="auxiliary-panel__eyebrow">Temporary pricing</p>
+          <h2 id="feature-buy-title">Feature Buy</h2>
+          <p>Buy a bonus using the current bet. Prices are temporary and do not account for RTP.</p>
+        </div>
+        <div class="feature-buy-controls">
+          <button id="buy-beer-bonus" type="button">Beer</button>
+          <button id="buy-cigarette-bonus" type="button">Cigarette</button>
+          <button id="buy-combined-bonus" type="button">Beer + Cigarette</button>
+          <button id="buy-sword-bonus" type="button">Sword</button>
+        </div>
+      </section>
 
-          <section class="seed-panel" aria-labelledby="seed-title">
-            <div>
-              <h2 id="seed-title">Sequence Key</h2>
-              <p id="seed-status">Using browser crypto randomness.</p>
-            </div>
-            <div class="seed-controls">
-              <label class="seed-input-label" for="seed-input">
-                <span>Session Seed</span>
-                <input
-                  id="seed-input"
-                  name="seed"
-                  type="text"
-                  maxlength="80"
-                  autocomplete="off"
-                  spellcheck="false"
-                  aria-describedby="seed-status"
-                  placeholder="Enter seed"
-                />
-              </label>
-              <button id="apply-seed" type="button">Engage</button>
-              <button id="clear-seed" type="button">Release</button>
-            </div>
-          </section>
-
-          <section class="log-panel" aria-labelledby="log-title">
-            <h2 id="log-title">Spin Ledger</h2>
-            <ol id="event-log" aria-live="polite"><li class="event-log__empty">Machine ready.</li></ol>
-          </section>
+      <details class="spin-ledger">
+        <summary><span>Spin Ledger</span><small>Recent game events</small></summary>
+        <div class="log-panel">
+          <h2 class="sr-only">Spin Ledger events</h2>
+          <ol id="event-log" aria-live="polite"><li class="event-log__empty">Machine ready.</li></ol>
         </div>
       </details>
     </main>

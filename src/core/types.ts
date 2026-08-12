@@ -177,6 +177,13 @@ export interface LargeWin {
   readonly triggeringBetCents: number;
 }
 
+export interface AutoSpinViewState {
+  readonly active: boolean;
+  readonly stopping: boolean;
+  readonly remainingSpins: number;
+  readonly status: string;
+}
+
 export interface GameViewModel {
   readonly balanceCents: number;
   readonly betCents: number;

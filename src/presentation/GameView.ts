@@ -1,7 +1,7 @@
 import { GAME_CONFIG } from "../config/gameConfig";
 import { SWORD_CONFIG, type SwordStageRows } from "../config/swordConfig";
 import { formatUsd } from "../core/formatUsd";
-import type { BonusSummary, BonusSymbolId, CashAwardSymbolId, FreeSpinCashAward, FreeSpinMode, FreeSpinState, GameViewModel, Grid, Position, SwordExpansion, WaysGrid } from "../core/types";
+import type { AutoSpinViewState, BonusSummary, BonusSymbolId, CashAwardSymbolId, FreeSpinCashAward, FreeSpinMode, FreeSpinState, GameViewModel, Grid, Position, SwordExpansion, WaysGrid } from "../core/types";
 import { createBonusLandingAudioPlan, swordColumnAudioEffect } from "./BonusLandingAudio";
 import { ControlPanel, type ControlActions } from "./ControlPanel";
 import { createBandMultiplierRollValues } from "./BonusMultiplierReveal";
@@ -64,8 +64,8 @@ export class GameView {
     this.controls.bind(actions);
   }
 
-  render(model: GameViewModel, activeSeed: string | null): void {
-    this.controls.update(model, activeSeed);
+  render(model: GameViewModel, autoSpin: AutoSpinViewState): void {
+    this.controls.update(model, autoSpin);
     const swordActive = model.sword !== null;
     this.gamePanel.classList.toggle("game-panel--sword", swordActive);
     this.reelHost.hidden = swordActive;
@@ -273,7 +273,7 @@ export class GameView {
     await this.wait(durationMs);
   }
 
-  playLargeWinCount(payoutCents: number, durationMs: number): Promise<void> {
+  playLargeWinCount(payoutCents: number, durationMs: number, autoDismiss = false): Promise<void> {
     return new Promise((resolve) => {
       let animationFrame = 0;
       let complete = false;
@@ -286,6 +286,11 @@ export class GameView {
         complete = true;
         cancelAnimationFrame(animationFrame);
         this.featureMultiplier.textContent = formatUsd(payoutCents);
+        if (autoDismiss) {
+          stopCountWin?.();
+          resolve();
+          return;
+        }
         void this.holdLargeWinFinalPayout().then(() => {
           stopCountWin?.();
           resolve();

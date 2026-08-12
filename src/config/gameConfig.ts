@@ -58,6 +58,7 @@ export const GAME_CONFIG = {
   beerCashAwardMinimumTenths: 5,
   beerCashAwardMaximumTenths: 250,
   recentEventLimit: 30,
+  maximumAutoSpins: 1_000,
   normalSpinDurationMs: 3_500,
   quickSpinDurationMs: 180,
   normalReelStepDurationMs: 115,

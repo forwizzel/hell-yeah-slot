@@ -5,7 +5,7 @@ interface LargeWinViewDouble {
   audio: { play: ReturnType<typeof vi.fn> };
   featureMultiplier: { textContent: string };
   largeWinSkip: (() => void) | null;
-  playLargeWinCount(payoutCents: number, durationMs: number): Promise<void>;
+  playLargeWinCount(payoutCents: number, durationMs: number, autoDismiss?: boolean): Promise<void>;
 }
 
 afterEach(() => {
@@ -46,5 +46,31 @@ describe("GameView large-win audio", () => {
 
     await expect(count).resolves.toBeUndefined();
     expect(stopCountWin).toHaveBeenCalledOnce();
+  });
+
+  it("dismisses the completed count automatically during Auto Spin", async () => {
+    const stopCountWin = vi.fn();
+    const scheduled = { animationFrame: null as FrameRequestCallback | null };
+    vi.spyOn(performance, "now").mockReturnValue(0);
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      scheduled.animationFrame = callback;
+      return 1;
+    });
+    vi.stubGlobal("cancelAnimationFrame", () => undefined);
+    const view = Object.assign(Object.create(GameView.prototype), {
+      audio: { play: vi.fn(() => stopCountWin) },
+      featureMultiplier: { textContent: "" },
+      largeWinSkip: null,
+    }) as LargeWinViewDouble;
+
+    const count = view.playLargeWinCount(1_000, 100, true);
+    if (scheduled.animationFrame === null) {
+      throw new Error("Expected a count-up animation frame");
+    }
+    scheduled.animationFrame(100);
+
+    await expect(count).resolves.toBeUndefined();
+    expect(stopCountWin).toHaveBeenCalledOnce();
+    expect(view.largeWinSkip).toBeNull();
   });
 });

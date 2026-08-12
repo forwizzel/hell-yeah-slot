@@ -1,6 +1,6 @@
 import { GAME_CONFIG, getFeatureBuyCostCents, type FeatureBuyId } from "../config/gameConfig";
 import { formatUsd } from "../core/formatUsd";
-import type { GameViewModel } from "../core/types";
+import type { AutoSpinViewState, GameViewModel } from "../core/types";
 
 export type DevelopmentBonusId = FeatureBuyId;
 
@@ -12,10 +12,10 @@ export interface ControlActions {
   readonly toggleMusic: () => void;
   readonly toggleSfx: () => void;
   readonly reset: () => void;
-  readonly applySeed: (seed: string) => void;
-  readonly clearSeed: () => void;
+  readonly startAutoSpin: (betCents: number, spins: number) => void;
+  readonly stopAutoSpin: () => void;
   readonly buyFeature: (feature: FeatureBuyId) => void;
-  readonly triggerDevelopmentBonus: (bonus: DevelopmentBonusId) => void;
+  triggerDevelopmentBonus?: (bonus: DevelopmentBonusId) => void;
 }
 
 export class ControlPanel {
@@ -26,28 +26,29 @@ export class ControlPanel {
   private readonly sfxToggleButton = requiredElement<HTMLButtonElement>("sfx-toggle");
   private readonly resetButton = requiredElement<HTMLButtonElement>("reset");
   private readonly quickSpinInput = requiredElement<HTMLInputElement>("quick-spin");
-  private readonly seedInput = requiredElement<HTMLInputElement>("seed-input");
-  private readonly applySeedButton = requiredElement<HTMLButtonElement>("apply-seed");
-  private readonly clearSeedButton = requiredElement<HTMLButtonElement>("clear-seed");
+  private readonly autoSpinBet = requiredElement<HTMLSelectElement>("auto-spin-bet");
+  private readonly autoSpinCount = requiredElement<HTMLSelectElement>("auto-spin-count");
+  private readonly autoSpinCustomLabel = requiredElement<HTMLLabelElement>("auto-spin-custom-label");
+  private readonly autoSpinCustom = requiredElement<HTMLInputElement>("auto-spin-custom");
+  private readonly autoSpinStart = requiredElement<HTMLButtonElement>("auto-spin-start");
+  private readonly autoSpinStop = requiredElement<HTMLButtonElement>("auto-spin-stop");
+  private readonly autoSpinStatus = requiredElement<HTMLElement>("auto-spin-status");
   private readonly balanceValue = requiredElement<HTMLElement>("balance");
   private readonly betValue = requiredElement<HTMLElement>("bet");
   private readonly lastWinValue = requiredElement<HTMLElement>("last-win");
-  private readonly seedStatus = requiredElement<HTMLElement>("seed-status");
   private readonly featureBuyButtons: ReadonlyArray<readonly [HTMLButtonElement, FeatureBuyId]> = [
     [requiredElement<HTMLButtonElement>("buy-beer-bonus"), "beer"],
     [requiredElement<HTMLButtonElement>("buy-cigarette-bonus"), "cigarette"],
     [requiredElement<HTMLButtonElement>("buy-combined-bonus"), "combined"],
     [requiredElement<HTMLButtonElement>("buy-sword-bonus"), "sword"],
   ];
-  private readonly developmentPanel = requiredElement<HTMLElement>("development-panel");
-  private readonly developmentButtons: ReadonlyArray<readonly [HTMLButtonElement, DevelopmentBonusId]> = [
-    [requiredElement<HTMLButtonElement>("dev-beer-bonus"), "beer"],
-    [requiredElement<HTMLButtonElement>("dev-cigarette-bonus"), "cigarette"],
-    [requiredElement<HTMLButtonElement>("dev-combined-bonus"), "combined"],
-    [requiredElement<HTMLButtonElement>("dev-sword-bonus"), "sword"],
-  ];
+  private developmentButtons: ReadonlyArray<readonly [HTMLButtonElement, DevelopmentBonusId]> = [];
 
   bind(actions: ControlActions): void {
+    for (const betCents of GAME_CONFIG.betOptionsCents) {
+      this.autoSpinBet.add(new Option(formatUsd(betCents), String(betCents)));
+    }
+    this.autoSpinBet.value = String(GAME_CONFIG.defaultBetCents);
     this.spinButton.addEventListener("click", actions.spin);
     this.quickSpinInput.addEventListener("change", () => actions.setQuickSpinEnabled(this.quickSpinInput.checked));
     this.decreaseButton.addEventListener("click", actions.decreaseBet);
@@ -55,27 +56,35 @@ export class ControlPanel {
     this.musicToggleButton.addEventListener("click", actions.toggleMusic);
     this.sfxToggleButton.addEventListener("click", actions.toggleSfx);
     this.resetButton.addEventListener("click", actions.reset);
-    this.applySeedButton.addEventListener("click", () => actions.applySeed(this.seedInput.value));
-    this.clearSeedButton.addEventListener("click", actions.clearSeed);
+    this.autoSpinCount.addEventListener("change", () => {
+      this.autoSpinCustomLabel.hidden = this.autoSpinCount.value !== "custom";
+      if (!this.autoSpinCustomLabel.hidden) {
+        this.autoSpinCustom.focus();
+      }
+    });
+    this.autoSpinStart.addEventListener("click", () => {
+      const spins = this.autoSpinCount.value === "custom"
+        ? this.autoSpinCustom.valueAsNumber
+        : Number(this.autoSpinCount.value);
+      actions.startAutoSpin(Number(this.autoSpinBet.value), spins);
+    });
+    this.autoSpinStop.addEventListener("click", actions.stopAutoSpin);
     for (const [button, feature] of this.featureBuyButtons) {
       button.addEventListener("click", () => actions.buyFeature(feature));
     }
-    this.seedInput.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        actions.applySeed(this.seedInput.value);
-      }
-    });
     if (import.meta.env.DEV) {
-      this.developmentPanel.hidden = false;
-      for (const [button, bonus] of this.developmentButtons) {
-        button.addEventListener("click", () => actions.triggerDevelopmentBonus(bonus));
+      const triggerDevelopmentBonus = actions.triggerDevelopmentBonus;
+      if (triggerDevelopmentBonus === undefined) {
+        throw new Error("Development bonus action was not provided");
       }
-    } else {
-      this.developmentPanel.remove();
+      this.developmentButtons = createDevelopmentPanel();
+      for (const [button, bonus] of this.developmentButtons) {
+        button.addEventListener("click", () => triggerDevelopmentBonus(bonus));
+      }
     }
   }
 
-  update(model: GameViewModel, activeSeed: string | null): void {
+  update(model: GameViewModel, autoSpin: AutoSpinViewState): void {
     const interactive = model.phase === "idle";
     const spinning = model.phase === "base-spinning"
       || model.phase === "free-spin-spinning"
@@ -84,29 +93,31 @@ export class ControlPanel {
     this.betValue.textContent = formatUsd(model.betCents);
     this.lastWinValue.textContent = formatUsd(model.lastWinCents);
 
-    this.spinButton.disabled = spinning ? false : !interactive || model.balanceCents < model.betCents;
+    this.spinButton.disabled = spinning ? false : !interactive || autoSpin.active || model.balanceCents < model.betCents;
     this.spinButton.textContent = spinning ? "Settle" : "Spin";
     this.spinButton.setAttribute("aria-label", spinning ? "Settle current spin" : "Start spin");
-    this.decreaseButton.disabled = !interactive || model.betCents === GAME_CONFIG.betOptionsCents[0];
-    this.increaseButton.disabled = !interactive
+    this.decreaseButton.disabled = !interactive || autoSpin.active || model.betCents === GAME_CONFIG.betOptionsCents[0];
+    this.increaseButton.disabled = !interactive || autoSpin.active
       || model.betCents === GAME_CONFIG.betOptionsCents[GAME_CONFIG.betOptionsCents.length - 1];
     this.resetButton.disabled = !interactive;
     this.quickSpinInput.disabled = model.phase === "large-win";
-    this.seedInput.disabled = !interactive;
-    this.applySeedButton.disabled = !interactive;
-    this.clearSeedButton.disabled = !interactive || activeSeed === null;
+    this.autoSpinBet.disabled = !interactive || autoSpin.active;
+    this.autoSpinCount.disabled = !interactive || autoSpin.active;
+    this.autoSpinCustom.disabled = !interactive || autoSpin.active;
+    this.autoSpinStart.disabled = !interactive || autoSpin.active;
+    this.autoSpinStop.disabled = !autoSpin.active || autoSpin.stopping;
+    this.autoSpinStatus.textContent = autoSpin.active
+      ? `${autoSpin.remainingSpins} paid spin${autoSpin.remainingSpins === 1 ? "" : "s"} remaining. ${autoSpin.status}`
+      : autoSpin.status;
     for (const [button, feature] of this.featureBuyButtons) {
       const costCents = getFeatureBuyCostCents(feature, model.betCents);
       button.textContent = `${featureBuyLabel(feature)} ${formatUsd(costCents)}`;
       button.setAttribute("aria-label", `Buy ${featureBuyLabel(feature)} for ${formatUsd(costCents)}`);
-      button.disabled = !interactive || model.balanceCents < costCents;
+      button.disabled = !interactive || autoSpin.active || model.balanceCents < costCents;
     }
     for (const [button] of this.developmentButtons) {
-      button.disabled = !interactive;
+      button.disabled = !interactive || autoSpin.active;
     }
-    this.seedStatus.textContent = activeSeed === null
-      ? "Using browser crypto randomness."
-      : `Using deterministic seed: ${activeSeed}`;
   }
 
   isQuickSpinEnabled(): boolean {
@@ -126,6 +137,39 @@ export class ControlPanel {
     this.sfxToggleButton.textContent = enabled ? "SFX On" : "SFX Off";
     this.sfxToggleButton.setAttribute("aria-pressed", String(enabled));
   }
+}
+
+function createDevelopmentPanel(): ReadonlyArray<readonly [HTMLButtonElement, DevelopmentBonusId]> {
+  const panel = document.createElement("section");
+  panel.className = "development-panel auxiliary-panel";
+  panel.setAttribute("aria-labelledby", "development-title");
+  panel.innerHTML = `
+    <div class="auxiliary-panel__intro">
+      <p class="auxiliary-panel__eyebrow">Development only</p>
+      <h2 id="development-title">Feature Service</h2>
+      <p>Starts a feature at the current bet without placing a wager.</p>
+    </div>
+    <div class="development-controls"></div>
+  `;
+  const controls = panel.querySelector<HTMLElement>(".development-controls");
+  if (controls === null) {
+    throw new Error("Development controls could not be created");
+  }
+  const bonuses: ReadonlyArray<readonly [DevelopmentBonusId, string]> = [
+    ["beer", "Beer"],
+    ["cigarette", "Cigarette"],
+    ["combined", "Beer + Cigarette"],
+    ["sword", "Sword"],
+  ];
+  const buttons = bonuses.map(([bonus, label]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    controls.append(button);
+    return [button, bonus] as const;
+  });
+  requiredElement("feature-buy-panel").insertAdjacentElement("afterend", panel);
+  return buttons;
 }
 
 function featureBuyLabel(feature: FeatureBuyId): string {

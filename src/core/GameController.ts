@@ -7,10 +7,9 @@ import { evaluateWays } from "../math/PayEvaluator";
 import type { RandomSource } from "../math/RandomSource";
 import { ReelEngine } from "../math/ReelEngine";
 import { safeAdd } from "../math/safeInteger";
-import { SeededRandomSource } from "../math/SeededRandomSource";
 import { SwordEngine } from "../math/SwordEngine";
 import type { GameView } from "../presentation/GameView";
-import type { DevelopmentBonusId } from "../presentation/ControlPanel";
+import type { ControlActions, DevelopmentBonusId } from "../presentation/ControlPanel";
 import { getLargeWinTier } from "../presentation/LargeWin";
 import { formatUsd } from "./formatUsd";
 import { GameState } from "./GameState";
@@ -19,6 +18,7 @@ import type {
   BonusActivation,
   BonusSymbolId,
   BonusTrigger,
+  AutoSpinViewState,
   GamePhase,
   SpinResult,
   SwordFeatureState,
@@ -26,14 +26,17 @@ import type {
 
 export class GameController {
   private readonly state = new GameState();
-  private activeSeed: string | null = null;
-  private random: RandomSource = new CryptoRandomSource();
-  private reelEngine = this.createReelEngine();
-  private bonusEngine = this.createBonusEngine();
-  private swordEngine = this.createSwordEngine();
+  private readonly random: RandomSource = new CryptoRandomSource();
+  private readonly reelEngine = this.createReelEngine();
+  private readonly bonusEngine = this.createBonusEngine();
+  private readonly swordEngine = this.createSwordEngine();
+  private autoSpinActive = false;
+  private autoSpinStopping = false;
+  private autoSpinRemaining = 0;
+  private autoSpinStatus = "Ready.";
 
   constructor(private readonly view: GameView) {
-    view.bindControls({
+    const actions: ControlActions = {
       spin: () => { void this.spin(); },
       setQuickSpinEnabled: (enabled) => this.view.setQuickSpinEnabled(enabled),
       decreaseBet: () => this.adjustBet(-1),
@@ -41,11 +44,14 @@ export class GameController {
       toggleMusic: () => this.view.toggleMusic(),
       toggleSfx: () => this.view.toggleSfx(),
       reset: () => this.reset(),
-      applySeed: (seed) => this.applySeed(seed),
-      clearSeed: () => this.clearSeed(),
+      startAutoSpin: (betCents, spins) => this.startAutoSpin(betCents, spins),
+      stopAutoSpin: () => this.stopAutoSpin(),
       buyFeature: (feature) => { void this.buyFeature(feature); },
-      triggerDevelopmentBonus: (bonus) => { void this.triggerDevelopmentBonus(bonus); },
-    });
+    };
+    if (import.meta.env.DEV) {
+      actions.triggerDevelopmentBonus = (bonus) => { void this.triggerDevelopmentBonus(bonus); };
+    }
+    view.bindControls(actions);
   }
 
   initialize(): void {
@@ -83,6 +89,14 @@ export class GameController {
         triggeringBetCents,
         "Base spin started.",
       );
+      if (this.autoSpinActive) {
+        this.autoSpinRemaining -= 1;
+        if (result.bonusTrigger.kind !== "none") {
+          this.finishAutoSpin("Bonus triggered. Auto Spin stopped.");
+        } else {
+          this.render();
+        }
+      }
       await this.playResolvedFeature(
         result.bonusTrigger,
         triggeringBetCents,
@@ -94,6 +108,75 @@ export class GameController {
     } catch (error: unknown) {
       this.handleGameError(error);
     }
+  }
+
+  private startAutoSpin(betCents: number, spins: number): void {
+    if (this.state.phase !== "idle" || this.autoSpinActive) {
+      return;
+    }
+    if (!GAME_CONFIG.betOptionsCents.some((option) => option === betCents)) {
+      this.autoSpinStatus = "Select a valid bet.";
+      this.render();
+      return;
+    }
+    if (!Number.isSafeInteger(spins) || spins < 1 || spins > GAME_CONFIG.maximumAutoSpins) {
+      this.autoSpinStatus = `Choose 1 to ${GAME_CONFIG.maximumAutoSpins.toLocaleString("en-US")} spins.`;
+      this.render();
+      return;
+    }
+    if (this.state.balanceCents < betCents) {
+      this.autoSpinStatus = "Balance is too low for the selected bet.";
+      this.render();
+      return;
+    }
+
+    this.state.betCents = betCents;
+    this.autoSpinActive = true;
+    this.autoSpinStopping = false;
+    this.autoSpinRemaining = spins;
+    this.autoSpinStatus = "Running.";
+    this.view.addLog(`Auto Spin started: ${spins} spins at ${formatUsd(betCents)}.`);
+    this.render();
+    void this.runAutoSpins();
+  }
+
+  private stopAutoSpin(): void {
+    if (!this.autoSpinActive || this.autoSpinStopping) {
+      return;
+    }
+    this.autoSpinStopping = true;
+    this.autoSpinStatus = "Stopping after the current spin.";
+    this.render();
+  }
+
+  private async runAutoSpins(): Promise<void> {
+    while (this.autoSpinActive && !this.autoSpinStopping && this.autoSpinRemaining > 0) {
+      if (this.state.balanceCents < this.state.betCents) {
+        this.finishAutoSpin("Balance is too low. Auto Spin stopped.");
+        return;
+      }
+      await this.spin();
+    }
+
+    if (!this.autoSpinActive) {
+      return;
+    }
+    if (this.autoSpinStopping) {
+      this.finishAutoSpin(`Stopped with ${this.autoSpinRemaining} spins remaining.`);
+    } else {
+      this.finishAutoSpin("Auto Spin complete.");
+    }
+  }
+
+  private finishAutoSpin(status: string): void {
+    const wasActive = this.autoSpinActive;
+    this.autoSpinActive = false;
+    this.autoSpinStopping = false;
+    this.autoSpinStatus = status;
+    if (wasActive) {
+      this.view.addLog(status);
+    }
+    this.render();
   }
 
   private async triggerDevelopmentBonus(bonus: DevelopmentBonusId): Promise<void> {
@@ -500,6 +583,7 @@ export class GameController {
     await this.view.playLargeWinCount(
       payoutCents,
       quickSpin ? GAME_CONFIG.quickLargeWinDurationMs : GAME_CONFIG.normalLargeWinDurationMs,
+      this.autoSpinActive && resumePhase === "base-evaluation",
     );
     this.state.largeWin = null;
     this.state.phase = resumePhase;
@@ -513,6 +597,10 @@ export class GameController {
     this.state.sword = null;
     this.state.largeWin = null;
     this.state.phase = "idle";
+    if (this.autoSpinActive) {
+      this.finishAutoSpin("Game error. Auto Spin stopped.");
+      return;
+    }
     this.render();
   }
 
@@ -534,44 +622,13 @@ export class GameController {
       return;
     }
     this.state.reset();
-    this.resetRandomSequence();
+    this.autoSpinActive = false;
+    this.autoSpinStopping = false;
+    this.autoSpinRemaining = 0;
+    this.autoSpinStatus = "Ready.";
     this.view.clearLog();
     this.view.addLog("Game reset.");
     this.render();
-  }
-
-  private applySeed(seedInput: string): void {
-    if (this.state.phase !== "idle") {
-      return;
-    }
-    const seed = seedInput.trim();
-    if (seed.length === 0) {
-      this.view.addLog("Seed was not applied: enter a value.");
-      return;
-    }
-    this.activeSeed = seed;
-    this.resetRandomSequence();
-    this.view.addLog(`Deterministic seed applied: ${seed}.`);
-    this.render();
-  }
-
-  private clearSeed(): void {
-    if (this.state.phase !== "idle") {
-      return;
-    }
-    this.activeSeed = null;
-    this.resetRandomSequence();
-    this.view.addLog("Seed cleared. Browser crypto randomness restored.");
-    this.render();
-  }
-
-  private resetRandomSequence(): void {
-    this.random = this.activeSeed === null
-      ? new CryptoRandomSource()
-      : new SeededRandomSource(this.activeSeed);
-    this.reelEngine = this.createReelEngine();
-    this.bonusEngine = this.createBonusEngine();
-    this.swordEngine = this.createSwordEngine();
   }
 
   private createReelEngine(): ReelEngine {
@@ -600,7 +657,13 @@ export class GameController {
   }
 
   private render(): void {
-    this.view.render(this.state.toViewModel(), this.activeSeed);
+    const autoSpin: AutoSpinViewState = {
+      active: this.autoSpinActive,
+      stopping: this.autoSpinStopping,
+      remainingSpins: this.autoSpinRemaining,
+      status: this.autoSpinStatus,
+    };
+    this.view.render(this.state.toViewModel(), autoSpin);
   }
 }
 

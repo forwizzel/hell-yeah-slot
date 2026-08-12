@@ -16,6 +16,13 @@
 - The complete base-spin result is determined before the animation starts. `ReelGridView` only animates toward that resolved grid.
 - The controller credits the normal win, then starts the relevant feature if one triggered.
 
+**Auto Spin**
+
+- `GameController` owns Auto Spin run state and invokes the same `spin()` path used by the manual Spin button.
+- Each completed paid spin decrements the configured count. A bonus trigger ends the run before its feature starts, while a base-game large-win count-up dismisses automatically.
+- `ControlPanel` validates the configured bet/count through controller actions and renders remaining-spin status; it never schedules or resolves outcomes.
+- `GAME_CONFIG.maximumAutoSpins` bounds custom runs.
+
 **Feature Flow**
 
 - **BEER:** starts free spins at x5.
@@ -78,9 +85,9 @@
 **Randomness And Reproducibility**
 
 - Normal browser play uses `CryptoRandomSource`, backed by browser Web Crypto.
-- A Machine Room seed uses `SeededRandomSource`, which makes a session repeatable.
+- `SeededRandomSource` is used by the headless simulator and math tests, not browser controls.
 - One shared random source is injected into `ReelEngine`, `BonusEngine`, and `SwordEngine`.
-- Any math change, action-order change, feature buy, or dev trigger alters later seeded results because it changes random-call order.
+- Any math or simulation action-order change alters later seeded simulator results because it changes random-call order.
 - The temporary scrolling symbols use `Math.random()` only for visuals; they do not affect outcomes.
 
 **Tests And Simulation**

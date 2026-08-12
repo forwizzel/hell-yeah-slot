@@ -1,6 +1,6 @@
 # Hell Yeah
 
-Hell Yeah is a browser-based 3-row by 5-column slot prototype built with TypeScript, Vite, and PixiJS. It demonstrates reel-strip outcomes, left-to-right ways with WILD substitution, multiple bonus modes, deterministic seeded play, and a headless math simulator. The interface uses the locally bundled Silkscreen and VT323 fonts.
+Hell Yeah is a browser-based 3-row by 5-column slot prototype built with TypeScript, Vite, and PixiJS. It demonstrates reel-strip outcomes, left-to-right ways with WILD substitution, multiple bonus modes, auto-spin play, and a deterministic headless math simulator. The interface uses the locally bundled Silkscreen and VT323 fonts.
 
 This is a local technical prototype. It has no accounts, payments, backend, persistence, external services, or real-money capability.
 
@@ -11,7 +11,7 @@ This is a local technical prototype. It has no accounts, payments, backend, pers
 - BEER, CIGARETTE, combined, and SWORD feature outcomes
 - Stateful free spins with natural retriggers and landed cash-symbol awards
 - Browser Web Crypto randomness for normal play
-- Reproducible seeded sessions and simulations
+- Reproducible seeded simulations
 - Responsive PixiJS presentation with local artwork and audio
 - Shared, DOM-free math modules for browser play and simulation
 
@@ -56,14 +56,13 @@ The report uses US-dollar amounts and separately reports total, base-game, free-
 - **- / +** moves through the configured bets: `$0.20`, `$0.40`, `$0.60`, `$0.80`, `$1.00`, `$1.20`, `$1.40`, `$1.60`, `$1.80`, `$2.00`, `$2.50`, `$3.00`, `$5.00`, `$10.00`, `$25.00`, `$50.00`, `$75.00`, `$100.00`, `$150.00`, `$200.00`, `$250.00`, `$300.00`, `$400.00`, and `$500.00`.
 - **Turbo** shortens the current and future spin animations without changing results. It can be toggled during spins and bonus games; a qualifying spin remains in Turbo through its settlement, then Turbo turns off before the feature-start prompt.
 - **Music On / Music Off** and **SFX On / SFX Off** control the soundtrack and sound effects independently. Both are enabled by default. Bonus-symbol columns replace the normal reel-lock click with symbol-specific first, second, and third hit sounds; an individual feature's third hit also plays its win sound. A combined Beer + Cigarette trigger plays its own stinger after the reels settle, and the large-win count-up loops its sound until dismissed.
-- **Reset** restores a `$450,000.00` balance and a `$500.00` bet, restarts an active deterministic sequence, and clears prior Spin Ledger entries.
-- **Engage** starts a deterministic random sequence from a non-empty seed in the Machine Room.
-- **Release** restores browser Web Crypto randomness.
-- **Spin Ledger** displays the 30 most recent game events. Reset removes its prior history and records the reset.
+- **Reset** restores a `$450,000.00` balance and a `$500.00` bet and clears prior Spin Ledger entries.
+- **Auto Spin** runs 10, 25, 50, 100, or a custom 1-1,000 paid spins at its selected fixed bet. Stop finishes the current resolved spin and leaves the unused count visible. A bonus trigger ends Auto Spin after its triggering paid spin and leaves the normal feature-start prompt active. Base-game large-win count-ups finish automatically and continue the run.
+- **Spin Ledger** is an optional, collapsed-by-default dropdown containing the 30 most recent game events. Reset removes its prior history and records the reset.
 - **Feature Buy** first plays a qualifying spin showing one purchased bonus symbol per selected column, awards any ordinary ways win from that spin, and then waits for `Press to Start ... Feature`. Combined buys randomly show either three BEER and two CIGARETTE or two BEER and three CIGARETTE. BEER costs 23.5x bet, CIGARETTE costs 58.5x, BEER + CIGARETTE costs 58.6x, and SWORD costs 900x. The in-game balance must cover the displayed price. These prototype prices are independent of the current math balance.
 - Ways wins and completed feature payouts of at least 5x their triggering bet show a large payout count-up: `BIG WIN!` at 5x-9.99x, `HUGE WIN!` at 10x-24.99x, `SUPER WIN!` at 25x-49.99x, and `HELL YEAH!` at 50x or more. Once the count completes, the final payout remains until the player clicks or taps the machine window to continue.
 
-Bet, wager, reset, seed, and feature-buy controls are disabled while a round or feature is running; Settle and Turbo remain available where described above.
+Bet, wager, reset, Auto Spin configuration, and feature-buy controls are disabled while a round or feature is running. Auto Spin also locks manual bet and Feature Buy controls for its run; its Stop control remains available. Settle and Turbo remain available where described above.
 
 ## Accessibility
 
@@ -100,17 +99,17 @@ Cash-symbol awards materially affect RTP. Use the seeded simulator to review the
 
 See [Game Rules and Edge Cases](Edge-Cases.md) for the authoritative paytable, trigger probabilities, retrigger order, WILD treatment, SWORD priority, and round-accounting rules.
 
-## Deterministic Play
+## Randomness and Deterministic Simulation
 
-Normal browser play uses Web Crypto. Applying a seed switches the session to a deterministic random source; resetting the game restarts that seed's sequence.
+Browser play always uses Web Crypto and exposes no seed control. The headless simulator uses `SeededRandomSource` so math runs can be repeated with `--seed`.
 
-Reproduction depends on the same seed, code, configuration, starting state, and player actions. Reel stops, guaranteed bonus positions, combined 3+2 orientation, free spins, landed cash awards, Sword in-play and locked-row checks and targets, Sword board cells, stage multipliers, and Final Strikes consume the same sequence. Presentation-only scrolling cash values do not consume it. Buying or forcing a feature, or changing the order of actions, therefore changes later outcomes.
+Simulator reproduction depends on the same seed, code, configuration, and spin count. Reel stops, free spins, landed cash awards, Sword checks and targets, Sword board cells, stage multipliers, and Final Strikes consume the shared simulator sequence. Presentation-only scrolling cash values are browser-only and do not consume outcome randomness.
 
 The seeded generator is intended for repeatability, not cryptographic security.
 
 ## Development Controls
 
-`npm run dev` exposes a separate service panel for forcing BEER, CIGARETTE, combined, and SWORD features. Production startup removes that panel from the UI, and the controller independently rejects forced triggers outside Vite development mode. Each development action plays the same qualifying-symbol spin as its Feature Buy counterpart, places no wager, credits any ordinary ways win at the selected bet, consumes the active random sequence normally, and waits for the same manual start prompt. Production Feature Buy controls always charge the displayed in-game balance price.
+`npm run dev` creates a separate service panel for forcing BEER, CIGARETTE, combined, and SWORD features. The production bundle does not create or include that panel, and the controller independently rejects forced triggers outside Vite development mode. Each development action plays the same qualifying-symbol spin as its Feature Buy counterpart, places no wager, credits any ordinary ways win at the selected bet, consumes browser Web Crypto randomness normally, and waits for the same manual start prompt. Production Feature Buy controls always charge the displayed in-game balance price.
 
 ## Project Layout
 
@@ -131,8 +130,8 @@ Symbol artwork, the top-bar logo, and `BG_VIDEO.mp4` are stored in `graphics/`; 
 
 - The game targets approximately 98% theoretical RTP but has not been independently balanced or certified.
 - Sword Cleave's rare Final Strike paths make short simulations highly volatile.
-- There is no automatic spin mode, persistence, backend, or account system.
-- Refreshing the page resets the balance and seed state.
+- There is no persistence, backend, or account system.
+- Refreshing the page resets the balance and Auto Spin state.
 - Browser automation, visual-regression testing, and formal statistical analysis are not included.
 
 ## License

@@ -11,7 +11,7 @@
 - Install/start: `npm install`, then `npm run dev`.
 - Full unit suite: `npm run test`.
 - One test file: `npm run test -- src/tests/BonusEngine.test.ts`.
-- One named test: `npm run test -- src/tests/BonusEngine.test.ts -t "adds 10 Beer spins"`.
+- One named test: `npm run test -- src/tests/BonusEngine.test.ts -t "adds 5 spins for three Cigarettes"`.
 - Strict typecheck plus production bundle: `npm run build` (`tsc --noEmit && vite build`). There are no separate lint, format, or typecheck scripts.
 - Headless math check: `npm run simulate -- --spins=10000 --seed=12345`; omitting arguments runs 100,000 paid spins with seed `12345`.
 - After changing game math or reel strips, run `npm run test`, `npm run simulate`, and `npm run build`.

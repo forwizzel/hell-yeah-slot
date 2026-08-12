@@ -25,9 +25,9 @@
 
 **Feature Flow**
 
-- **BEER:** starts free spins at x5.
+- **BEER:** starts free spins at x3.
 - **CIGARETTE:** starts free spins at x1; landed CIGARETTE symbols receive independently rolled cash awards.
-- **Combined:** starts x5 free spins; both BEER and CIGARETTE can land cash awards, then those awards are multiplied by x5.
+- **Combined:** starts x3 free spins; both BEER and CIGARETTE can land weighted cash awards, then those awards are multiplied by x3.
 - Free-spin retriggers and conversions to combined mode are handled by `BonusEngine`.
 - **SWORD:** `SwordEngine` switches to a separate 5x6 board. It evaluates only unlocked rows, can expand upward, resets/adds spins on expansion, replaces the active multiplier from a configured range, and can apply a Final Strike after reaching 6 rows.
 - A SWORD during free spins pauses the free-spin feature, completes Sword Cleave, then resumes free spins.
@@ -37,12 +37,12 @@
 | Goal | Main file | Important values |
 | --- | --- | --- |
 | Starting money, default bet, bet buttons | `src/config/gameConfig.ts` | `startingBalanceCents`, `defaultBetCents`, `BET_OPTIONS_CENTS` |
-| Free-spin counts, Beer multiplier, cash-award ranges | `src/config/gameConfig.ts` | `beerFreeSpins`, `cigaretteFreeSpins`, `beerFreeSpinMultiplier`, `cigaretteCashAwardMinimumTenths`, `cigaretteCashAwardMaximumTenths`, Beer equivalents |
-| Feature-buy prices | `src/config/gameConfig.ts` | `FEATURE_BUY_MULTIPLIERS` |
+| Free spins, retriggers, multiplier, cash ladders, round cap | `src/config/gameConfig.ts` | `beerFreeSpins`, retrigger counts, `beerFreeSpinMultiplier`, cash-award tables, `maximumPaidRoundWinMultiplier` |
+| Feature-buy prices | `src/config/gameConfig.ts` | `FEATURE_BUY_MULTIPLIER_TENTHS` |
 | Regular symbol payouts | `src/config/paytable.ts` | `PAYTABLE` |
 | Sword-specific payouts | `src/config/paytable.ts` | `SWORD_PAYTABLE` |
 | Base hit rate and feature frequency | `src/config/reelStrips.ts` | `CARD_DISTRIBUTION`, special-symbol placements in `REEL_STRIPS` |
-| Sword frequency/value/volatility | `src/config/swordConfig.ts` | `startingSpins`, `expansionChances`, `boardSymbols`, `multiplierBands`, `finalStrikes`, `maximumPayoutMultiplier` |
+| Sword frequency/value/volatility | `src/config/swordConfig.ts` | `startingSpins`, `expansionChances`, `boardSymbols`, `multiplierBands`, `finalStrikes` |
 | Large-win display thresholds | `src/presentation/LargeWin.ts` | `TIERS` |
 
 **Important Number Formats**
@@ -100,6 +100,7 @@
   - `SwordEngine.test.ts` protects Sword behavior.
 - After changing math, run:
   - `npm run test`
+  - `npm run analyze`
   - `npm run simulate -- --spins=100000 --seed=12345`
   - `npm run build`
 - The simulator report is the practical way to compare RTP, feature rates, bonus share, retriggers, and Sword volatility before and after a tuning change.

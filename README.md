@@ -37,6 +37,7 @@ Open the local URL printed by Vite. The interface remains usable at approximatel
 | --- | --- |
 | `npm run dev` | Start the Vite development server |
 | `npm run test` | Run the Vitest unit suite once |
+| `npm run analyze` | Calculate exact base-game RTP by symbol and match length |
 | `npm run simulate` | Simulate 100,000 paid spins with seed `12345` |
 | `npm run build` | Type-check and create the production bundle |
 
@@ -44,9 +45,10 @@ The simulator accepts optional paid-spin and seed arguments:
 
 ```bash
 npm run simulate -- --spins=1000000 --seed=my-seed
+npm run simulate -- --spins=250000 --seed=buy-check --feature=combined
 ```
 
-`--spins` must be a positive safe integer. `--seed` must be non-empty. Invalid values produce a warning and fall back to the defaults. Triggered free spins are completed in addition to the requested paid spins.
+`--spins` must be a positive safe integer. `--seed` must be non-empty. `--feature` can be `beer`, `cigarette`, `combined`, or `sword` to simulate purchased rounds at their configured price. Triggered free spins are completed in addition to the requested rounds.
 
 The report uses US-dollar amounts and separately reports total, base-game, free-spin, and Sword RTP. It also includes bonus share of return, hit and feature rates, bonus activations, retriggers, Sword features during free spins, Sword spins and expansions, final-stage reaches, payout from Final Strike features, maximum free-spin multiplier, and maximum paid-round win.
 
@@ -59,7 +61,7 @@ The report uses US-dollar amounts and separately reports total, base-game, free-
 - **Reset** restores a `$450,000.00` balance and a `$500.00` bet and clears prior Spin Ledger entries.
 - **Auto Spin** runs 10, 25, 50, 100, or a custom 1-1,000 paid spins at its selected fixed bet. Stop finishes the current resolved spin and leaves the unused count visible. A bonus trigger ends Auto Spin after its triggering paid spin and leaves the normal feature-start prompt active. Base-game large-win count-ups finish automatically and continue the run.
 - **Spin Ledger** is an optional, collapsed-by-default dropdown containing the 30 most recent game events. Reset removes its prior history and records the reset.
-- **Feature Buy** first plays a qualifying spin showing one purchased bonus symbol per selected column, awards any ordinary ways win from that spin, and then waits for `Press to Start ... Feature`. Combined buys randomly show either three BEER and two CIGARETTE or two BEER and three CIGARETTE. BEER costs 23.5x bet, CIGARETTE costs 58.5x, BEER + CIGARETTE costs 58.6x, and SWORD costs 900x. The in-game balance must cover the displayed price. These prototype prices are independent of the current math balance.
+- **Feature Buy** first plays a qualifying spin showing one purchased bonus symbol per selected column, awards any ordinary ways win from that spin, and then waits for `Press to Start ... Feature`. Combined buys randomly show either three BEER and two CIGARETTE or two BEER and three CIGARETTE. BEER costs 13.6x bet, CIGARETTE costs 25x, BEER + CIGARETTE costs 73.1x, and SWORD costs 163.8x. Each price targets approximately 98% purchased-round RTP.
 - Ways wins and completed feature payouts of at least 5x their triggering bet show a large payout count-up: `BIG WIN!` at 5x-9.99x, `HUGE WIN!` at 10x-24.99x, `SUPER WIN!` at 25x-49.99x, and `HELL YEAH!` at 50x or more. Feature completions do not display an interim summary panel; qualifying payouts transition directly to this count-up. Once the count completes, the final payout remains until the player clicks or taps the game window to continue.
 
 Bet, wager, reset, Auto Spin configuration, and feature-buy controls are disabled while a round or feature is running. Auto Spin also locks manual bet and Feature Buy controls for its run; its Stop control remains available. Settle and Turbo remain available where described above.
@@ -76,24 +78,24 @@ Regular symbols `10`, `J`, `Q`, `K`, `A`, `GUN`, and `KNIGHT` pay left to right 
 
 | Symbol | 3 columns | 4 columns | 5 columns |
 | --- | ---: | ---: | ---: |
-| `10` | x0.1 | x0.1 | x0.2 |
-| `J` | x0.1 | x0.2 | x0.3 |
-| `Q` | x0.2 | x0.3 | x0.5 |
-| `K` | x0.2 | x0.4 | x0.5 |
-| `A` | x0.5 | x0.7 | x5.2 |
-| `GUN` | x0.8 | x2.3 | x15 |
-| `KNIGHT` | x1.5 | x4.5 | x30 |
+| `10` | - | x0.1 | x0.3 |
+| `J` | - | x0.2 | x0.5 |
+| `Q` | x0.2 | x0.3 | x0.7 |
+| `K` | x0.3 | x0.5 | x0.8 |
+| `A` | x0.5 | x1 | x4.5 |
+| `GUN` | x0.8 | x2.4 | x12 |
+| `KNIGHT` | x1.5 | x4.5 | x24 |
 
 | Feature | Initial award |
 | --- | --- |
-| BEER | 10 free spins at x5 |
-| CIGARETTE | 10 free spins at x1; each CIGARETTE awards x0.5-x50 bet in uniform x0.5 steps |
-| BEER + CIGARETTE | 10 free spins at x5; BEER and CIGARETTE awards are each multiplied by x5 |
+| BEER | 8 free spins at x3 |
+| CIGARETTE | 8 free spins at x1; each CIGARETTE selects a weighted cash prize |
+| BEER + CIGARETTE | 8 free spins at x3; BEER and CIGARETTE prizes are each multiplied by x3 |
 | SWORD | Sword Cleave: expanding 5-column respins, stage multipliers, and a possible Final Strike |
 
-Each spinning column can show at most one BEER, CIGARETTE, or SWORD, and a grid can show at most three matching copies of one type. BEER and CIGARETTE features require three matching symbols. A combined feature requires all five columns to show BEER/CIGARETTE symbols split 3+2 in either direction. During CIGARETTE spins, every CIGARETTE awards a uniform x0.5-x50 base value; during combined spins, every CIGARETTE and BEER awards a base value, then counts up to x5 after the reels settle. Three BEER or three CIGARETTE symbols add 10 spins. A feature converts to combined when the opposite symbol retriggers; x5 combined behavior begins on the following spin. SWORD takes priority when outcomes overlap.
+Each spinning column can show at most one BEER, CIGARETTE, or SWORD, and a grid can show at most three matching copies of one type. BEER and CIGARETTE features require three matching symbols. A combined feature requires all five columns to show BEER/CIGARETTE symbols split 3+2 in either direction. Cash prizes use weighted ladders, so x0.5 and x1 values are common while x25 BEER and x50 CIGARETTE values are rare. Three BEER or three CIGARETTE symbols add 5 spins. A feature converts to combined when the opposite symbol retriggers; x3 combined behavior begins on the following spin. SWORD takes priority when outcomes overlap.
 
-Sword Cleave displays a 5x6 board with its bottom three rows initially unlocked. Covered rows still resolve symbols but cannot pay or trigger an award until an expansion unlocks them upward. Its boards use `10`, `J`, `Q`, `K`, `A`, GUN, KNIGHT, WILD, and at most one SWORD. Sword ways use a dedicated feature paytable documented in [Game Rules and Edge Cases](Edge-Cases.md). Before a spin with three, four, or five unlocked rows, an in-play Sword expansion has a 40%, 25%, and 10% chance respectively. Only after that roll fails, the same chance can place a cosmetic no-op SWORD in a locked row. Each expansion adds three spins and replaces the active multiplier with the destination band: 5x4 x5-x10, 5x5 x14-x18, or 5x6 x25-x30. Sword Cleave payouts are capped at 3,750x the triggering bet.
+Sword Cleave displays a 5x6 board with its bottom three rows initially unlocked. Covered rows still resolve symbols but cannot pay or trigger an award until an expansion unlocks them upward. Its boards use `10`, `J`, `Q`, `K`, `A`, GUN, KNIGHT, WILD, and at most one SWORD. Before a spin with three, four, or five unlocked rows, an in-play Sword expansion has a 40%, 25%, and 10% chance respectively. Each expansion adds three spins and replaces the active multiplier with the destination band: 5x4 x2-x3, 5x5 x3-x5, or 5x6 x5-x8. The complete paid or purchased round, including every feature, is capped at x10,000 the selected bet.
 
 Cash-symbol awards materially affect RTP. Use the seeded simulator to review the result after changing award ranges, reel strips, or feature rules; it is not a statistical or regulatory certification.
 

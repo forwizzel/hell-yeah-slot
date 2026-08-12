@@ -26,8 +26,8 @@ describe("evaluateWays", () => {
 
   it.each([
     { columns: 3, multiplierTenths: 5 },
-    { columns: 4, multiplierTenths: 7 },
-    { columns: 5, multiplierTenths: 52 },
+    { columns: 4, multiplierTenths: 10 },
+    { columns: 5, multiplierTenths: 45 },
   ] as const)("pays the configured amount for $columns A columns", ({ columns, multiplierTenths }) => {
     const reelColumns = Array.from({ length: 5 }, (_, column) => [
       column < columns ? card("A") : bonus(),
@@ -49,22 +49,22 @@ describe("evaluateWays", () => {
       [card("A")],
     ]);
 
-    expect(evaluateWays(grid, PAYTABLE, 20).totalWinCents).toBe(104);
-    expect(evaluateWays(grid, PAYTABLE, 50_000).totalWinCents).toBe(260_000);
+    expect(evaluateWays(grid, PAYTABLE, 20).totalWinCents).toBe(90);
+    expect(evaluateWays(grid, PAYTABLE, 50_000).totalWinCents).toBe(225_000);
   });
 
   it("multiplies matching symbol counts into the number of ways", () => {
     const grid = fromColumns([
-      [card("10"), card("10"), bonus()],
-      [card("10"), card("10"), card("10")],
-      [card("10"), card("10"), bonus()],
+      [card("Q"), card("Q"), bonus()],
+      [card("Q"), card("Q"), card("Q")],
+      [card("Q"), card("Q"), bonus()],
       [bonus(), bonus(), bonus()],
       [bonus(), bonus(), bonus()],
     ]);
     const evaluation = evaluateWays(grid, PAYTABLE, 20);
 
     expect(evaluation.wins[0]?.ways).toBe(12);
-    expect(evaluation.totalWinCents).toBe(24);
+    expect(evaluation.totalWinCents).toBe(48);
   });
 
   it("allows WILD cells to support every win containing a natural target symbol", () => {
@@ -74,7 +74,7 @@ describe("evaluateWays", () => {
 
     expect(evaluation.wins.map((win) => win.symbol)).toEqual(["K", "A"]);
     expect(evaluation.wins.map((win) => win.ways)).toEqual([8, 8]);
-    expect(evaluation.totalWinCents).toBe(112);
+    expect(evaluation.totalWinCents).toBe(128);
   });
 
   it("awards a pure-WILD result once as the highest-paying KNIGHT symbol", () => {

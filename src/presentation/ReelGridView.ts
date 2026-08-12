@@ -414,7 +414,7 @@ export class ReelGridView {
       text: "",
       style: {
         fill: 0xfff6c9,
-        fontFamily: "Silkscreen, monospace",
+        fontFamily: "VCR OSD Mono, monospace",
         fontSize: 22,
         fontWeight: "bold",
       },

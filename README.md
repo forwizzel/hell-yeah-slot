@@ -1,6 +1,6 @@
 # Hell Yeah
 
-Hell Yeah is a browser-based 3-row by 5-column slot prototype built with TypeScript, Vite, and PixiJS. It demonstrates reel-strip outcomes, left-to-right ways with WILD substitution, multiple bonus modes, auto-spin play, and a deterministic headless math simulator. The interface uses the locally bundled Silkscreen and VT323 fonts.
+Hell Yeah is a browser-based 3-row by 5-column slot prototype built with TypeScript, Vite, and PixiJS. It demonstrates reel-strip outcomes, left-to-right ways with WILD substitution, multiple bonus modes, auto-spin play, and a deterministic headless math simulator. The interface uses the locally bundled VCR OSD Mono font.
 
 This is a local technical prototype. It has no accounts, payments, backend, persistence, external services, or real-money capability.
 
@@ -29,7 +29,7 @@ npm run dev
 
 Open the local URL printed by Vite. The interface remains usable at approximately 320 pixels wide.
 
-`npm install` installs every runtime dependency, including `@fontsource/silkscreen` and `@fontsource/vt323`. Font files are resolved from those packages and bundled by Vite; they are not loaded from a CDN. If a fresh checkout reports that either font package cannot be resolved, install from the current `package-lock.json` before starting the development server.
+`npm install` installs the runtime dependencies declared in `package-lock.json`. The UI font is the local `graphics/VCR_OSD_MONO_1.001.ttf` asset, bundled by Vite through the CSS `@font-face` URL; it is not loaded from a CDN.
 
 ## Commands
 
@@ -124,7 +124,7 @@ src/
   main.ts         Browser entry point
 ```
 
-Symbol artwork, the top-bar logo, and `BG_VIDEO.mp4` are stored in `graphics/`; audio is stored in `audio/`. The Silkscreen and VT323 files come from the installed Fontsource packages. Vite bundles all runtime assets through module URL and CSS imports; the prototype uses no runtime CDN or external asset service.
+Symbol artwork, the top-bar logo, `BG_VIDEO.mp4`, and `VCR_OSD_MONO_1.001.ttf` are stored in `graphics/`; audio is stored in `audio/`. Vite bundles all runtime assets through module URL and CSS imports; the prototype uses no runtime CDN or external asset service.
 
 ## Current Limitations
 

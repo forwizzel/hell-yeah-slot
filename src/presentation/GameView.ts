@@ -416,14 +416,15 @@ export class GameView {
     const state = model.sword === null ? model.freeSpins : null;
     const active = state !== null && isActiveFreeSpinPhase(model.phase);
     this.bonusMetrics.hidden = !active;
+    this.bonusMetrics.classList.toggle("bonus-metrics--without-multiplier", state?.mode === "cigarette");
     this.swordMetrics.hidden = model.sword === null;
     this.bonusRetrigger.hidden = true;
     this.bonusMetrics.classList.remove("bonus-metrics--retrigger");
 
     if (state !== null) {
       this.bonusSpins.textContent = String(state.remainingSpins);
-      this.bonusMultiplierLabel.textContent = state.mode === "cigarette" ? "Cash Awards" : "Multiplier";
-      this.bonusMultiplier.textContent = state.mode === "cigarette" ? "LIVE" : `X${state.multiplier}`;
+      this.bonusMultiplierLabel.textContent = "Multiplier";
+      this.bonusMultiplier.textContent = `X${state.multiplier}`;
       setFittedNumericText(this.bonusBank, formatUsd(state.accumulatedWinCents), formatCompactUsd(state.accumulatedWinCents));
     }
 

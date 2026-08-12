@@ -74,12 +74,13 @@
 - `src/config/gameConfig.ts`: most animation timing values, such as `normalSpinDurationMs`, `quickSpinDurationMs`, evaluation delays, count-up durations, and large-win hold duration.
 - `src/presentation/GameAudio.ts`: soundtrack/effect asset paths plus `SOUNDTRACK_VOLUME` and `SYMBOL_EFFECT_GAIN`.
 - `graphics/` and `audio/`: source art, video, and sound assets.
+- Keep player-facing labels player-centered: use "game", "reels", "controls", or "game window" rather than hardware-oriented terms.
 
 **State And Types**
 
 - `src/core/types.ts` defines the shared vocabulary: grids, cells, payouts, free-spin state, Sword state, and phases.
 - `src/core/GameState.ts` holds the mutable session state and produces a safe snapshot for rendering.
-- `GamePhase` is the main state machine. It prevents controls from doing inappropriate actions during animations or features.
+- `GamePhase` is the main state flow. It prevents controls from doing inappropriate actions during animations or features.
 - `src/core/GuaranteedFeatureSymbols.ts` creates qualifying feature-buy and development-trigger grids.
 
 **Randomness And Reproducibility**

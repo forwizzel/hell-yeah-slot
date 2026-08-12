@@ -18,7 +18,7 @@ This document is the authoritative public contract for current game behavior, in
 
 - An ordinary ways win or completed free-spin or Sword Cleave payout at least five times its triggering bet shows a large payout count-up after that award resolves. The display does not alter the resolved outcome or award money a second time.
 - The labels are `BIG WIN!` from 5x up to 10x, `HUGE WIN!` from 10x up to 25x, `SUPER WIN!` from 25x up to 50x, and `HELL YEAH!` at 50x or more.
-- The final payout remains visible after the count-up until the player clicks or taps the machine window to dismiss it and continue the current round or feature. The large-win count-up sound loops from the start of the count until that dismissal.
+- The final payout remains visible after the count-up until the player clicks or taps the game window to dismiss it and continue the current round or feature. The large-win count-up sound loops from the start of the count until that dismissal.
 
 ## Reels and Symbols
 

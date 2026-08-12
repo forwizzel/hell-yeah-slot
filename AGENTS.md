@@ -25,6 +25,7 @@
 - Development bonus buttons are Vite-development-only, charge no wager, and still consume the active random sequence. Preserve both the UI removal and the controller's `import.meta.env.DEV` guard.
 - Browser assets live outside `src/`: graphics under `graphics/`, audio under `audio/`. They are bundled through `new URL(..., import.meta.url)` references; do not treat those paths as public-folder URLs.
 - Presentation changes must preserve usability around 320px width and a text or ARIA equivalent for visual symbol content.
+- Use player-centered language in UI copy and public documentation. Avoid hardware-oriented labels; prefer "game", "reels", "controls", or "game window" as appropriate.
 - Reel-lock tuning is centralized in `src/presentation/ReelLockImpact.ts`; preserve the shared base/Sword behavior in `ReelGridView` and `SwordBoardView`, update `ReelLockImpact.test.ts`, and retune its 28ms audio pre-roll if effect-file leading silence changes.
 
 ## Testing Notes

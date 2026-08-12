@@ -7,7 +7,7 @@
 }
 
 :root {
-  --machine-black: #0b0d0c;
+  --cabinet-black: #0b0d0c;
   --reel-black: #101514;
   --gunmetal: #1b2524;
   --gunmetal-light: #2d3a37;
@@ -24,7 +24,7 @@
   --stamp: "VCR OSD Mono", "Courier New", monospace;
   --terminal: "VCR OSD Mono", "Lucida Console", monospace;
   color: var(--ivory);
-  background: var(--machine-black);
+  background: var(--cabinet-black);
   color-scheme: dark;
   font-family: var(--terminal);
   font-synthesis: none;
@@ -39,7 +39,7 @@
 
 html {
   min-width: 300px;
-  background: var(--machine-black);
+  background: var(--cabinet-black);
   color-scheme: dark;
 }
 
@@ -50,7 +50,7 @@ body {
   min-height: 100vh;
   margin: 0;
   overflow-x: hidden;
-  background: var(--machine-black);
+  background: var(--cabinet-black);
 }
 
 body::before {
@@ -80,9 +80,9 @@ body::before {
   top: 0.75rem;
   left: 0.75rem;
   padding: 0.65rem 0.8rem;
-  color: var(--machine-black);
+  color: var(--cabinet-black);
   background: var(--signal-red-light);
-  box-shadow: 0 0 0 2px var(--machine-black);
+  box-shadow: 0 0 0 2px var(--cabinet-black);
   font-size: 0.72rem;
   text-decoration: none;
   text-transform: uppercase;
@@ -538,6 +538,15 @@ input::placeholder {
 .bonus-metrics {
   grid-template-areas: "bank spins multiplier";
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.bonus-metrics--without-multiplier {
+  grid-template-areas: "bank spins";
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+}
+
+.bonus-metrics--without-multiplier .bonus-metric--multiplier {
+  display: none;
 }
 
 .sword-metrics {
@@ -1328,6 +1337,20 @@ input::placeholder {
     border-top: 1px solid #405049;
   }
 
+  .bonus-metrics--without-multiplier {
+    grid-template-areas: "bank spins";
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+    min-height: clamp(6.8rem, 15vw, 9rem);
+  }
+
+  .bonus-metrics--without-multiplier .bonus-metric--bank {
+    border-top: 0;
+  }
+
+  .bonus-metrics--without-multiplier .bonus-metric--spins::before {
+    display: block;
+  }
+
   .sword-metrics {
     grid-template-areas:
       "bank bank"
@@ -1502,7 +1525,7 @@ input::placeholder {
 
 /* Cleaner cabinet hierarchy */
 :root {
-  --machine-black: #080b0a;
+  --cabinet-black: #080b0a;
   --reel-black: #050807;
   --gunmetal: #18201e;
   --gunmetal-light: #26302d;
@@ -1838,18 +1861,39 @@ select {
 }
 
 .controls__settings > summary {
-  width: fit-content;
-  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.65rem 0.75rem;
   color: #929b96;
+  background: #111714;
   font-family: var(--stamp);
-  font-size: 0.62rem;
+  font-size: 0.7rem;
   letter-spacing: 0.08em;
+  list-style: none;
   text-transform: uppercase;
   cursor: pointer;
 }
 
 .controls__settings > summary::marker {
+  content: "";
+}
+
+.controls__settings > summary::-webkit-details-marker {
+  display: none;
+}
+
+.controls__settings > summary::after {
   color: var(--signal-red-light);
+  content: "+";
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.controls__settings[open] > summary::after {
+  content: "−";
 }
 
 .utility-controls {
@@ -2151,7 +2195,8 @@ select {
   }
 
   .controls__settings > summary {
-    font-size: 0.58rem;
+    min-height: 46px;
+    font-size: 0.68rem;
   }
 
   .utility-controls {

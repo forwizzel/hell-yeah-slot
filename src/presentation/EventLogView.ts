@@ -19,7 +19,7 @@ export class EventLogView {
   clear(): void {
     const placeholder = document.createElement("li");
     placeholder.className = "event-log__empty";
-    placeholder.textContent = "Machine ready.";
+    placeholder.textContent = "Ready.";
     this.element.replaceChildren(placeholder);
   }
 }

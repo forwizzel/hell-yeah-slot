@@ -42,6 +42,7 @@ export class GameAudio {
   private readonly activeEffects = new Set<AudioBufferSourceNode>();
   private musicEnabled = true;
   private sfxEnabled = true;
+  private soundtrackSuppressionCount = 0;
 
   constructor() {
     this.soundtrack.loop = true;
@@ -76,6 +77,20 @@ export class GameAudio {
       this.activeEffects.clear();
     }
     return this.sfxEnabled;
+  }
+
+  suppressSoundtrack(): () => void {
+    this.soundtrackSuppressionCount += 1;
+    this.soundtrack.pause();
+    let released = false;
+    return () => {
+      if (released) {
+        return;
+      }
+      released = true;
+      this.soundtrackSuppressionCount -= 1;
+      this.startMusic();
+    };
   }
 
   play(effect: GameSoundEffect, loop = false): (() => void) | null {
@@ -124,7 +139,7 @@ export class GameAudio {
   }
 
   private startMusic(): void {
-    if (!this.musicEnabled || !this.soundtrack.paused) {
+    if (!this.musicEnabled || this.soundtrackSuppressionCount > 0 || !this.soundtrack.paused) {
       return;
     }
     void this.soundtrack.play().catch(() => {

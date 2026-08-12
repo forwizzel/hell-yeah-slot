@@ -278,6 +278,7 @@ export class GameView {
       let animationFrame = 0;
       let complete = false;
       const startedAt = performance.now();
+      const restoreSoundtrack = this.audio.suppressSoundtrack();
       const stopCountWin = this.audio.play("count-win", true);
       const finishCount = () => {
         if (complete) {
@@ -288,11 +289,13 @@ export class GameView {
         this.featureMultiplier.textContent = formatUsd(payoutCents);
         if (autoDismiss) {
           stopCountWin?.();
+          restoreSoundtrack();
           resolve();
           return;
         }
         void this.holdLargeWinFinalPayout().then(() => {
           stopCountWin?.();
+          restoreSoundtrack();
           resolve();
         });
       };

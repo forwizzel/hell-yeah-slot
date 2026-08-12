@@ -8,7 +8,7 @@ import {
   type FeatureBuyId,
 } from "../config/gameConfig";
 import { PAYTABLE, PAYOUT_MULTIPLIER_SCALE } from "../config/paytable";
-import { formatUsd } from "../core/formatUsd";
+import { formatCompactUsd, formatUsd } from "../core/formatUsd";
 import { GameState } from "../core/GameState";
 
 describe("USD money configuration", () => {
@@ -94,5 +94,20 @@ describe("formatUsd", () => {
     expect(() => formatUsd(Number.MAX_SAFE_INTEGER + 1)).toThrow(
       "USD amount must be a safe integer number of cents",
     );
+  });
+});
+
+describe("formatCompactUsd", () => {
+  it.each([
+    [104_700_000, "$1.05M"],
+    [188_750_000, "$1.89M"],
+    [Number.MAX_SAFE_INTEGER, "$90.1T"],
+    [-188_750_000, "-$1.89M"],
+  ] as const)("compacts %i cents as %s", (cents, expected) => {
+    expect(formatCompactUsd(cents)).toBe(expected);
+  });
+
+  it("keeps ordinary amounts exact", () => {
+    expect(formatCompactUsd(88_325_000)).toBe("$883,250.00");
   });
 });

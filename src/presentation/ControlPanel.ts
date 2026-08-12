@@ -1,6 +1,7 @@
 import { GAME_CONFIG, getFeatureBuyCostCents, type FeatureBuyId } from "../config/gameConfig";
-import { formatUsd } from "../core/formatUsd";
+import { formatCompactUsd, formatUsd } from "../core/formatUsd";
 import type { AutoSpinViewState, GameViewModel } from "../core/types";
+import { setFittedNumericText } from "./FittedText";
 
 export type DevelopmentBonusId = FeatureBuyId;
 
@@ -89,9 +90,9 @@ export class ControlPanel {
     const spinning = model.phase === "base-spinning"
       || model.phase === "free-spin-spinning"
       || model.phase === "sword-spinning";
-    this.balanceValue.textContent = formatUsd(model.balanceCents);
-    this.betValue.textContent = formatUsd(model.betCents);
-    this.lastWinValue.textContent = formatUsd(model.lastWinCents);
+    setFittedNumericText(this.balanceValue, formatUsd(model.balanceCents), formatCompactUsd(model.balanceCents));
+    setFittedNumericText(this.betValue, formatUsd(model.betCents));
+    setFittedNumericText(this.lastWinValue, formatUsd(model.lastWinCents), formatCompactUsd(model.lastWinCents));
 
     this.spinButton.disabled = spinning ? false : !interactive || autoSpin.active || model.balanceCents < model.betCents;
     this.spinButton.textContent = spinning ? "Settle" : "Spin";

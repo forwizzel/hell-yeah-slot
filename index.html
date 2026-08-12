@@ -37,9 +37,8 @@
       </header>
 
       <dl class="status-panel" aria-label="Game status">
-        <div class="status-panel__balance"><dt>Balance</dt><dd id="balance">$1,000.00</dd></div>
-        <div class="status-panel__bet"><dt>Bet</dt><dd id="bet">$10.00</dd></div>
-        <div class="status-panel__last-win"><dt>Last Win</dt><dd id="last-win">$0.00</dd></div>
+        <div class="status-panel__balance"><dt>Balance</dt><dd id="balance"><span class="text-fit__content">$1,000.00</span></dd></div>
+        <div class="status-panel__last-win"><dt>Last Win</dt><dd id="last-win"><span class="text-fit__content">$0.00</span></dd></div>
       </dl>
 
       <section id="game-panel" class="game-panel" aria-label="Slot machine reels">
@@ -59,9 +58,10 @@
           >
             <div class="feature-overlay__card">
               <p id="feature-kicker" class="feature-overlay__kicker">Feature</p>
-              <strong id="feature-title" class="feature-overlay__title">BONUS</strong>
-              <strong id="feature-multiplier" class="feature-overlay__multiplier" aria-hidden="true" hidden>X1</strong>
-              <p id="feature-message" class="feature-overlay__message">Feature message</p>
+              <h2 id="feature-title" class="feature-overlay__title">BONUS</h2>
+              <p id="feature-detail" class="feature-overlay__detail" hidden></p>
+              <strong id="feature-multiplier" class="feature-overlay__multiplier" aria-hidden="true" hidden><span class="text-fit__content">X1</span></strong>
+              <div id="feature-message" class="feature-overlay__message">Feature message</div>
               <button id="feature-start" class="feature-start-button" type="button" hidden>Press to Start Feature</button>
             </div>
           </div>
@@ -70,97 +70,108 @@
           <h2 class="sr-only">Bonus status</h2>
           <div class="bonus-metric bonus-metric--spins">
             <span class="bonus-metric__label">Free Spins</span>
-            <strong id="bonus-spins" class="bonus-metric__value">0</strong>
+            <strong id="bonus-spins" class="bonus-metric__value"><span class="text-fit__content">0</span></strong>
           </div>
           <div class="bonus-metric bonus-metric--multiplier">
             <span id="bonus-multiplier-label" class="bonus-metric__label">Multiplier</span>
-            <strong id="bonus-multiplier" class="bonus-metric__value">X1</strong>
+            <strong id="bonus-multiplier" class="bonus-metric__value"><span class="text-fit__content">X1</span></strong>
           </div>
           <div class="bonus-metric bonus-metric--bank">
             <span class="bonus-metric__label">Bonus Bank</span>
-            <strong id="bonus-bank" class="bonus-metric__value">$0.00</strong>
+            <strong id="bonus-bank" class="bonus-metric__value"><span class="text-fit__content">$0.00</span></strong>
           </div>
-          <strong id="bonus-retrigger" class="bonus-retrigger" aria-hidden="true" hidden>+10 SPINS</strong>
+          <strong id="bonus-retrigger" class="bonus-retrigger" aria-hidden="true" hidden><span class="text-fit__content">+10 SPINS</span></strong>
         </section>
         <section id="sword-metrics" class="sword-metrics" aria-live="polite" aria-atomic="true" hidden>
           <h2 class="sr-only">Sword Cleave status</h2>
           <div class="sword-metric sword-metric--bank">
             <span class="sword-metric__label">Banked Win</span>
-            <strong id="sword-bank" class="sword-metric__value">$0.00</strong>
+            <strong id="sword-bank" class="sword-metric__value"><span class="text-fit__content">$0.00</span></strong>
           </div>
           <div class="sword-metric sword-metric--cuts">
             <span class="sword-metric__label">Cuts Left</span>
-            <strong id="sword-cuts" class="sword-metric__value">3</strong>
+            <strong id="sword-cuts" class="sword-metric__value"><span class="text-fit__content">3</span></strong>
           </div>
           <div class="sword-metric sword-metric--board">
             <span class="sword-metric__label">Cleave Board</span>
-            <strong id="sword-board-size" class="sword-metric__value">5X3</strong>
+            <strong id="sword-board-size" class="sword-metric__value"><span class="text-fit__content">5X3</span></strong>
           </div>
           <div class="sword-metric sword-metric--multiplier">
             <span class="sword-metric__label">Multiplier</span>
-            <strong id="sword-multiplier" class="sword-metric__value">X1</strong>
+            <strong id="sword-multiplier" class="sword-metric__value"><span class="text-fit__content">X1</span></strong>
           </div>
         </section>
       </section>
 
-      <section id="game-controls" class="controls" aria-labelledby="controls-title">
+      <section id="game-controls" class="controls" aria-labelledby="controls-title" tabindex="-1">
         <h2 id="controls-title" class="sr-only">Game Controls</h2>
-        <div class="bet-controls">
-          <button id="bet-down" class="bet-step" type="button" aria-label="Decrease bet"><span aria-hidden="true">−</span></button>
+        <div class="controls__fast-play">
+          <div class="wager-control" role="group" aria-label="Wager controls">
+            <span class="wager-control__label">Wager</span>
+            <div class="bet-controls">
+              <button id="bet-down" class="bet-step" type="button" aria-label="Decrease bet"><span aria-hidden="true">−</span></button>
+              <strong id="bet" class="bet-readout" aria-label="Current bet"><span class="text-fit__content">$10.00</span></strong>
+              <button id="bet-up" class="bet-step" type="button" aria-label="Increase bet"><span aria-hidden="true">+</span></button>
+            </div>
+          </div>
           <button id="spin" class="spin-button" type="button"><span>Spin</span></button>
-          <button id="bet-up" class="bet-step" type="button" aria-label="Increase bet"><span aria-hidden="true">+</span></button>
-        </div>
-        <div class="utility-controls">
           <label class="check-control"><input id="quick-spin" name="quick-spin" type="checkbox" /><span>Turbo</span></label>
-          <button id="music-toggle" type="button" aria-pressed="true">Music On</button>
-          <button id="sfx-toggle" type="button" aria-pressed="true">SFX On</button>
-          <button id="reset" type="button">Reset</button>
         </div>
+        <details class="controls__settings">
+          <summary>Machine settings</summary>
+          <div class="utility-controls">
+            <button id="music-toggle" type="button" aria-pressed="true">Music On</button>
+            <button id="sfx-toggle" type="button" aria-pressed="true">SFX On</button>
+            <button id="reset" type="button">Reset</button>
+          </div>
+        </details>
       </section>
 
-      <section class="auto-spin-panel auxiliary-panel" aria-labelledby="auto-spin-title">
-        <div class="auxiliary-panel__intro">
-          <p class="auxiliary-panel__eyebrow">Paid rounds</p>
-          <h2 id="auto-spin-title">Auto Spin</h2>
-          <p>Choose a fixed wager and run length. A bonus trigger stops the run.</p>
-        </div>
-        <div class="auto-spin-controls">
-          <label for="auto-spin-bet"><span>Bet amount</span><select id="auto-spin-bet" name="auto-spin-bet"></select></label>
-          <label for="auto-spin-count"><span>Number of spins</span><select id="auto-spin-count" name="auto-spin-count">
-            <option value="10">10</option>
-            <option value="25">25</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-            <option value="custom">Custom</option>
-          </select></label>
-          <label id="auto-spin-custom-label" for="auto-spin-custom" hidden><span>Custom spins</span><input id="auto-spin-custom" name="auto-spin-custom" type="number" min="1" max="1000" step="1" inputmode="numeric" value="10" /></label>
-          <button id="auto-spin-start" type="button">Start</button>
-          <button id="auto-spin-stop" class="auto-spin-stop" type="button" disabled>Stop</button>
-        </div>
-        <p id="auto-spin-status" class="auto-spin-status" role="status" aria-live="polite">Ready.</p>
-      </section>
+      <div class="game-tools">
+        <section class="auto-spin-panel auxiliary-panel" aria-labelledby="auto-spin-title">
+          <div class="auxiliary-panel__intro">
+            <p class="auxiliary-panel__eyebrow">Paid rounds</p>
+            <h2 id="auto-spin-title">Auto Spin</h2>
+            <p>Choose a fixed wager and run length. A bonus trigger stops the run.</p>
+          </div>
+          <div class="auto-spin-controls">
+            <label for="auto-spin-bet"><span>Bet amount</span><select id="auto-spin-bet" name="auto-spin-bet"></select></label>
+            <label for="auto-spin-count"><span>Number of spins</span><select id="auto-spin-count" name="auto-spin-count">
+              <option value="10">10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="custom">Custom</option>
+            </select></label>
+            <label id="auto-spin-custom-label" for="auto-spin-custom" hidden><span>Custom spins</span><input id="auto-spin-custom" name="auto-spin-custom" type="number" min="1" max="1000" step="1" inputmode="numeric" value="10" /></label>
+            <button id="auto-spin-start" type="button">Start</button>
+            <button id="auto-spin-stop" class="auto-spin-stop" type="button" disabled>Stop</button>
+          </div>
+          <p id="auto-spin-status" class="auto-spin-status" role="status" aria-live="polite">Ready.</p>
+        </section>
 
-      <section id="feature-buy-panel" class="feature-buy-panel auxiliary-panel" aria-labelledby="feature-buy-title">
-        <div class="auxiliary-panel__intro">
-          <p class="auxiliary-panel__eyebrow">Temporary pricing</p>
-          <h2 id="feature-buy-title">Feature Buy</h2>
-          <p>Buy a bonus using the current bet. Prices are temporary and do not account for RTP.</p>
-        </div>
-        <div class="feature-buy-controls">
-          <button id="buy-beer-bonus" type="button">Beer</button>
-          <button id="buy-cigarette-bonus" type="button">Cigarette</button>
-          <button id="buy-combined-bonus" type="button">Beer + Cigarette</button>
-          <button id="buy-sword-bonus" type="button">Sword</button>
-        </div>
-      </section>
+        <section id="feature-buy-panel" class="feature-buy-panel auxiliary-panel" aria-labelledby="feature-buy-title">
+          <div class="auxiliary-panel__intro">
+            <p class="auxiliary-panel__eyebrow">Temporary pricing</p>
+            <h2 id="feature-buy-title">Feature Buy</h2>
+            <p>Buy a bonus using the current bet. Prices are temporary and do not account for RTP.</p>
+          </div>
+          <div class="feature-buy-controls">
+            <button id="buy-beer-bonus" type="button">Beer</button>
+            <button id="buy-cigarette-bonus" type="button">Cigarette</button>
+            <button id="buy-combined-bonus" type="button">Beer + Cigarette</button>
+            <button id="buy-sword-bonus" type="button">Sword</button>
+          </div>
+        </section>
 
-      <details class="spin-ledger">
-        <summary><span>Spin Ledger</span><small>Recent game events</small></summary>
-        <div class="log-panel">
-          <h2 class="sr-only">Spin Ledger events</h2>
-          <ol id="event-log" aria-live="polite"><li class="event-log__empty">Machine ready.</li></ol>
-        </div>
-      </details>
+        <details class="spin-ledger">
+          <summary><span>Spin Ledger</span><small>Recent game events</small></summary>
+          <div class="log-panel">
+            <h2 class="sr-only">Spin Ledger events</h2>
+            <ol id="event-log" aria-live="polite"><li class="event-log__empty">Machine ready.</li></ol>
+          </div>
+        </details>
+      </div>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

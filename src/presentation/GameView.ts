@@ -1,6 +1,6 @@
 import { GAME_CONFIG } from "../config/gameConfig";
 import { SWORD_CONFIG, type SwordStageRows } from "../config/swordConfig";
-import { formatUsd } from "../core/formatUsd";
+import { formatCompactUsd, formatUsd } from "../core/formatUsd";
 import type { AutoSpinViewState, BonusSummary, BonusSymbolId, CashAwardSymbolId, FreeSpinCashAward, FreeSpinMode, FreeSpinState, GameViewModel, Grid, Position, SwordExpansion, WaysGrid } from "../core/types";
 import { createBonusLandingAudioPlan, swordColumnAudioEffect } from "./BonusLandingAudio";
 import { ControlPanel, type ControlActions } from "./ControlPanel";
@@ -8,6 +8,7 @@ import { createBandMultiplierRollValues } from "./BonusMultiplierReveal";
 import { EventLogView } from "./EventLogView";
 import { GameAudio, type GameSoundEffect } from "./GameAudio";
 import { formatLargeWinMultiplier, getLargeWinTier } from "./LargeWin";
+import { setFittedNumericText } from "./FittedText";
 import { ReelGridView } from "./ReelGridView";
 import { SwordBoardView } from "./SwordBoardView";
 
@@ -30,6 +31,7 @@ export class GameView {
   private readonly featureOverlay = requiredElement<HTMLElement>("feature-overlay");
   private readonly featureKicker = requiredElement<HTMLElement>("feature-kicker");
   private readonly featureTitle = requiredElement<HTMLElement>("feature-title");
+  private readonly featureDetail = requiredElement<HTMLElement>("feature-detail");
   private readonly featureMultiplier = requiredElement<HTMLElement>("feature-multiplier");
   private readonly featureMessage = requiredElement<HTMLElement>("feature-message");
   private readonly featureStartButton = requiredElement<HTMLButtonElement>("feature-start");
@@ -215,16 +217,17 @@ export class GameView {
     const skipRoll = durationMs <= GAME_CONFIG.quickMultiplierRevealDurationMs;
     this.showFeatureOverlay(
       "Sword Cleave",
-      `BOARD EXPANDS TO 5X${expansion.destinationRows}`,
+      "BOARD EXPANDS",
       "Three Cleave Spins reset. The selected multiplier applies on the next spin.",
       "intro",
       "feature-overlay--sword",
     );
+    this.setFeatureDetail(`TO 5X${expansion.destinationRows}`);
     this.featureMultiplier.hidden = false;
     this.featureMultiplier.className = "feature-overlay__multiplier feature-overlay__multiplier--rolling";
 
     if (skipRoll) {
-      this.featureMultiplier.textContent = `X${expansion.destinationMultiplier}`;
+      setFittedNumericText(this.featureMultiplier, `X${expansion.destinationMultiplier}`);
       this.featureMultiplier.className = "feature-overlay__multiplier feature-overlay__multiplier--locked";
       await this.wait(durationMs);
       return;
@@ -237,7 +240,7 @@ export class GameView {
     );
     const rollStepDuration = Math.max(45, Math.floor((durationMs * 0.78) / rollValues.length));
     for (const multiplier of rollValues) {
-      this.featureMultiplier.textContent = `X${multiplier}`;
+      setFittedNumericText(this.featureMultiplier, `X${multiplier}`);
       await this.wait(rollStepDuration);
     }
     this.featureMultiplier.className = "feature-overlay__multiplier feature-overlay__multiplier--locked";
@@ -268,7 +271,7 @@ export class GameView {
       return;
     }
 
-    this.featureMultiplier.textContent = `X${state.multiplier}`;
+    setFittedNumericText(this.featureMultiplier, `X${state.multiplier}`);
     this.featureMultiplier.className = "feature-overlay__multiplier feature-overlay__multiplier--impact";
     await this.wait(durationMs);
   }
@@ -286,7 +289,7 @@ export class GameView {
         }
         complete = true;
         cancelAnimationFrame(animationFrame);
-        this.featureMultiplier.textContent = formatUsd(payoutCents);
+        setFittedNumericText(this.featureMultiplier, formatUsd(payoutCents), formatCompactUsd(payoutCents));
         if (autoDismiss) {
           stopCountWin?.();
           restoreSoundtrack();
@@ -301,7 +304,8 @@ export class GameView {
       };
       const tick = (now: number) => {
         const progress = Math.min((now - startedAt) / durationMs, 1);
-        this.featureMultiplier.textContent = formatUsd(Math.floor(payoutCents * progress));
+        const currentPayoutCents = Math.floor(payoutCents * progress);
+        setFittedNumericText(this.featureMultiplier, formatUsd(currentPayoutCents), formatCompactUsd(currentPayoutCents));
         if (progress === 1) {
           finishCount();
           return;
@@ -336,15 +340,16 @@ export class GameView {
       if (tier === null) {
         throw new Error("Large-win phase requires a qualifying payout");
       }
+      const payoutMultiplier = formatLargeWinMultiplier(model.largeWin.payoutCents, model.largeWin.triggeringBetCents);
       this.showFeatureOverlay(
-        `${formatLargeWinMultiplier(model.largeWin.payoutCents, model.largeWin.triggeringBetCents)}X BET PAYOUT`,
+        "Bet payout",
         tier.label,
-        `Payout ${formatUsd(model.largeWin.payoutCents)}. Click or tap to finish.`,
+        `Pays ${formatUsd(model.largeWin.payoutCents)} at ${payoutMultiplier}X your bet. Click or tap to finish.`,
         "jackpot",
         "feature-overlay--big-win",
       );
       this.featureMultiplier.hidden = false;
-      this.featureMultiplier.textContent = formatUsd(0);
+      setFittedNumericText(this.featureMultiplier, formatUsd(0));
       this.featureMultiplier.className = "feature-overlay__multiplier feature-overlay__multiplier--big-win";
       return;
     }
@@ -363,7 +368,8 @@ export class GameView {
         "feature-overlay--start",
       );
       this.featureStartButton.hidden = false;
-      this.featureStartButton.textContent = `Press to Start ${label} Feature`;
+      this.featureStartButton.textContent = `Start ${label}`;
+      this.featureStartButton.setAttribute("aria-label", `Start ${label} feature`);
       return;
     }
 
@@ -374,18 +380,15 @@ export class GameView {
 
     const sword = model.sword;
     if (model.phase === "sword-final-strike" && sword !== null && sword.finalStrikeMultiplier !== null) {
-      this.showFeatureOverlay("Sword feature", `FINAL STRIKE X${sword.finalStrikeMultiplier}`, "The Final Strike applies to every accumulated Sword win.", "jackpot");
+      this.showFeatureOverlay("Sword feature", "FINAL STRIKE", "The Final Strike applies to every accumulated Sword win.", "jackpot");
+      this.setFeatureDetail(`X${sword.finalStrikeMultiplier}`);
       return;
     }
 
     if (model.phase === "sword-complete") {
       const summary = model.bonusSummary?.kind === "sword" ? model.bonusSummary : null;
-      this.showFeatureOverlay(
-        "Sword feature",
-        "CLEAVE COMPLETE",
-        summary === null ? "Sword feature complete" : swordSummaryText(summary),
-        "complete",
-      );
+      this.showFeatureOverlay("Sword feature", "CLEAVE COMPLETE", "", "complete");
+      this.renderCompletionSummary(summary);
       return;
     }
 
@@ -398,7 +401,8 @@ export class GameView {
     }
 
     if (model.phase === "bonus-complete") {
-      this.showFeatureOverlay("Feature result", "BONUS COMPLETE", completionText(model.bonusSummary), "complete");
+      this.showFeatureOverlay("Feature result", "BONUS COMPLETE", "", "complete");
+      this.renderCompletionSummary(model.bonusSummary);
       return;
     }
 
@@ -420,24 +424,14 @@ export class GameView {
       this.bonusSpins.textContent = String(state.remainingSpins);
       this.bonusMultiplierLabel.textContent = state.mode === "cigarette" ? "Cash Awards" : "Multiplier";
       this.bonusMultiplier.textContent = state.mode === "cigarette" ? "LIVE" : `X${state.multiplier}`;
-      this.bonusBank.textContent = formatUsd(state.accumulatedWinCents);
-      this.fitMetricValue(this.bonusBank);
+      setFittedNumericText(this.bonusBank, formatUsd(state.accumulatedWinCents), formatCompactUsd(state.accumulatedWinCents));
     }
 
     if (model.sword !== null) {
-      this.swordBank.textContent = formatUsd(model.sword.accumulatedWinCents);
+      setFittedNumericText(this.swordBank, formatUsd(model.sword.accumulatedWinCents), formatCompactUsd(model.sword.accumulatedWinCents));
       this.swordCuts.textContent = String(model.sword.remainingSpins);
       this.swordBoardSize.textContent = `5X${model.sword.rows}`;
       this.swordMultiplier.textContent = `X${model.sword.activeMultiplier}`;
-      this.fitMetricValue(this.swordBank);
-    }
-  }
-
-  private fitMetricValue(value: HTMLElement): void {
-    value.style.transform = "";
-    const scale = Math.min(1, value.clientWidth / value.scrollWidth);
-    if (scale < 1) {
-      value.style.transform = `scaleX(${scale})`;
     }
   }
 
@@ -450,35 +444,51 @@ export class GameView {
   ): void {
     this.featureKicker.textContent = kicker;
     this.featureTitle.textContent = title;
+    this.setFeatureDetail("");
     this.featureMultiplier.hidden = true;
     this.featureMultiplier.className = "feature-overlay__multiplier";
-    this.featureMultiplier.textContent = "";
+    setFittedNumericText(this.featureMultiplier, "");
     this.featureMessage.textContent = message;
     this.featureStartButton.hidden = true;
     this.featureOverlay.className = `feature-overlay feature-overlay--${variant}${modifier.length > 0 ? ` ${modifier}` : ""}`;
     this.featureOverlay.setAttribute("aria-live", variant === "jackpot" ? "assertive" : "polite");
     this.featureOverlay.hidden = false;
   }
-}
 
-function completionText(summary: BonusSummary | null): string {
-  return summary === null ? "Feature complete" : summaryText(summary);
-}
-
-function summaryText(summary: BonusSummary): string {
-  if (summary.kind === "sword") {
-    return swordSummaryText(summary);
+  private setFeatureDetail(detail: string): void {
+    this.featureDetail.textContent = detail;
+    this.featureDetail.hidden = detail.length === 0;
   }
 
-  const multiplier = summary.mode === "cigarette" ? "cash awards" : `x${summary.finalMultiplier}`;
-  return `${modeLabel(summary.mode)} // ${summary.spinsPlayed} spins // ${formatUsd(summary.payoutCents)} paid // ${multiplier}`;
-}
+  private renderCompletionSummary(summary: BonusSummary | null): void {
+    if (summary === null) {
+      this.featureMessage.textContent = "Feature complete.";
+      return;
+    }
 
-function swordSummaryText(summary: Extract<BonusSummary, { kind: "sword" }>): string {
-  const finalStrike = summary.finalStrikeMultiplier === null
-    ? "no Final Strike"
-    : `Final Strike x${summary.finalStrikeMultiplier}`;
-  return `Sword Cleave // ${summary.spinsPlayed} spins // ${formatUsd(summary.payoutCents)} paid // ${finalStrike}`;
+    const rows: ReadonlyArray<readonly [string, string]> = summary.kind === "sword"
+      ? [
+        ["Spins", String(summary.spinsPlayed)],
+        ["Paid", formatUsd(summary.payoutCents)],
+        ["Final strike", summary.finalStrikeMultiplier === null ? "None" : `X${summary.finalStrikeMultiplier}`],
+      ]
+      : [
+        ["Feature", modeLabel(summary.mode)],
+        ["Spins", String(summary.spinsPlayed)],
+        ["Paid", formatUsd(summary.payoutCents)],
+        [summary.mode === "cigarette" ? "Awards" : "Multiplier", summary.mode === "cigarette" ? "Cash awards" : `X${summary.finalMultiplier}`],
+      ];
+    const summaryList = document.createElement("dl");
+    summaryList.className = "feature-summary";
+    for (const [label, value] of rows) {
+      const term = document.createElement("dt");
+      term.textContent = label;
+      const description = document.createElement("dd");
+      description.textContent = value;
+      summaryList.append(term, description);
+    }
+    this.featureMessage.replaceChildren(summaryList);
+  }
 }
 
 function modeLabel(mode: FreeSpinMode): string {

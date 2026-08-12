@@ -1,7 +1,7 @@
 import { GAME_CONFIG } from "../config/gameConfig";
 import { SWORD_CONFIG, type SwordStageRows } from "../config/swordConfig";
 import { formatCompactUsd, formatUsd } from "../core/formatUsd";
-import type { AutoSpinViewState, BonusSummary, BonusSymbolId, CashAwardSymbolId, FreeSpinCashAward, FreeSpinMode, FreeSpinState, GameViewModel, Grid, Position, SwordExpansion, WaysGrid } from "../core/types";
+import type { AutoSpinViewState, BonusSymbolId, CashAwardSymbolId, FreeSpinCashAward, FreeSpinMode, FreeSpinState, GameViewModel, Grid, Position, SwordExpansion, WaysGrid } from "../core/types";
 import { createBonusLandingAudioPlan, swordColumnAudioEffect } from "./BonusLandingAudio";
 import { ControlPanel, type ControlActions } from "./ControlPanel";
 import { createBandMultiplierRollValues } from "./BonusMultiplierReveal";
@@ -385,24 +385,11 @@ export class GameView {
       return;
     }
 
-    if (model.phase === "sword-complete") {
-      const summary = model.bonusSummary?.kind === "sword" ? model.bonusSummary : null;
-      this.showFeatureOverlay("Sword feature", "CLEAVE COMPLETE", "", "complete");
-      this.renderCompletionSummary(summary);
-      return;
-    }
-
     if (model.phase === "bonus-intro") {
       const message = model.freeSpins === null
         ? "The bonus feature is starting."
         : freeSpinIntroText(model.freeSpins);
       this.showFeatureOverlay("Feature unlocked", "FREE SPINS", message, "intro");
-      return;
-    }
-
-    if (model.phase === "bonus-complete") {
-      this.showFeatureOverlay("Feature result", "BONUS COMPLETE", "", "complete");
-      this.renderCompletionSummary(model.bonusSummary);
       return;
     }
 
@@ -440,7 +427,7 @@ export class GameView {
     kicker: string,
     title: string,
     message: string,
-    variant: "intro" | "jackpot" | "complete",
+    variant: "intro" | "jackpot",
     modifier = "",
   ): void {
     this.featureKicker.textContent = kicker;
@@ -461,35 +448,6 @@ export class GameView {
     this.featureDetail.hidden = detail.length === 0;
   }
 
-  private renderCompletionSummary(summary: BonusSummary | null): void {
-    if (summary === null) {
-      this.featureMessage.textContent = "Feature complete.";
-      return;
-    }
-
-    const rows: ReadonlyArray<readonly [string, string]> = summary.kind === "sword"
-      ? [
-        ["Spins", String(summary.spinsPlayed)],
-        ["Paid", formatUsd(summary.payoutCents)],
-        ["Final strike", summary.finalStrikeMultiplier === null ? "None" : `X${summary.finalStrikeMultiplier}`],
-      ]
-      : [
-        ["Feature", modeLabel(summary.mode)],
-        ["Spins", String(summary.spinsPlayed)],
-        ["Paid", formatUsd(summary.payoutCents)],
-        [summary.mode === "cigarette" ? "Awards" : "Multiplier", summary.mode === "cigarette" ? "Cash awards" : `X${summary.finalMultiplier}`],
-      ];
-    const summaryList = document.createElement("dl");
-    summaryList.className = "feature-summary";
-    for (const [label, value] of rows) {
-      const term = document.createElement("dt");
-      term.textContent = label;
-      const description = document.createElement("dd");
-      description.textContent = value;
-      summaryList.append(term, description);
-    }
-    this.featureMessage.replaceChildren(summaryList);
-  }
 }
 
 function modeLabel(mode: FreeSpinMode): string {

@@ -492,11 +492,6 @@ input::placeholder {
   background: rgba(169, 52, 39, 0.97);
 }
 
-.feature-overlay--complete {
-  color: #e8f2dc;
-  background: rgba(45, 82, 74, 0.97);
-}
-
 .feature-overlay--big-win {
   cursor: pointer;
   pointer-events: auto;
@@ -2385,40 +2380,6 @@ select {
   white-space: normal;
 }
 
-.feature-summary {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0.28rem 0.9rem;
-  margin: 0.1rem auto 0;
-  text-align: left;
-}
-
-.feature-summary dt {
-  color: #9ca7a0;
-  font-family: var(--stamp);
-  font-size: 0.65em;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.feature-summary dd {
-  min-width: 0;
-  margin: 0;
-  color: var(--ivory-bright);
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: normal;
-}
-
-.feature-summary dt:nth-of-type(3),
-.feature-summary dt:nth-of-type(3) + dd {
-  grid-column: 1 / -1;
-}
-
-.feature-summary dt:nth-of-type(3) + dd {
-  margin-top: -0.26rem;
-  text-align: right;
-}
-
 .feature-overlay--big-win .feature-overlay__card {
   width: min(96%, 52rem);
 }
@@ -2464,7 +2425,4 @@ select {
     font-size: clamp(0.8rem, 3.7vw, 0.98rem);
   }
 
-  .feature-summary {
-    gap: 0.24rem 0.65rem;
-  }
 }

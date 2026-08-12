@@ -19,6 +19,7 @@ This document is the authoritative public contract for current game behavior, in
 - An ordinary ways win or completed free-spin or Sword Cleave payout at least five times its triggering bet shows a large payout count-up after that award resolves. The display does not alter the resolved outcome or award money a second time.
 - The labels are `BIG WIN!` from 5x up to 10x, `HUGE WIN!` from 10x up to 25x, `SUPER WIN!` from 25x up to 50x, and `HELL YEAH!` at 50x or more.
 - The final payout remains visible after the count-up until the player clicks or taps the game window to dismiss it and continue the current round or feature. The large-win count-up sound loops from the start of the count until that dismissal.
+- Feature completions do not show interim summary panels. A qualifying free-spin or Sword payout transitions directly into its large-win count-up; otherwise, the final feature board remains visible until play continues.
 
 ## Reels and Symbols
 
@@ -155,7 +156,7 @@ GUN and KNIGHT can now land on valid Sword boards and use the dedicated Sword pa
 - A development feature can start only while the game is idle. It first plays a qualifying spin using the same symbol construction as the corresponding Feature Buy, then waits for the normal manual feature-start action.
 - Development qualifying spins charge no wager, evaluate and credit ordinary ways at the selected bet, and use that bet for all feature payouts and large-win tiers.
 - Development combined orientation, guaranteed positions, multipliers, free spins, reel stops, Sword board and feature selections, and retriggers consume browser Web Crypto randomness normally.
-- Starting a development feature clears the previous last-win value and bonus summary, then records the qualifying-spin and feature awards like a purchased feature.
+- Starting a development feature clears the previous last-win value, then records the qualifying-spin and feature awards like a purchased feature.
 
 ## Simulation Interpretation
 

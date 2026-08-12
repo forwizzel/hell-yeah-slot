@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { GameController } from "../core/GameController";
-import type { AutoSpinViewState, GameViewModel, SpinResult } from "../core/types";
+import type { AutoSpinViewState, GamePhase, GameViewModel, SpinResult } from "../core/types";
 import type { ControlActions } from "../presentation/ControlPanel";
 import type { GameSoundEffect } from "../presentation/GameAudio";
 import type { GameView } from "../presentation/GameView";
@@ -88,6 +88,31 @@ describe("GameController feature audio", () => {
 
     expect(events).toEqual(["sound:spin", "spin-settled", "sound:win-combination"]);
   });
+});
+
+describe("GameController feature completion", () => {
+  it.each(["free-spin-evaluation", "sword-evaluation"] as const)(
+    "moves a qualifying %s payout directly into the large-win count-up",
+    async (phase) => {
+      const phases: GamePhase[] = [];
+      const view = {
+        bindControls: () => undefined,
+        render: (model: GameViewModel) => { phases.push(model.phase); },
+        playLargeWinCount: async () => undefined,
+      } as unknown as GameView;
+      const controller = new GameController(view);
+      const internals = controller as unknown as {
+        state: { phase: GamePhase; largeWin: unknown };
+        playLargeWin: (payoutCents: number, triggeringBetCents: number, quickSpin: boolean) => Promise<void>;
+      };
+      internals.state.phase = phase;
+
+      await internals.playLargeWin(100, 20, false);
+
+      expect(phases).toEqual(["large-win"]);
+      expect(internals.state.largeWin).toBeNull();
+    },
+  );
 });
 
 describe("GameController Auto Spin", () => {

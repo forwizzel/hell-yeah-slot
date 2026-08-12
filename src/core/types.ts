@@ -10,8 +10,6 @@ export type GamePhase =
   | "sword-spinning"
   | "sword-evaluation"
   | "sword-final-strike"
-  | "sword-complete"
-  | "bonus-complete"
   | "large-win";
 
 export type CardSymbolId = "10" | "J" | "Q" | "K" | "A" | "GUN" | "KNIGHT";
@@ -170,8 +168,6 @@ export interface SwordFeatureSummary {
   readonly finalStrikeMultiplier: number | null;
 }
 
-export type BonusSummary = FreeSpinSummary | SwordFeatureSummary;
-
 export interface LargeWin {
   readonly payoutCents: number;
   readonly triggeringBetCents: number;
@@ -195,6 +191,5 @@ export interface GameViewModel {
   readonly cashAwards: ReadonlyArray<FreeSpinCashAward>;
   readonly freeSpins: FreeSpinState | null;
   readonly sword: SwordFeatureState | null;
-  readonly bonusSummary: BonusSummary | null;
   readonly largeWin: LargeWin | null;
 }

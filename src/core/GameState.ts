@@ -1,6 +1,5 @@
 import { GAME_CONFIG } from "../config/gameConfig";
 import type {
-  BonusSummary,
   FreeSpinCashAward,
   FreeSpinState,
   GamePhase,
@@ -23,7 +22,6 @@ export class GameState {
   cashAwards: FreeSpinCashAward[] = [];
   freeSpins: FreeSpinState | null = null;
   sword: SwordFeatureState | null = null;
-  bonusSummary: BonusSummary | null = null;
   largeWin: LargeWin | null = null;
 
   reset(): void {
@@ -37,7 +35,6 @@ export class GameState {
     this.cashAwards = [];
     this.freeSpins = null;
     this.sword = null;
-    this.bonusSummary = null;
     this.largeWin = null;
   }
 
@@ -59,7 +56,6 @@ export class GameState {
         ...this.sword,
         board: this.sword.board.map((row) => row.map((cell) => ({ ...cell }))),
       },
-      bonusSummary: this.bonusSummary === null ? null : { ...this.bonusSummary },
       largeWin: this.largeWin === null ? null : { ...this.largeWin },
     };
   }

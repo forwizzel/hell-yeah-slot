@@ -2280,9 +2280,22 @@ select {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .background-video {
+    display: none;
+  }
+
   button,
-  .check-control {
+  .check-control,
+  .controls__settings > summary {
     transition: none;
+  }
+
+  .feature-overlay__card,
+  .feature-overlay__multiplier--impact,
+  .feature-overlay__multiplier--rolling,
+  .feature-overlay__multiplier--locked,
+  .bonus-retrigger {
+    animation: none;
   }
 }
 

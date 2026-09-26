@@ -26,16 +26,27 @@ function initializeBackgroundVideo(): void {
     throw new Error("Required background video was not found");
   }
 
-  video.src = backgroundVideoUrl;
-  void video.play().catch(() => {
-    // Muted autoplay can still be blocked by browser or device policy.
-  });
+  const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const updateVideo = (): void => {
+    if (motionPreference.matches) {
+      video.pause();
+      return;
+    }
+    if (!video.hasAttribute("src")) {
+      video.src = backgroundVideoUrl;
+    }
+    void video.play().catch(() => {
+      // Muted autoplay can still be blocked by browser or device policy.
+    });
+  };
+  motionPreference.addEventListener("change", updateVideo);
+  updateVideo();
 }
 
 void start().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : "Unknown startup error";
   const app = document.getElementById("app");
   if (app !== null) {
-    app.textContent = `Unable to start the prototype: ${message}`;
+    app.textContent = `Unable to start Hell Yeah: ${message}`;
   }
 });

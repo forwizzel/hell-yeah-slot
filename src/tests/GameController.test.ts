@@ -115,6 +115,27 @@ describe("GameController feature completion", () => {
   );
 });
 
+describe("GameController maximum win", () => {
+  it("caps all awards in one round at x10,000 selected bet", () => {
+    const view = {
+      bindControls: () => undefined,
+      addLog: () => undefined,
+    } as unknown as GameView;
+    const controller = new GameController(view);
+    const internals = controller as unknown as {
+      state: { balanceCents: number; lastWinCents: number };
+      awardWin: (amountCents: number, triggeringBetCents: number) => number;
+    };
+    const startingBalanceCents = internals.state.balanceCents;
+
+    expect(internals.awardWin(150_000, 20)).toBe(150_000);
+    expect(internals.awardWin(100_000, 20)).toBe(50_000);
+    expect(internals.awardWin(100_000, 20)).toBe(0);
+    expect(internals.state.lastWinCents).toBe(200_000);
+    expect(internals.state.balanceCents).toBe(startingBalanceCents + 200_000);
+  });
+});
+
 describe("GameController Auto Spin", () => {
   it("runs the selected number of paid spins at the selected bet", async () => {
     const harness = createAutoSpinHarness(() => noWinSpinResult());

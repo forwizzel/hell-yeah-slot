@@ -7,6 +7,8 @@ interface LargeWinViewDouble {
     suppressSoundtrack: ReturnType<typeof vi.fn>;
   };
   featureMultiplier: { textContent: string };
+  largeWinContinueButton: { hidden: boolean };
+  focusOverlayAction: ReturnType<typeof vi.fn>;
   largeWinSkip: (() => void) | null;
   playLargeWinCount(payoutCents: number, durationMs: number, autoDismiss?: boolean): Promise<void>;
 }
@@ -33,6 +35,8 @@ describe("GameView large-win audio", () => {
         suppressSoundtrack: vi.fn(() => restoreSoundtrack),
       },
       featureMultiplier: { textContent: "" },
+      largeWinContinueButton: { hidden: true },
+      focusOverlayAction: vi.fn(),
       largeWinSkip: null,
     }) as LargeWinViewDouble;
 
@@ -46,6 +50,8 @@ describe("GameView large-win audio", () => {
     scheduled.animationFrame(100);
     expect(stopCountWin).not.toHaveBeenCalled();
     expect(view.largeWinSkip).not.toBeNull();
+    expect(view.largeWinContinueButton.hidden).toBe(false);
+    expect(view.focusOverlayAction).toHaveBeenCalledWith(view.largeWinContinueButton);
 
     if (view.largeWinSkip === null) {
       throw new Error("Expected a large-win dismissal handler");
@@ -73,6 +79,8 @@ describe("GameView large-win audio", () => {
         suppressSoundtrack: vi.fn(() => restoreSoundtrack),
       },
       featureMultiplier: { textContent: "" },
+      largeWinContinueButton: { hidden: true },
+      focusOverlayAction: vi.fn(),
       largeWinSkip: null,
     }) as LargeWinViewDouble;
 
@@ -86,5 +94,57 @@ describe("GameView large-win audio", () => {
     expect(stopCountWin).toHaveBeenCalledOnce();
     expect(restoreSoundtrack).toHaveBeenCalledOnce();
     expect(view.largeWinSkip).toBeNull();
+    expect(view.largeWinContinueButton.hidden).toBe(true);
+    expect(view.focusOverlayAction).not.toHaveBeenCalled();
+  });
+
+  it("shows the final payout without a count-up when reduced motion is preferred", async () => {
+    vi.stubGlobal("window", { matchMedia: () => ({ matches: true }) });
+    const view = Object.assign(Object.create(GameView.prototype), {
+      audio: { play: vi.fn(), suppressSoundtrack: vi.fn() },
+      featureMultiplier: { textContent: "" },
+      largeWinContinueButton: { hidden: true },
+      focusOverlayAction: vi.fn(),
+      largeWinSkip: null,
+    }) as LargeWinViewDouble;
+
+    const count = view.playLargeWinCount(1_000, 3_000);
+
+    expect(view.featureMultiplier.textContent).toBe("$10.00");
+    expect(view.audio.play).not.toHaveBeenCalled();
+    expect(view.largeWinContinueButton.hidden).toBe(false);
+    view.largeWinSkip?.();
+    await expect(count).resolves.toBeUndefined();
+  });
+});
+
+describe("GameView overlay focus", () => {
+  it("restores focus after an interactive overlay closes", () => {
+    const documentDouble: { activeElement: FakeElement | null } = { activeElement: null };
+    class FakeElement {
+      isConnected = true;
+      disabled = false;
+      tabIndex = 0;
+      focus(): void { documentDouble.activeElement = this; }
+      closest(): null { return null; }
+      matches(): boolean { return this.disabled; }
+    }
+    const previous = new FakeElement();
+    const action = new FakeElement();
+    documentDouble.activeElement = previous;
+    vi.stubGlobal("document", documentDouble);
+    vi.stubGlobal("HTMLElement", FakeElement);
+    const view = Object.assign(Object.create(GameView.prototype), {
+      focusedOverlayAction: null,
+      focusBeforeOverlay: null,
+    }) as {
+      focusOverlayAction(button: FakeElement): void;
+      restoreOverlayFocus(): void;
+    };
+
+    view.focusOverlayAction(action);
+    expect(documentDouble.activeElement).toBe(action);
+    view.restoreOverlayFocus();
+    expect(documentDouble.activeElement).toBe(previous);
   });
 });

@@ -13,6 +13,7 @@ function engine(random = new ControlledRandomSource()): SwordEngine {
 function activeState(overrides: Partial<SwordFeatureState> = {}): SwordFeatureState {
   return {
     triggeringBetCents: 20,
+    maximumWinCents: 200_000,
     rows: 3,
     remainingSpins: 3,
     totalSpinsPlayed: 0,
@@ -29,7 +30,7 @@ describe("SwordEngine", () => {
   it("includes GUN and KNIGHT in its board symbol weights", () => {
     expect(SWORD_CONFIG.boardSymbols.map(({ symbol }) => symbol)).toContain("GUN");
     expect(SWORD_CONFIG.boardSymbols.map(({ symbol }) => symbol)).toContain("KNIGHT");
-    expect(SWORD_CONFIG.maximumPayoutMultiplier).toBe(3_750);
+    expect(SWORD_CONFIG).not.toHaveProperty("maximumPayoutMultiplier");
   });
 
   it("starts at three rows, three spins, and a x1 active multiplier", () => {
@@ -57,7 +58,7 @@ describe("SwordEngine", () => {
     const random = new ControlledRandomSource([0], [
       7,
       ...Array.from({ length: 30 }, () => 0),
-      3,
+      1,
     ]);
     const result = engine(random).playSpin(activeState({ activeMultiplier: 4 }));
 
@@ -67,10 +68,10 @@ describe("SwordEngine", () => {
       expansion: {
         position: { row: 4, column: 2 },
         destinationRows: 4,
-        destinationMultiplier: 8,
+        destinationMultiplier: 3,
       },
     });
-    expect(result.state).toMatchObject({ rows: 4, remainingSpins: 5, activeMultiplier: 8 });
+    expect(result.state).toMatchObject({ rows: 4, remainingSpins: 5, activeMultiplier: 3 });
     expect(result.spinBoard[4]?.[2]).toEqual({ kind: "bonus", symbol: "SWORD" });
     expect(result.winningPositions).toHaveLength(14);
     expect(result.winningPositions).not.toContainEqual({ row: 4, column: 2 });
@@ -111,16 +112,16 @@ describe("SwordEngine", () => {
     state = engine(random).playSpin(state).state;
     const result = engine(random).playSpin(state);
 
-    expect(result).toMatchObject({ complete: true, finalStrikeMultiplier: 100, finalPayoutCents: 75_000 });
-    expect(result.state).toMatchObject({ remainingSpins: 0, accumulatedWinCents: 93_412, finalPayoutCents: 75_000 });
+    expect(result).toMatchObject({ complete: true, finalStrikeMultiplier: 25, finalPayoutCents: 200_000 });
+    expect(result.state).toMatchObject({ remainingSpins: 0, accumulatedWinCents: 93_412, finalPayoutCents: 200_000 });
     expect(random.floatCalls).toBe(0);
     expect(random.integerCalls).toBe(91);
     expect(engine().summarize(result.state)).toEqual({
       kind: "sword",
       spinsPlayed: 3,
-      payoutCents: 75_000,
+      payoutCents: 200_000,
       reachedFinalStage: true,
-      finalStrikeMultiplier: 100,
+      finalStrikeMultiplier: 25,
     });
   });
 

@@ -8,13 +8,13 @@ export const CARD_SYMBOLS: readonly CardSymbolId[] = ["10", "J", "Q", "K", "A", 
 
 // Values are multiplier tenths, so 1 is x0.1 and 1600 is x160.
 export const PAYTABLE: Paytable = {
-  "10": { 3: 1, 4: 1, 5: 2 },
-  J: { 3: 1, 4: 2, 5: 3 },
-  Q: { 3: 2, 4: 3, 5: 5 },
-  K: { 3: 2, 4: 4, 5: 5 },
-  A: { 3: 5, 4: 7, 5: 52 },
-  GUN: { 3: 8, 4: 23, 5: 150 },
-  KNIGHT: { 3: 15, 4: 45, 5: 300 },
+  "10": { 3: 0, 4: 1, 5: 3 },
+  J: { 3: 0, 4: 2, 5: 5 },
+  Q: { 3: 2, 4: 3, 5: 7 },
+  K: { 3: 3, 4: 5, 5: 8 },
+  A: { 3: 5, 4: 10, 5: 45 },
+  GUN: { 3: 8, 4: 24, 5: 120 },
+  KNIGHT: { 3: 15, 4: 45, 5: 240 },
 };
 
 export const SWORD_PAYTABLE: Paytable = Object.freeze({

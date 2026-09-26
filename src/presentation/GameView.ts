@@ -35,8 +35,11 @@ export class GameView {
   private readonly featureMultiplier = requiredElement<HTMLElement>("feature-multiplier");
   private readonly featureMessage = requiredElement<HTMLElement>("feature-message");
   private readonly featureStartButton = requiredElement<HTMLButtonElement>("feature-start");
+  private readonly largeWinContinueButton = requiredElement<HTMLButtonElement>("large-win-continue");
   private largeWinSkip: (() => void) | null = null;
   private featureStartResolver: (() => void) | null = null;
+  private focusedOverlayAction: HTMLButtonElement | null = null;
+  private focusBeforeOverlay: HTMLElement | null = null;
 
   private constructor(
     private readonly reels: ReelGridView,
@@ -44,11 +47,20 @@ export class GameView {
     private readonly swordBoard: SwordBoardView,
     private readonly swordHost: HTMLElement,
   ) {
+    window.matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", (event) => {
+      if (event.matches) {
+        this.settleActiveSpin();
+      }
+    });
     this.featureOverlay.addEventListener("click", () => this.largeWinSkip?.());
     this.featureStartButton.addEventListener("click", () => {
       const resolve = this.featureStartResolver;
       this.featureStartResolver = null;
       resolve?.();
+    });
+    this.largeWinContinueButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.largeWinSkip?.();
     });
   }
 
@@ -96,22 +108,26 @@ export class GameView {
     triggeringBetCents = 0,
   ): Promise<void> {
     const audioPlan = createBonusLandingAudioPlan(result, winSymbols);
+    const reduceMotion = this.prefersReducedMotion();
     return this.reels.animateBaseSpin(
       result,
       turboEnabled,
       (column) => {
-      for (const effect of audioPlan[column] ?? []) {
-        this.audio.play(effect);
-      }
+        for (const effect of audioPlan[column] ?? []) {
+          if (!reduceMotion || effect.startsWith("win-")) {
+            this.audio.play(effect);
+          }
+        }
       },
       cashAwards,
       transientCashAwardSymbols,
       triggeringBetCents,
-    ).then(() => this.reels.animateCashAwardCount(cashAwards, this.isQuickSpinEnabled()));
+      reduceMotion,
+    ).then(() => reduceMotion ? undefined : this.reels.animateCashAwardCount(cashAwards, this.isQuickSpinEnabled()));
   }
 
   wait(durationMs: number): Promise<void> {
-    return this.reels.wait(durationMs);
+    return this.reels.wait(this.prefersReducedMotion() ? Math.min(durationMs, 80) : durationMs);
   }
 
   playFreeSpinRetriggerCounter(
@@ -120,7 +136,7 @@ export class GameView {
     finalState: FreeSpinState,
     durationMs: number,
   ): Promise<void> {
-    if (addedSpins <= 0 || durationMs <= 0) {
+    if (addedSpins <= 0 || durationMs <= 0 || this.prefersReducedMotion()) {
       return Promise.resolve();
     }
     this.bonusSpins.textContent = String(beforeAwardRemainingSpins);
@@ -133,7 +149,7 @@ export class GameView {
     return new Promise((resolve) => {
       const startedAt = performance.now();
       const tick = (now: number): void => {
-        const progress = Math.min((now - startedAt) / durationMs, 1);
+        const progress = this.prefersReducedMotion() ? 1 : Math.min((now - startedAt) / durationMs, 1);
         const currentSpins = Math.round(
           beforeAwardRemainingSpins + (finalState.remainingSpins - beforeAwardRemainingSpins) * progress,
         );
@@ -205,8 +221,10 @@ export class GameView {
     this.swordHost.hidden = false;
     this.audio.play("spin");
     return this.swordBoard.animateSpin(result, unlockedRows, turboEnabled, (column) => {
-      this.audio.play(swordColumnAudioEffect(column, expansionPosition));
-    });
+      if (!this.prefersReducedMotion()) {
+        this.audio.play(swordColumnAudioEffect(column, expansionPosition));
+      }
+    }, this.prefersReducedMotion());
   }
 
   async playSwordExpansionReveal(expansion: SwordExpansion, durationMs: number): Promise<void> {
@@ -214,11 +232,11 @@ export class GameView {
     if (band === undefined) {
       throw new Error("Sword expansion multiplier band is missing");
     }
-    const skipRoll = durationMs <= GAME_CONFIG.quickMultiplierRevealDurationMs;
+    const skipRoll = this.prefersReducedMotion() || durationMs <= GAME_CONFIG.quickMultiplierRevealDurationMs;
     this.showFeatureOverlay(
       "Sword Cleave",
       "BOARD EXPANDS",
-      "Three Cleave Spins reset. The selected multiplier applies on the next spin.",
+      "Three Cleave Spins added. The selected multiplier applies on the next spin.",
       "intro",
       "feature-overlay--sword",
     );
@@ -254,7 +272,7 @@ export class GameView {
     const message = isBeer
       ? `Beer free spins start at an X${state.multiplier} multiplier.`
       : state.mode === "combined"
-        ? "Beer X5 applies to ways and every Beer or Cigarette cash award."
+        ? `X${state.multiplier} applies to ways and every Beer or Cigarette cash award.`
         : "Cigarette cash awards land from 0.5X to 50X bet.";
     this.showFeatureOverlay(
       isBeer ? "Beer bonus" : state.mode === "cigarette" ? "Cigarette bonus" : "Beer + Cigarette bonus",
@@ -277,6 +295,10 @@ export class GameView {
   }
 
   playLargeWinCount(payoutCents: number, durationMs: number, autoDismiss = false): Promise<void> {
+    if (this.prefersReducedMotion()) {
+      setFittedNumericText(this.featureMultiplier, formatUsd(payoutCents), formatCompactUsd(payoutCents));
+      return autoDismiss ? Promise.resolve() : this.holdLargeWinFinalPayout();
+    }
     return new Promise((resolve) => {
       let animationFrame = 0;
       let complete = false;
@@ -303,7 +325,7 @@ export class GameView {
         });
       };
       const tick = (now: number) => {
-        const progress = Math.min((now - startedAt) / durationMs, 1);
+        const progress = this.prefersReducedMotion() ? 1 : Math.min((now - startedAt) / durationMs, 1);
         const currentPayoutCents = Math.floor(payoutCents * progress);
         setFittedNumericText(this.featureMultiplier, formatUsd(currentPayoutCents), formatCompactUsd(currentPayoutCents));
         if (progress === 1) {
@@ -331,6 +353,8 @@ export class GameView {
       };
 
       this.largeWinSkip = finish;
+      this.largeWinContinueButton.hidden = false;
+      this.focusOverlayAction(this.largeWinContinueButton);
     });
   }
 
@@ -344,7 +368,7 @@ export class GameView {
       this.showFeatureOverlay(
         "Bet payout",
         tier.label,
-        `Pays ${formatUsd(model.largeWin.payoutCents)} at ${payoutMultiplier}X your bet. Click or tap to finish.`,
+        `Pays ${formatUsd(model.largeWin.payoutCents)} at ${payoutMultiplier}X your bet. Select Continue to finish.`,
         "jackpot",
         "feature-overlay--big-win",
       );
@@ -363,18 +387,19 @@ export class GameView {
       this.showFeatureOverlay(
         "Feature ready",
         "PRESS TO START",
-        `${label} feature is locked in. Click the button to begin.`,
+        `${label} feature is ready. Select Start ${label} to begin.`,
         "intro",
         "feature-overlay--start",
       );
       this.featureStartButton.hidden = false;
       this.featureStartButton.textContent = `Start ${label}`;
       this.featureStartButton.setAttribute("aria-label", `Start ${label} feature`);
+      this.focusOverlayAction(this.featureStartButton);
       return;
     }
 
     if (model.phase === "sword-intro") {
-      this.showFeatureOverlay("Sword feature", "CLEAVE SPINS", "Three spins. Each Sword adds a row and resets the counter.", "intro", "feature-overlay--sword");
+      this.showFeatureOverlay("Sword feature", "CLEAVE SPINS", "Start with three spins. An in-play Sword unlocks a row and adds three spins.", "intro", "feature-overlay--sword");
       return;
     }
 
@@ -393,8 +418,10 @@ export class GameView {
       return;
     }
 
+    this.restoreOverlayFocus();
     this.featureOverlay.hidden = true;
     this.featureOverlay.className = "feature-overlay";
+    this.featureOverlay.setAttribute("role", "status");
     this.featureMultiplier.hidden = true;
     this.largeWinSkip = null;
   }
@@ -430,6 +457,10 @@ export class GameView {
     variant: "intro" | "jackpot",
     modifier = "",
   ): void {
+    const interactive = modifier === "feature-overlay--start" || modifier === "feature-overlay--big-win";
+    if (!interactive) {
+      this.restoreOverlayFocus();
+    }
     this.featureKicker.textContent = kicker;
     this.featureTitle.textContent = title;
     this.setFeatureDetail("");
@@ -438,14 +469,47 @@ export class GameView {
     setFittedNumericText(this.featureMultiplier, "");
     this.featureMessage.textContent = message;
     this.featureStartButton.hidden = true;
+    this.largeWinContinueButton.hidden = true;
     this.featureOverlay.className = `feature-overlay feature-overlay--${variant}${modifier.length > 0 ? ` ${modifier}` : ""}`;
-    this.featureOverlay.setAttribute("aria-live", variant === "jackpot" ? "assertive" : "polite");
+    this.featureOverlay.setAttribute("role", interactive ? "dialog" : "status");
+    this.featureOverlay.setAttribute("aria-live", interactive ? "off" : variant === "jackpot" ? "assertive" : "polite");
     this.featureOverlay.hidden = false;
+  }
+
+  private focusOverlayAction(button: HTMLButtonElement): void {
+    if (this.focusedOverlayAction === null) {
+      this.focusBeforeOverlay = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    }
+    this.focusedOverlayAction = button;
+    button.focus();
+  }
+
+  private restoreOverlayFocus(): void {
+    const action = this.focusedOverlayAction;
+    if (action === null) {
+      return;
+    }
+    this.focusedOverlayAction = null;
+    const previous = this.focusBeforeOverlay;
+    this.focusBeforeOverlay = null;
+    if (document.activeElement !== action) {
+      return;
+    }
+    if (previous?.isConnected && previous.tabIndex >= 0
+      && !previous.closest("#feature-overlay") && !previous.matches(":disabled")) {
+      previous.focus();
+    } else {
+      requiredElement<HTMLElement>("game-controls").focus();
+    }
   }
 
   private setFeatureDetail(detail: string): void {
     this.featureDetail.textContent = detail;
     this.featureDetail.hidden = detail.length === 0;
+  }
+
+  private prefersReducedMotion(): boolean {
+    return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }
 
 }

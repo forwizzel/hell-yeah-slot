@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BET_OPTIONS_CENTS,
-  FEATURE_BUY_MULTIPLIERS,
+  FEATURE_BUY_MULTIPLIER_TENTHS,
   GAME_CONFIG,
   getAdjacentBetCents,
   getFeatureBuyCostCents,
@@ -46,11 +46,11 @@ describe("USD money configuration", () => {
   });
 
   it("prices every feature buy as the configured multiple of the selected bet", () => {
-    expect(FEATURE_BUY_MULTIPLIERS).toEqual({ beer: 23.5, cigarette: 58.5, combined: 58.6, sword: 900 });
-    expect(getFeatureBuyCostCents("beer", 50_000)).toBe(1_175_000);
-    expect(getFeatureBuyCostCents("cigarette", 50_000)).toBe(2_925_000);
-    expect(getFeatureBuyCostCents("combined", 50_000)).toBe(2_930_000);
-    expect(getFeatureBuyCostCents("sword", 50_000)).toBe(45_000_000);
+    expect(FEATURE_BUY_MULTIPLIER_TENTHS).toEqual({ beer: 136, cigarette: 250, combined: 731, sword: 1_638 });
+    expect(getFeatureBuyCostCents("beer", 50_000)).toBe(680_000);
+    expect(getFeatureBuyCostCents("cigarette", 50_000)).toBe(1_250_000);
+    expect(getFeatureBuyCostCents("combined", 50_000)).toBe(3_655_000);
+    expect(getFeatureBuyCostCents("sword", 50_000)).toBe(8_190_000);
     const features: readonly FeatureBuyId[] = ["beer", "cigarette", "combined", "sword"];
     expect(BET_OPTIONS_CENTS.every((betCents) =>
       features.every((feature) => Number.isSafeInteger(getFeatureBuyCostCents(feature, betCents))))).toBe(true);
@@ -62,15 +62,15 @@ describe("calibrated payout configuration", () => {
   it("uses the approved tenth-unit paytable and free-spin baseline", () => {
     expect(PAYOUT_MULTIPLIER_SCALE).toBe(10);
     expect(PAYTABLE).toEqual({
-      "10": { 3: 1, 4: 1, 5: 2 },
-      J: { 3: 1, 4: 2, 5: 3 },
-      Q: { 3: 2, 4: 3, 5: 5 },
-      K: { 3: 2, 4: 4, 5: 5 },
-      A: { 3: 5, 4: 7, 5: 52 },
-      GUN: { 3: 8, 4: 23, 5: 150 },
-      KNIGHT: { 3: 15, 4: 45, 5: 300 },
+      "10": { 3: 0, 4: 1, 5: 3 },
+      J: { 3: 0, 4: 2, 5: 5 },
+      Q: { 3: 2, 4: 3, 5: 7 },
+      K: { 3: 3, 4: 5, 5: 8 },
+      A: { 3: 5, 4: 10, 5: 45 },
+      GUN: { 3: 8, 4: 24, 5: 120 },
+      KNIGHT: { 3: 15, 4: 45, 5: 240 },
     });
-    expect(GAME_CONFIG.beerFreeSpinMultiplier).toBe(5);
+    expect(GAME_CONFIG.beerFreeSpinMultiplier).toBe(3);
     expect(GAME_CONFIG.normalMultiplierRevealDurationMs).toBe(2_400);
     expect(GAME_CONFIG.quickMultiplierRevealDurationMs).toBe(180);
   });

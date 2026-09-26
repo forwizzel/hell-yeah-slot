@@ -25,7 +25,6 @@ export interface SwordConfig {
   readonly maximumRows: number;
   readonly startingSpins: number;
   readonly initialMultiplier: number;
-  readonly maximumPayoutMultiplier: number;
   readonly expansionChances: Readonly<Record<SwordExpansionRows, number>>;
   readonly boardSymbols: ReadonlyArray<WeightedSwordBoardSymbol>;
   readonly multiplierBands: Readonly<Record<SwordStageRows, SwordMultiplierBand>>;
@@ -38,7 +37,6 @@ export const SWORD_CONFIG: SwordConfig = Object.freeze({
   maximumRows: 6,
   startingSpins: 3,
   initialMultiplier: 1,
-  maximumPayoutMultiplier: 3_750,
   expansionChances: Object.freeze({
     3: 0.4,
     4: 0.25,
@@ -55,17 +53,15 @@ export const SWORD_CONFIG: SwordConfig = Object.freeze({
     Object.freeze({ symbol: "WILD" as const, weight: 1 }),
   ]),
   multiplierBands: Object.freeze({
-    4: Object.freeze({ minimum: 5, maximum: 10 }),
-    5: Object.freeze({ minimum: 14, maximum: 18 }),
-    6: Object.freeze({ minimum: 25, maximum: 30 }),
+    4: Object.freeze({ minimum: 2, maximum: 3 }),
+    5: Object.freeze({ minimum: 3, maximum: 5 }),
+    6: Object.freeze({ minimum: 5, maximum: 8 }),
   }),
   finalStrikes: Object.freeze([
-    Object.freeze({ multiplier: 5, weight: 53 }),
-    Object.freeze({ multiplier: 10, weight: 21 }),
-    Object.freeze({ multiplier: 15, weight: 12 }),
-    Object.freeze({ multiplier: 20, weight: 7 }),
-    Object.freeze({ multiplier: 30, weight: 4 }),
-    Object.freeze({ multiplier: 50, weight: 2 }),
-    Object.freeze({ multiplier: 100, weight: 1 }),
+    Object.freeze({ multiplier: 2, weight: 80 }),
+    Object.freeze({ multiplier: 3, weight: 12 }),
+    Object.freeze({ multiplier: 5, weight: 5 }),
+    Object.freeze({ multiplier: 10, weight: 2 }),
+    Object.freeze({ multiplier: 25, weight: 1 }),
   ]),
 });

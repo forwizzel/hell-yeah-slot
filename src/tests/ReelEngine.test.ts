@@ -102,18 +102,18 @@ describe("ReelEngine", () => {
   });
 
   it("configures the requested relative bonus rarity", () => {
-    expect(REEL_STRIPS.map((strip) => count(strip, "BEER"))).toEqual([4, 7, 9, 0, 0]);
-    expect(REEL_STRIPS.map((strip) => count(strip, "CIGARETTE"))).toEqual([0, 0, 3, 3, 9]);
-    expect(REEL_STRIPS.map((strip) => count(strip, "SWORD"))).toEqual([3, 4, 0, 4, 0]);
+    expect(REEL_STRIPS.map((strip) => count(strip, "BEER"))).toEqual([4, 6, 7, 0, 0]);
+    expect(REEL_STRIPS.map((strip) => count(strip, "CIGARETTE"))).toEqual([0, 0, 2, 3, 7]);
+    expect(REEL_STRIPS.map((strip) => count(strip, "SWORD"))).toEqual([2, 3, 0, 3, 0]);
   });
 
   it("targets the configured natural feature trigger rates", () => {
     const rates = featureTriggerRates();
 
-    expect(rates.beer + rates.combined).toBeCloseTo(2.64684744, 7);
-    expect(rates.cigarette + rates.combined).toBeCloseTo(0.98825656, 7);
-    expect(rates.sword).toBeCloseTo(0.49438477, 7);
-    expect(rates.combined).toBeCloseTo(0.20530969, 7);
+    expect(rates.beer + rates.combined).toBeCloseTo(1.75315887, 7);
+    expect(rates.cigarette + rates.combined).toBeCloseTo(0.51242933, 7);
+    expect(rates.sword).toBeCloseTo(0.18539429, 7);
+    expect(rates.combined).toBeCloseTo(0.10265484, 7);
   });
 
   it("includes visible GUN and KNIGHT symbols on every base and free-spin reel", () => {

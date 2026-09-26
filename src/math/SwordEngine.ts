@@ -1,3 +1,4 @@
+import { GAME_CONFIG } from "../config/gameConfig";
 import { PAYOUT_MULTIPLIER_SCALE, SWORD_PAYTABLE } from "../config/paytable";
 import {
   SWORD_CONFIG,
@@ -17,6 +18,7 @@ import type {
   WaysGrid,
 } from "../core/types";
 import { evaluateWays } from "./PayEvaluator";
+import { addCapped, multiplyCapped } from "./cappedInteger";
 import type { RandomSource } from "./RandomSource";
 import { safeAdd, safeMultiply } from "./safeInteger";
 
@@ -28,16 +30,27 @@ export class SwordEngine {
     validateConfig(config);
   }
 
-  start(triggeringBetCents: number): SwordFeatureState {
+  start(
+    triggeringBetCents: number,
+    maximumWinCents = safeMultiply(
+      triggeringBetCents,
+      GAME_CONFIG.maximumPaidRoundWinMultiplier,
+      "Maximum paid-round win exceeds the safe integer range",
+    ),
+  ): SwordFeatureState {
     if (!Number.isSafeInteger(triggeringBetCents) || triggeringBetCents <= 0) {
       throw new RangeError("Triggering bet must be a positive integer number of cents");
     }
     if (triggeringBetCents % PAYOUT_MULTIPLIER_SCALE !== 0) {
       throw new RangeError(`Triggering bet must be divisible by ${PAYOUT_MULTIPLIER_SCALE} cents`);
     }
+    if (!Number.isSafeInteger(maximumWinCents) || maximumWinCents < 0) {
+      throw new RangeError("Maximum Sword win must be a non-negative safe integer number of cents");
+    }
 
     return {
       triggeringBetCents,
+      maximumWinCents,
       rows: this.config.startingRows,
       remainingSpins: this.config.startingSpins,
       totalSpinsPlayed: 0,
@@ -75,15 +88,15 @@ export class SwordEngine {
     const evaluation = evaluateWays(board.slice(lockedRows), SWORD_PAYTABLE, state.triggeringBetCents);
     const winningWins = offsetWinningRows(evaluation.wins, lockedRows);
     const baseWinCents = evaluation.totalWinCents;
-    const spinWinCents = safeMultiply(
+    const spinWinCents = multiplyCapped(
       baseWinCents,
       state.activeMultiplier,
-      "Sword spin payout exceeds the safe integer range",
+      state.maximumWinCents,
     );
-    const accumulatedWinCents = safeAdd(
+    const accumulatedWinCents = addCapped(
       state.accumulatedWinCents,
       spinWinCents,
-      "Accumulated Sword win exceeds the safe integer range",
+      state.maximumWinCents,
     );
 
     const expansion = expands ? this.createExpansion(state.rows, expansionTarget!) : null;
@@ -99,23 +112,13 @@ export class SwordEngine {
       ? this.pickFinalStrikeMultiplier()
       : null;
     const finalPayoutCents = complete
-      ? Math.min(
-          finalStrikeMultiplier === null
-            ? accumulatedWinCents
-            : safeMultiply(
-                accumulatedWinCents,
-                finalStrikeMultiplier,
-                "Sword final strike payout exceeds the safe integer range",
-              ),
-          safeMultiply(
-            state.triggeringBetCents,
-            this.config.maximumPayoutMultiplier,
-            "Maximum Sword payout exceeds the safe integer range",
-          ),
-        )
+      ? finalStrikeMultiplier === null
+        ? accumulatedWinCents
+        : multiplyCapped(accumulatedWinCents, finalStrikeMultiplier, state.maximumWinCents)
       : null;
     const nextState: SwordFeatureState = {
       triggeringBetCents: state.triggeringBetCents,
+      maximumWinCents: state.maximumWinCents,
       rows: expansion?.destinationRows ?? state.rows,
       remainingSpins,
       totalSpinsPlayed: safeAdd(state.totalSpinsPlayed, 1, "Sword spin count exceeds the safe integer range"),
@@ -258,9 +261,6 @@ function validateConfig(config: SwordConfig): void {
     || config.startingSpins !== 3) {
     throw new RangeError("Sword dimensions, spins, and initial multiplier are invalid");
   }
-  if (!Number.isSafeInteger(config.maximumPayoutMultiplier) || config.maximumPayoutMultiplier <= 0) {
-    throw new RangeError("Sword maximum payout multiplier is invalid");
-  }
   if (config.expansionChances[3] !== 0.4
     || config.expansionChances[4] !== 0.25
     || config.expansionChances[5] !== 0.1) {
@@ -293,6 +293,7 @@ function validateConfig(config: SwordConfig): void {
 function validateState(state: SwordFeatureState, config: SwordConfig): void {
   const values = [
     state.triggeringBetCents,
+    state.maximumWinCents,
     state.rows,
     state.remainingSpins,
     state.totalSpinsPlayed,
@@ -302,6 +303,7 @@ function validateState(state: SwordFeatureState, config: SwordConfig): void {
   if (values.some((value) => !Number.isSafeInteger(value))
     || state.triggeringBetCents <= 0
     || state.triggeringBetCents % PAYOUT_MULTIPLIER_SCALE !== 0
+    || state.maximumWinCents < 0
     || state.rows < config.startingRows
     || state.rows > config.maximumRows
     || state.remainingSpins < 0
@@ -309,6 +311,7 @@ function validateState(state: SwordFeatureState, config: SwordConfig): void {
     || state.totalSpinsPlayed < 0
     || state.activeMultiplier < 1
     || state.accumulatedWinCents < 0
+    || state.accumulatedWinCents > state.maximumWinCents
     || !Number.isSafeInteger(state.finalStrikeMultiplier ?? 0)
     || (state.finalPayoutCents !== null && (!Number.isSafeInteger(state.finalPayoutCents) || state.finalPayoutCents < 0))) {
     throw new Error("Sword feature state is invalid");

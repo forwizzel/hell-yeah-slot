@@ -1,19 +1,21 @@
 {
-  "name": "bonus-slot-prototype",
+  "name": "hell-yeah",
   "version": "1.0.0",
-  "description": "Beer, Cigarette, and Sword bonus slot mathematics and browser prototype",
+  "description": "Browser slot game with reel-strip math, PixiJS presentation, and seeded simulation",
   "type": "module",
   "private": true,
   "scripts": {
     "dev": "vite",
+    "preview": "vite preview",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
+    "analyze": "tsx src/simulation/analyzeReels.ts",
     "simulate": "tsx src/simulation/runSimulation.ts"
   },
   "keywords": [
     "pixijs",
     "typescript",
-    "slot-prototype"
+    "slot-game"
   ],
   "license": "UNLICENSED",
   "engines": {

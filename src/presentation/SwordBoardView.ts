@@ -170,9 +170,17 @@ export class SwordBoardView {
     unlockedRows: number,
     turboEnabled: boolean,
     onColumnLocked?: (column: number) => void,
+    reduceMotion = false,
   ): Promise<void> {
     validateGrid(result);
     validateUnlockedRows(unlockedRows);
+    if (reduceMotion) {
+      this.render(result, unlockedRows);
+      for (let column = 0; column < COLUMNS; column += 1) {
+        onColumnLocked?.(column);
+      }
+      return Promise.resolve();
+    }
     this.buildGrid(true);
     this.clearWinFocus();
     this.drawLockedRows(unlockedRows);

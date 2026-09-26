@@ -39,9 +39,9 @@ export function getFeatureBuyCostCents(feature: FeatureBuyId, betCents: number):
   }
   return safeMultiply(
     betCents,
-    FEATURE_BUY_MULTIPLIERS[feature],
+    FEATURE_BUY_MULTIPLIER_TENTHS[feature],
     "Feature-buy cost exceeds the safe integer range",
-  );
+  ) / 10;
 }
 
 export const GAME_CONFIG = {
@@ -50,13 +50,12 @@ export const GAME_CONFIG = {
   betOptionsCents: BET_OPTIONS_CENTS,
   rows: 3,
   columns: 5,
-  beerFreeSpins: 10,
-  cigaretteFreeSpins: 10,
-  beerFreeSpinMultiplier: 5,
-  cigaretteCashAwardMinimumTenths: 5,
-  cigaretteCashAwardMaximumTenths: 500,
-  beerCashAwardMinimumTenths: 5,
-  beerCashAwardMaximumTenths: 250,
+  beerFreeSpins: 8,
+  cigaretteFreeSpins: 8,
+  beerRetriggerSpins: 5,
+  cigaretteRetriggerSpins: 5,
+  beerFreeSpinMultiplier: 3,
+  maximumPaidRoundWinMultiplier: 10_000,
   recentEventLimit: 30,
   maximumAutoSpins: 1_000,
   normalSpinDurationMs: 3_500,
@@ -73,13 +72,39 @@ export const GAME_CONFIG = {
   normalLargeWinDurationMs: 3_000,
   quickLargeWinDurationMs: 750,
 } as const;
+
+export interface CashAwardPrize {
+  readonly multiplierTenths: number;
+  readonly weight: number;
+}
+
+export const CIGARETTE_CASH_AWARDS: ReadonlyArray<CashAwardPrize> = Object.freeze([
+  Object.freeze({ multiplierTenths: 5, weight: 30 }),
+  Object.freeze({ multiplierTenths: 10, weight: 25 }),
+  Object.freeze({ multiplierTenths: 15, weight: 18 }),
+  Object.freeze({ multiplierTenths: 20, weight: 12 }),
+  Object.freeze({ multiplierTenths: 30, weight: 7 }),
+  Object.freeze({ multiplierTenths: 50, weight: 4 }),
+  Object.freeze({ multiplierTenths: 100, weight: 2 }),
+  Object.freeze({ multiplierTenths: 200, weight: 1 }),
+  Object.freeze({ multiplierTenths: 500, weight: 1 }),
+]);
+
+export const BEER_CASH_AWARDS: ReadonlyArray<CashAwardPrize> = Object.freeze([
+  Object.freeze({ multiplierTenths: 5, weight: 45 }),
+  Object.freeze({ multiplierTenths: 10, weight: 30 }),
+  Object.freeze({ multiplierTenths: 15, weight: 15 }),
+  Object.freeze({ multiplierTenths: 20, weight: 6 }),
+  Object.freeze({ multiplierTenths: 50, weight: 3 }),
+  Object.freeze({ multiplierTenths: 250, weight: 1 }),
+]);
 import { safeMultiply } from "../math/safeInteger";
 
 export type FeatureBuyId = "beer" | "cigarette" | "combined" | "sword";
 
-export const FEATURE_BUY_MULTIPLIERS: Readonly<Record<FeatureBuyId, number>> = Object.freeze({
-  beer: 23.5,
-  cigarette: 58.5,
-  combined: 58.6,
-  sword: 900,
+export const FEATURE_BUY_MULTIPLIER_TENTHS: Readonly<Record<FeatureBuyId, number>> = Object.freeze({
+  beer: 136,
+  cigarette: 250,
+  combined: 731,
+  sword: 1_638,
 });

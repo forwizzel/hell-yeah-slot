@@ -1,4 +1,11 @@
-import { GAME_CONFIG, getAdjacentBetCents, getFeatureBuyCostCents, type FeatureBuyId } from "../config/gameConfig";
+import {
+  BEER_CASH_AWARDS,
+  CIGARETTE_CASH_AWARDS,
+  GAME_CONFIG,
+  getAdjacentBetCents,
+  getFeatureBuyCostCents,
+  type FeatureBuyId,
+} from "../config/gameConfig";
 import { PAYTABLE } from "../config/paytable";
 import { REEL_STRIPS } from "../config/reelStrips";
 import { BonusEngine } from "../math/BonusEngine";
@@ -6,7 +13,7 @@ import { CryptoRandomSource } from "../math/CryptoRandomSource";
 import { evaluateWays } from "../math/PayEvaluator";
 import type { RandomSource } from "../math/RandomSource";
 import { ReelEngine } from "../math/ReelEngine";
-import { safeAdd } from "../math/safeInteger";
+import { safeAdd, safeMultiply } from "../math/safeInteger";
 import { SwordEngine } from "../math/SwordEngine";
 import type { GameView } from "../presentation/GameView";
 import type { ControlActions, DevelopmentBonusId } from "../presentation/ControlPanel";
@@ -288,12 +295,12 @@ export class GameController {
     this.state.winningPositions = result.winningPositions;
     this.state.winningWins = result.winningWins;
     this.state.cashAwards = [];
-    this.awardWin(result.regularWinCents);
-    this.view.addLog(result.regularWinCents > 0 ? `Base win: ${formatUsd(result.regularWinCents)}.` : "No base win.");
+    const awardedCents = this.awardWin(result.regularWinCents, triggeringBetCents);
+    this.view.addLog(awardedCents > 0 ? `Base win: ${formatUsd(awardedCents)}.` : "No base win.");
     this.render();
     const timing = this.getSpinTiming();
     await this.view.wait(timing.evaluationDelay);
-    await this.playLargeWin(result.regularWinCents, triggeringBetCents, timing.quickSpin);
+    await this.playLargeWin(awardedCents, triggeringBetCents, timing.quickSpin);
   }
 
   private getSpinTiming(): { readonly quickSpin: boolean; readonly evaluationDelay: number } {
@@ -343,7 +350,11 @@ export class GameController {
     this.state.winningPositions = [];
     this.state.winningWins = [];
     this.state.largeWin = null;
-    this.state.freeSpins = this.bonusEngine.startFreeSpins(trigger, triggeringBetCents);
+    this.state.freeSpins = this.bonusEngine.startFreeSpins(
+      trigger,
+      triggeringBetCents,
+      this.remainingRoundWinCents(triggeringBetCents),
+    );
     this.logTrigger(trigger.beer);
     this.logTrigger(trigger.cigarette);
     this.view.addLog(
@@ -357,6 +368,7 @@ export class GameController {
     this.render();
     const introTiming = this.getSpinTiming();
     await this.view.playBonusIntroReveal(this.state.freeSpins, introTiming.evaluationDelay * 2);
+    let awardedFeatureCents = 0;
 
     while (this.state.freeSpins.remainingSpins > 0) {
       const previousState = this.state.freeSpins;
@@ -386,11 +398,12 @@ export class GameController {
       this.state.cashAwards = [...result.cashAwards];
       this.state.freeSpins = result.state;
       this.state.phase = "free-spin-evaluation";
-      this.awardWin(result.spinWinCents);
+      const awardedCents = this.awardWin(result.spinWinCents, triggeringBetCents);
+      awardedFeatureCents = safeAdd(awardedFeatureCents, awardedCents, "Awarded free-spin total exceeds the safe integer range");
       const spinNumber = result.state.totalSpinsPlayed;
-      if (result.spinWinCents > 0) {
+      if (awardedCents > 0) {
         this.view.addLog(
-          `Free spin ${spinNumber}: ways ${formatUsd(evaluation.totalWinCents)} x${previousState.multiplier} = ${formatUsd(result.waysWinCents)}; cash symbols ${formatUsd(result.cashAwardWinCents)}; total ${formatUsd(result.spinWinCents)}.`,
+          `Free spin ${spinNumber}: ways ${formatUsd(evaluation.totalWinCents)} x${previousState.multiplier} = ${formatUsd(result.waysWinCents)}; cash symbols ${formatUsd(result.cashAwardWinCents)}; awarded ${formatUsd(awardedCents)}.`,
         );
       } else {
         this.view.addLog(`Free spin ${spinNumber}: no ways win.`);
@@ -415,7 +428,14 @@ export class GameController {
       ]);
 
       if (result.swordTriggered) {
-        await this.playSwordFeature(previousState.triggeringBetCents, true);
+        const swordAwardedCents = await this.playSwordFeature(previousState.triggeringBetCents, true);
+        this.state.freeSpins = {
+          ...this.state.freeSpins,
+          maximumWinCents: Math.max(
+            this.state.freeSpins.accumulatedWinCents,
+            this.state.freeSpins.maximumWinCents - swordAwardedCents,
+          ),
+        };
       }
     }
 
@@ -423,10 +443,10 @@ export class GameController {
     this.state.winningWins = [];
     const summary = this.bonusEngine.summarize(this.state.freeSpins);
     this.view.addLog(
-      `${featureLabel(summary.mode)} complete after ${summary.spinsPlayed} spins. Awarded ${formatUsd(summary.payoutCents)}.`,
+      `${featureLabel(summary.mode)} complete after ${summary.spinsPlayed} spins. Awarded ${formatUsd(awardedFeatureCents)}.`,
     );
     await this.playLargeWin(
-      summary.payoutCents,
+      awardedFeatureCents,
       triggeringBetCents,
       this.getSpinTiming().quickSpin,
     );
@@ -435,9 +455,12 @@ export class GameController {
   private async playSwordFeature(
     triggeringBetCents: number,
     duringFreeSpins: boolean,
-  ): Promise<void> {
+  ): Promise<number> {
     this.view.setQuickSpinEnabled(false);
-    this.state.sword = this.swordEngine.start(triggeringBetCents);
+    this.state.sword = this.swordEngine.start(
+      triggeringBetCents,
+      this.remainingRoundWinCents(triggeringBetCents),
+    );
     this.state.winningPositions = [];
     this.state.winningWins = [];
     this.state.largeWin = null;
@@ -514,14 +537,15 @@ export class GameController {
     this.state.winningPositions = [];
     this.state.winningWins = [];
     const summary = this.swordEngine.summarize(this.state.sword);
-    this.awardWin(summary.payoutCents);
-    this.view.addLog(`Sword Cleave complete after ${summary.spinsPlayed} spins. Awarded ${formatUsd(summary.payoutCents)}.`);
+    const awardedCents = this.awardWin(summary.payoutCents, triggeringBetCents);
+    this.view.addLog(`Sword Cleave complete after ${summary.spinsPlayed} spins. Awarded ${formatUsd(awardedCents)}.`);
     await this.playLargeWin(
-      summary.payoutCents,
+      awardedCents,
       triggeringBetCents,
       this.getSpinTiming().quickSpin,
     );
     this.state.sword = null;
+    return awardedCents;
   }
 
   private logTrigger(activation: BonusActivation | null): void {
@@ -532,19 +556,30 @@ export class GameController {
     this.view.addLog(`${featureLabel(mode)} triggered with ${activation.symbolCount} symbols.`);
   }
 
-  private awardWin(amountCents: number): void {
+  private awardWin(amountCents: number, triggeringBetCents: number): number {
+    const awardedCents = Math.min(amountCents, this.remainingRoundWinCents(triggeringBetCents));
     const balanceCents = safeAdd(
       this.state.balanceCents,
-      amountCents,
+      awardedCents,
       "Balance exceeds the safe integer range",
     );
     const lastWinCents = safeAdd(
       this.state.lastWinCents,
-      amountCents,
+      awardedCents,
       "Round win exceeds the safe integer range",
     );
     this.state.balanceCents = balanceCents;
     this.state.lastWinCents = lastWinCents;
+    return awardedCents;
+  }
+
+  private remainingRoundWinCents(triggeringBetCents: number): number {
+    const maximumWinCents = safeMultiply(
+      triggeringBetCents,
+      GAME_CONFIG.maximumPaidRoundWinMultiplier,
+      "Maximum paid-round win exceeds the safe integer range",
+    );
+    return maximumWinCents - this.state.lastWinCents;
   }
 
   private async playLargeWin(
@@ -618,15 +653,12 @@ export class GameController {
       this.random,
       GAME_CONFIG.beerFreeSpins,
       GAME_CONFIG.cigaretteFreeSpins,
+      GAME_CONFIG.beerRetriggerSpins,
+      GAME_CONFIG.cigaretteRetriggerSpins,
       GAME_CONFIG.beerFreeSpinMultiplier,
-      {
-        minimumTenths: GAME_CONFIG.cigaretteCashAwardMinimumTenths,
-        maximumTenths: GAME_CONFIG.cigaretteCashAwardMaximumTenths,
-      },
-      {
-        minimumTenths: GAME_CONFIG.beerCashAwardMinimumTenths,
-        maximumTenths: GAME_CONFIG.beerCashAwardMaximumTenths,
-      },
+      GAME_CONFIG.maximumPaidRoundWinMultiplier,
+      CIGARETTE_CASH_AWARDS,
+      BEER_CASH_AWARDS,
     );
   }
 

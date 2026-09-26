@@ -105,6 +105,7 @@ export interface FreeSpinState {
   readonly totalSpinsPlayed: number;
   readonly multiplier: number;
   readonly triggeringBetCents: number;
+  readonly maximumWinCents: number;
   readonly accumulatedWinCents: number;
 }
 
@@ -131,6 +132,7 @@ export interface FreeSpinSummary {
 
 export interface SwordFeatureState {
   readonly triggeringBetCents: number;
+  readonly maximumWinCents: number;
   readonly rows: number;
   readonly remainingSpins: number;
   readonly totalSpinsPlayed: number;

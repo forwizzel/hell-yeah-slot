@@ -1,5 +1,5 @@
 import { Application, Assets, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
-import { GAME_CONFIG } from "../config/gameConfig";
+import { BEER_CASH_AWARDS, CIGARETTE_CASH_AWARDS, GAME_CONFIG } from "../config/gameConfig";
 import { REEL_STRIPS } from "../config/reelStrips";
 import { formatUsd } from "../core/formatUsd";
 import type { BonusSymbolId, CardSymbolId, CashAwardSymbolId, Cell, FreeSpinCashAward, Grid, SymbolWin } from "../core/types";
@@ -183,8 +183,16 @@ export class ReelGridView {
     cashAwards: ReadonlyArray<FreeSpinCashAward> = [],
     transientCashAwardSymbols: ReadonlyArray<CashAwardSymbolId> = [],
     triggeringBetCents = 0,
+    reduceMotion = false,
   ): Promise<void> {
     validateGrid(result);
+    if (reduceMotion) {
+      this.renderGrid(result, [], cashAwards);
+      for (let column = 0; column < GAME_CONFIG.columns; column += 1) {
+        onColumnLocked?.(column);
+      }
+      return Promise.resolve();
+    }
     this.clearWinFocus();
     const normalDuration = GAME_CONFIG.normalSpinDurationMs;
     const quickDuration = GAME_CONFIG.quickSpinDurationMs;
@@ -705,11 +713,13 @@ function transientDisplayCell(
   if (cell.kind !== "bonus" || !cashAwardSymbols.has(cell.symbol as CashAwardSymbolId)) {
     return { cell, cashAwardCents: null };
   }
-  const [minimumTenths, maximumTenths] = cell.symbol === "CIGARETTE"
-    ? [GAME_CONFIG.cigaretteCashAwardMinimumTenths, GAME_CONFIG.cigaretteCashAwardMaximumTenths]
-    : [GAME_CONFIG.beerCashAwardMinimumTenths, GAME_CONFIG.beerCashAwardMaximumTenths];
-  const choices = ((maximumTenths - minimumTenths) / 5) + 1;
-  const multiplierTenths = minimumTenths + Math.floor(Math.random() * choices) * 5;
+  const prizes = cell.symbol === "CIGARETTE" ? CIGARETTE_CASH_AWARDS : BEER_CASH_AWARDS;
+  const totalWeight = prizes.reduce((total, prize) => total + prize.weight, 0);
+  let selection = Math.random() * totalWeight;
+  const multiplierTenths = prizes.find((prize) => {
+    selection -= prize.weight;
+    return selection < 0;
+  })?.multiplierTenths ?? 5;
   return { cell, cashAwardCents: (betCents * multiplierTenths) / 10 };
 }
 
